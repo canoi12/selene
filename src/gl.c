@@ -69,8 +69,8 @@ static int l_gl_PrintVersion(lua_State* L) {
             info->glsl = info->major * 100 + info->minor * 10;
         }
     } else {
-        float fglsl = atof((const char*)glsl);
-        info->glsl = 100 * fglsl;
+        float fglsl = (float)atof((const char*)glsl);
+        info->glsl = (Uint16)(100 * fglsl);
     }
 
     fprintf(stderr, "GL: { ver: %d.%d, glsl: %d, es: %s }\n", info->major, info->minor, info->glsl, info->es ? "true" : "false");
@@ -93,23 +93,23 @@ static int l_gl_Viewport(lua_State* L) {
     glGetIntegerv(GL_VIEWPORT, view);
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
-        view[i] = luaL_checkinteger(L, 1+i);
+        view[i] = (int)luaL_checkinteger(L, 1+i);
     }
     glViewport(view[0], view[1], view[2], view[3]);
     return 0;
 }
 
 static int l_gl_ClearStencil(lua_State* L) {
-    int s = luaL_checkinteger(L, 1);
+    int s = (int)luaL_checkinteger(L, 1);
     glClearStencil(s);
     return 0;
 }
 
 static int l_gl_ClearDepth(lua_State *L ) {
 #if !defined(__EMSCRIPTEN__)
-    glClearDepth(luaL_optnumber(L, 1, 1.0f));
+    glClearDepth((float)luaL_optnumber(L, 1, 1.0f));
 #else
-    glClearDepthf(luaL_optnumber(L, 1, 1.0f));
+    glClearDepthf((float)luaL_optnumber(L, 1, 1.0f));
 #endif
     return 0;
 }
@@ -118,7 +118,7 @@ static int l_gl_ClearColor(lua_State* L) {
     float color[4] = { 0.f, 0.f, 0.f, 1.f };
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++)
-        color[i] = lua_tonumber(L, i+1);
+        color[i] = (float)lua_tonumber(L, i+1);
     glClearColor(color[0], color[1], color[2], color[3]);
     return 0;
 }
@@ -136,7 +136,7 @@ static int l_gl_Clear(lua_State* L) {
 static int l_gl_Enable(lua_State* L) {
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
-        glEnable(luaL_checkinteger(L, 1+i));
+        glEnable((GLenum)luaL_checkinteger(L, 1+i));
     }
     return 0;
 }
@@ -144,7 +144,7 @@ static int l_gl_Enable(lua_State* L) {
 static int l_gl_Disable(lua_State* L) {
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
-        glDisable(luaL_checkinteger(L, 1+i));
+        glDisable((GLenum)luaL_checkinteger(L, 1+i));
     }
     return 0;
 }
@@ -152,7 +152,7 @@ static int l_gl_Disable(lua_State* L) {
 static int l_gl_viewport(lua_State* L) {
     int r[4] = {0, 0, 640, 380};
     for (int i = i; i < lua_gettop(L); i++) {
-        r[i] = luaL_checkinteger(L, 1+i);
+        r[i] = (int)luaL_checkinteger(L, 1+i);
     }
     glViewport(r[0], r[1], r[2], r[3]);
     return 0;
@@ -161,36 +161,36 @@ static int l_gl_viewport(lua_State* L) {
 
 static int l_gl_Scissor(lua_State* L) {
     int x, y, w, h;
-    x = luaL_checkinteger(L, 1);
-    y = luaL_checkinteger(L, 2);
-    w = luaL_checkinteger(L, 3);
-    h = luaL_checkinteger(L, 4);
+    x = (int)luaL_checkinteger(L, 1);
+    y = (int)luaL_checkinteger(L, 2);
+    w = (int)luaL_checkinteger(L, 3);
+    h = (int)luaL_checkinteger(L, 4);
     glScissor(x, y, w, h);
     return 0;
 }
 
 static int l_gl_BlendFunc(lua_State* L) {
     int sfn, dfn;
-    sfn = luaL_optinteger(L, 1, GL_SRC_ALPHA);
-    dfn = luaL_optinteger(L, 2, GL_ONE_MINUS_SRC_ALPHA);
+    sfn = (int)luaL_optinteger(L, 1, GL_SRC_ALPHA);
+    dfn = (int)luaL_optinteger(L, 2, GL_ONE_MINUS_SRC_ALPHA);
     glBlendFunc(sfn, dfn);
     return 0;
 }
 
 static int l_gl_DrawArrays(lua_State* L) {
-    Uint16 mode = luaL_checkinteger(L, 1);
-    Uint32 start = luaL_checkinteger(L, 2);
-    Uint32 count = luaL_checkinteger(L, 3);
+    Uint16 mode = (Uint16)luaL_checkinteger(L, 1);
+    Uint32 start = (Uint32)luaL_checkinteger(L, 2);
+    Uint32 count = (Uint32)luaL_checkinteger(L, 3);
     glDrawArrays(mode, start, count);
     return 0;
 }
 
 static int l_gl_DrawElements(lua_State* L) {
-    Uint16 mode = luaL_checkinteger(L, 1);
-    Uint32 start = luaL_checkinteger(L, 2);
-    Uint32 count = luaL_checkinteger(L, 3);
-    Uint16 _type = luaL_checkinteger(L, 4);
-    glDrawElements(mode, start, _type, (const void*)start);
+    Uint16 mode = (Uint16)luaL_checkinteger(L, 1);
+    Uint32 start = (Uint32)luaL_checkinteger(L, 2);
+    Uint32 count = (Uint32)luaL_checkinteger(L, 3);
+    Uint16 _type = (Uint16)luaL_checkinteger(L, 4);
+    glDrawElements(mode, start, _type, (void*)start);
     return 0;
 }
 
@@ -209,7 +209,7 @@ static int l_Texture__gc(lua_State* L) {
 }
 
 static int l_gl_BindTexture(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
+    int target = (int)luaL_checkinteger(L, 1);
     Texture* tex = luaL_testudata(L, 2, "Texture");
     if (tex) glBindTexture(target, *tex);
     else glBindTexture(target, 0);
@@ -217,12 +217,12 @@ static int l_gl_BindTexture(lua_State* L) {
 }
 
 static int l_gl_TexImage2D(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
-    int internal = luaL_checkinteger(L, 2);
-    int width = luaL_checkinteger(L, 3);
-    int height = luaL_checkinteger(L, 4);
-    int format = luaL_checkinteger(L, 5);
-    int type_ = luaL_checkinteger(L, 6);
+    int target = (int)luaL_checkinteger(L, 1);
+    int internal = (int)luaL_checkinteger(L, 2);
+    int width = (int)luaL_checkinteger(L, 3);
+    int height = (int)luaL_checkinteger(L, 4);
+    int format = (int)luaL_checkinteger(L, 5);
+    int type_ = (int)luaL_checkinteger(L, 6);
     void* data = NULL;
     if (lua_type(L, 7) == LUA_TUSERDATA) {
         Data* dt = luaL_checkudata(L, 7, "Data");
@@ -233,13 +233,13 @@ static int l_gl_TexImage2D(lua_State* L) {
 }
 
 static int l_gl_TexSubImage2D(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
-    int xoffset = luaL_checkinteger(L, 2);
-    int yoffset = luaL_checkinteger(L, 3);
-    int width = luaL_checkinteger(L, 4);
-    int height = luaL_checkinteger(L, 5);
-    int format = luaL_checkinteger(L, 6);
-    int type_ = luaL_checkinteger(L, 7);
+    int target = (int)luaL_checkinteger(L, 1);
+    int xoffset = (int)luaL_checkinteger(L, 2);
+    int yoffset = (int)luaL_checkinteger(L, 3);
+    int width = (int)luaL_checkinteger(L, 4);
+    int height = (int)luaL_checkinteger(L, 5);
+    int format = (int)luaL_checkinteger(L, 6);
+    int type_ = (int)luaL_checkinteger(L, 7);
     void* data = NULL;
     if (lua_type(L, 8) == LUA_TUSERDATA) {
         Data* dt = luaL_checkudata(L, 8, "Data");
@@ -250,9 +250,9 @@ static int l_gl_TexSubImage2D(lua_State* L) {
 }
 
 static int l_gl_TexParameteri(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
-    int pname = luaL_checkinteger(L, 2);
-    int param = luaL_checkinteger(L, 3);
+    int target = (int)luaL_checkinteger(L, 1);
+    int pname = (int)luaL_checkinteger(L, 2);
+    int param = (int)luaL_checkinteger(L, 3);
     glTexParameteri(target, pname, param);
     return 0;
 }
@@ -285,7 +285,7 @@ static int l_Framebuffer__gc(lua_State* L) {
 }
 
 static int l_gl_BindFramebuffer(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
+    int target = (int)luaL_checkinteger(L, 1);
     Framebuffer* buffer = luaL_testudata(L, 2, "Framebuffer");
     if (buffer) glBindFramebuffer(target, *buffer);
     else glBindFramebuffer(target, 0);
@@ -293,9 +293,9 @@ static int l_gl_BindFramebuffer(lua_State* L) {
 }
 
 static int l_gl_AttachTexture2D(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
-    int attachment = luaL_checkinteger(L, 2);
-    int tex_target = luaL_checkinteger(L, 3);
+    int target = (int)luaL_checkinteger(L, 1);
+    int attachment = (int)luaL_checkinteger(L, 2);
+    int tex_target = (int)luaL_checkinteger(L, 3);
     Texture* tex = luaL_checkudata(L, 4, "Texture");
     glFramebufferTexture2D(target, attachment, tex_target, *tex, 0);
     return 0;
@@ -342,24 +342,24 @@ static int l_gl_BindVertexArray(lua_State* L) {
 }
 
 static int l_gl_EnableVertexAttribArray(lua_State* L) {
-    int attrib = luaL_checkinteger(L, 1);
+    int attrib = (int)luaL_checkinteger(L, 1);
     glEnableVertexAttribArray(attrib);
     return 0;
 }
 
 static int l_gl_DisableVertexAttribArray(lua_State* L) {
-    int attrib = luaL_checkinteger(L, 1);
+    int attrib = (int)luaL_checkinteger(L, 1);
     glDisableVertexAttribArray(attrib);
     return 0;
 }
 
 static int l_gl_VertexAttribPointer(lua_State* L) {
-    int attrib = luaL_checkinteger(L, 1);
-    int size = luaL_checkinteger(L, 2);
-    int type = luaL_checkinteger(L, 3);
+    int attrib = (int)luaL_checkinteger(L, 1);
+    int size = (int)luaL_checkinteger(L, 2);
+    int type = (int)luaL_checkinteger(L, 3);
     int normalized = lua_toboolean(L, 4);
-    int stride = luaL_checkinteger(L, 5);
-    int offset = luaL_checkinteger(L, 6);
+    int stride = (int)luaL_checkinteger(L, 5);
+    int offset = (int)luaL_checkinteger(L, 6);
     glVertexAttribPointer(attrib, size, type, normalized, stride, (void*)offset);
     return 0;
 }
@@ -391,7 +391,7 @@ static int l_Buffer__gc(lua_State* L) {
 }
 
 static int l_gl_BindBuffer(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
+    int target = (int)luaL_checkinteger(L, 1);
     Buffer* b = luaL_testudata(L, 2, BUFFER_META);
     if (b) glBindBuffer(target, *b);
     else glBindBuffer(target, 0);
@@ -399,9 +399,9 @@ static int l_gl_BindBuffer(lua_State* L) {
 }
 
 static int l_gl_BufferData(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
-    int size = luaL_checkinteger(L, 2);
-    int usage = luaL_checkinteger(L, 3);
+    int target = (int)luaL_checkinteger(L, 1);
+    int size = (int)luaL_checkinteger(L, 2);
+    int usage = (int)luaL_checkinteger(L, 3);
     Data* data = luaL_testudata(L, 4, "Data");
     if (data) glBufferData(target, size, data->data, usage);
     else glBufferData(target, size, NULL, usage);
@@ -409,9 +409,9 @@ static int l_gl_BufferData(lua_State* L) {
 }
 
 static int l_gl_BufferSubData(lua_State* L) {
-    int target = luaL_checkinteger(L, 1);
-    int start = luaL_checkinteger(L, 2);
-    int size = luaL_checkinteger(L, 3);
+    int target = (int)luaL_checkinteger(L, 1);
+    int start = (int)luaL_checkinteger(L, 2);
+    int size = (int)luaL_checkinteger(L, 3);
     Data* data = luaL_checkudata(L, 4, "Data");
     glBufferSubData(target, start, size, data->data);
     return 0;
@@ -431,7 +431,7 @@ static int l_Buffer_meta(lua_State* L) {
 
 // Shader
 static int l_gl_NewShader(lua_State* L) {
-    int gl_enum = luaL_checkinteger(L, 1);
+    int gl_enum = (int)luaL_checkinteger(L, 1);
     Shader* s = lua_newuserdata(L, sizeof(*s));
     luaL_setmetatable(L, "Shader");
     *s = glCreateShader(gl_enum);
@@ -574,14 +574,14 @@ static int l_gl_Uniform1fv(lua_State* L) {
     float values[args];
 #endif
     for (int i = 0; i < args; i++) {
-        values[i] = luaL_checknumber(L, 2+i);
+        values[i] = (float)luaL_checknumber(L, 2+i);
     }
     glUniform1fv(location, args, values);
     return 0;
 }
 
 static int l_gl_Uniform2fv(lua_State* L) {
-    int location = luaL_checkinteger(L, 1);
+    int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 2;
 #if defined(OS_WIN)
@@ -601,7 +601,7 @@ static int l_gl_Uniform2fv(lua_State* L) {
         lua_pushnil(L);
         int j = 0;
         while (lua_next(L, index) != 0) {
-            v[j++] = luaL_checknumber(L, -1);
+            v[j++] = (float)luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
         v += 2;
@@ -611,7 +611,7 @@ static int l_gl_Uniform2fv(lua_State* L) {
 }
 
 static int l_gl_Uniform3fv(lua_State* L) {
-    int location = luaL_checkinteger(L, 1);
+    int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 3;
 #if defined(OS_WIN)
@@ -631,7 +631,7 @@ static int l_gl_Uniform3fv(lua_State* L) {
         lua_pushnil(L);
         int j = 0;
         while (lua_next(L, index) != 0) {
-            v[j++] = luaL_checknumber(L, -1);
+            v[j++] = (float)luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
         v += 3;
@@ -641,7 +641,7 @@ static int l_gl_Uniform3fv(lua_State* L) {
 }
 
 static int l_gl_Uniform4fv(lua_State* L) {
-    int location = luaL_checkinteger(L, 1);
+    int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 4;
 #if defined(OS_WIN)
@@ -661,7 +661,7 @@ static int l_gl_Uniform4fv(lua_State* L) {
         lua_pushnil(L);
         int j = 0;
         while (lua_next(L, index) != 0) {
-            v[j++] = luaL_checknumber(L, -1);
+            v[j++] = (float)luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
         v += 4;
@@ -671,8 +671,8 @@ static int l_gl_Uniform4fv(lua_State* L) {
 }
 
 static int l_gl_UniformMatrix4fv(lua_State* L) {
-    int location = luaL_checkinteger(L, 1);
-    int count = luaL_checkinteger(L, 2);
+    int location = (int)luaL_checkinteger(L, 1);
+    int count = (int)luaL_checkinteger(L, 2);
     int normalize = lua_toboolean(L, 3);
     mat4x4* m = luaL_checkudata(L, 4, "Mat4");
     glUniformMatrix4fv(location, count, normalize, **m);
