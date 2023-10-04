@@ -29,6 +29,7 @@ struct GLInfo {
 };
 
 static struct GLInfo s_gl_info;
+static Data* s_aux_data;
 
 static int l_gl_LoadGlad(lua_State* L) {
 #if !defined(__EMSCRIPTEN__)
@@ -459,7 +460,15 @@ static int l_gl_CompileShader(lua_State* L) {
     if (!success) {
         int len;
         glGetShaderiv(*s, GL_INFO_LOG_LENGTH, &len);
+    #if defined(OS_WIN)
+        if (len+1 > s_aux_data->size) {
+            s_aux_data->size = (len+1)*2;
+            s_aux_data->data = realloc(s_aux_data->data, s_aux_data->size);
+        }
+        char* log = s_aux_data->data;
+    #else
         char log[len+1];
+    #endif
         glGetShaderInfoLog(*s, len, NULL, log);
         log[len] = '\0';
         return luaL_error(L, "Failed to compile shader: %s\n", log);
@@ -511,7 +520,15 @@ static int l_gl_LinkProgram(lua_State* L) {
     if (!success) {
         int len;
         glGetProgramiv(*p, GL_INFO_LOG_LENGTH, &len);
+    #if defined(OS_WIN)
+        if (len+1 > s_aux_data->size) {
+            s_aux_data->size = (len+1)*2;
+            s_aux_data->data = realloc(s_aux_data->data, s_aux_data->size);
+        }
+        char* log = s_aux_data->data;
+    #else
         char log[len+1];
+    #endif
         glGetProgramInfoLog(*p, len, NULL, log);
         log[len] = '\0';
         return luaL_error(L, "Failed to link program: %s\n", log);
@@ -544,9 +561,18 @@ static int l_gl_GetUniformLocation(lua_State* L) {
 }
 
 static int l_gl_Uniform1fv(lua_State* L) {
-    int location = luaL_checkinteger(L, 1);
-    int args = lua_gettop(L) - 2;
+    int location = (int)luaL_checkinteger(L, 1);
+    int args = (int)lua_gettop(L) - 1;
+#if defined(OS_WIN)
+    int size = args * 4;
+    if (size > s_aux_data->size) {
+        s_aux_data->size = size * 2;
+        s_aux_data->data = realloc(s_aux_data->data, size*2);
+    }
+    float* values = s_aux_data->data;
+#else
     float values[args];
+#endif
     for (int i = 0; i < args; i++) {
         values[i] = luaL_checknumber(L, 2+i);
     }
@@ -557,17 +583,28 @@ static int l_gl_Uniform1fv(lua_State* L) {
 static int l_gl_Uniform2fv(lua_State* L) {
     int location = luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
+    int size = args * 4 * 2;
+#if defined(OS_WIN)
+    if (size > s_aux_data->size) {
+        s_aux_data->size = size * 2;
+        s_aux_data->data = realloc(s_aux_data->data, size*2);
+    }
+    float* values = s_aux_data->data;
+#else
     float values[args*2];
-    float *v = values;
+#endif
+    float* v = values;
     for (int i = 0; i < args; i++) {
-        lua_pushnil(L);
         int index = i + 2;
+        if (lua_type(L, index) != LUA_TTABLE)
+            return luaL_argerror(L, index, "Must be a table");
+        lua_pushnil(L);
+        int j = 0;
         while (lua_next(L, index) != 0) {
-            *v = luaL_checknumber(L, -1);
-            v++;
+            v[j++] = luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
-        values[i] = luaL_checknumber(L, 3+i);
+        v += 2;
     }
     glUniform2fv(location, args, values);
     return 0;
@@ -576,17 +613,28 @@ static int l_gl_Uniform2fv(lua_State* L) {
 static int l_gl_Uniform3fv(lua_State* L) {
     int location = luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
+    int size = args * 4 * 3;
+#if defined(OS_WIN)
+    if (size > s_aux_data->size) {
+        s_aux_data->size = size * 2;
+        s_aux_data->data = realloc(s_aux_data->data, size*2);
+    }
+    float* values = s_aux_data->data;
+#else
     float values[args*3];
+#endif
     float *v = values;
     for (int i = 0; i < args; i++) {
-        lua_pushnil(L);
         int index = i + 2;
+        if (lua_type(L, index) != LUA_TTABLE)
+            return luaL_argerror(L, index, "Must be a table");
+        lua_pushnil(L);
+        int j = 0;
         while (lua_next(L, index) != 0) {
-            *v = luaL_checknumber(L, -1);
-            v++;
+            v[j++] = luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
-        values[i] = luaL_checknumber(L, 3+i);
+        v += 3;
     }
     glUniform3fv(location, args, values);
     return 0;
@@ -595,17 +643,28 @@ static int l_gl_Uniform3fv(lua_State* L) {
 static int l_gl_Uniform4fv(lua_State* L) {
     int location = luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
+    int size = args * 4 * 4;
+#if defined(OS_WIN)
+    if (size > s_aux_data->size) {
+        s_aux_data->size = size * 2;
+        s_aux_data->data = realloc(s_aux_data->data, size*2);
+    }
+    float* values = s_aux_data->data;
+#else
     float values[args*4];
+#endif
     float *v = values;
     for (int i = 0; i < args; i++) {
-        lua_pushnil(L);
         int index = i + 2;
+        if (lua_type(L, index) != LUA_TTABLE)
+            return luaL_argerror(L, index, "Must be a table");
+        lua_pushnil(L);
+        int j = 0;
         while (lua_next(L, index) != 0) {
-            *v = luaL_checknumber(L, -1);
-            v++;
+            v[j++] = luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
-        values[i] = luaL_checknumber(L, 3+i);
+        v += 4;
     }
     glUniform4fv(location, args, values);
     return 0;
@@ -758,6 +817,13 @@ static struct {
 
 // luaopen
 int seleneopen_gl(lua_State* L) {
+    s_aux_data = lua_newuserdata(L, sizeof(Data));
+    luaL_setmetatable(L, "Data");
+    s_aux_data->offset = 0;
+    s_aux_data->size = 40 * sizeof(float);
+    s_aux_data->data = malloc(s_aux_data->size);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, s_aux_data);
+
     luaL_Reg reg[] = {
         {"LoadGlad", l_gl_LoadGlad},
         {"PrintVersion", l_gl_PrintVersion},

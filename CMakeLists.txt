@@ -7,14 +7,19 @@ message("Compiling for ${CMAKE_SYSTEM_NAME}")
 set(USE_FLAGS "")
 if (CMAKE_SYSTEM_NAME MATCHES "Emscripten")
     set(USE_FLAGS "${USE_FLAGS} -s EXPORTED_FUNCTIONS=\"['_malloc']\" --embed-file core/")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_SDL=2")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_SDL=2 -s FULL_ES2 -s EXPORTED_FUNCTIONS=\"['_malloc']\" --emrun")
+    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS}")
     set(CMAKE_EXECUTABLE_SUFFIX .html)
     set(EMSCRIPTEN 1)
 endif()
 
 include_directories(./ external/)
 include_directories(external/lua/src/ external/glad/include/)
+
+if (WIN32 AND MSVC)
+    set(SDL2_DIR external/SDL2/MSVC/cmake)
+    set(COPY_DLL TRUE)
+endif()
 
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -37,10 +42,22 @@ file(GLOB selene_source selene.c src/*.c external/glad/src/glad.c)
 file(GLOB lua_source external/lua/src/*.c)
 
 add_library(lua STATIC ${lua_source})
-target_link_libraries(lua m)
+# target_link_libraries(lua m)
 
 add_executable(${PROJECT_NAME} ${selene_source})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES} lua)
+
+if (COPY_DLL)
+    if (MSVC)
+    file(GLOB SDL_LIB external/SDL2/MSVC/lib/x64/SDL2.dll)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_LIB} "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    elseif(WIN32)
+    file(GLOB SDL_LIB external/SDL2/MINGW/${TOOLCHAIN_PREFIX}/bin/SDL2.dll)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_LIB} "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    endif()
+endif()
 
 if (EMSCRIPTEN MATCHES 1)
     message("Entra aqui??")

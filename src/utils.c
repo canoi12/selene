@@ -227,9 +227,14 @@ static int l_utils_LoadImageData(lua_State* L) {
 
 static int l_utils_LoadTTF(lua_State* L) {
     const char* path = luaL_checkstring(L, 1);
-    int font_size = luaL_optinteger(L, 2, 16);
+    int font_size = (int)luaL_optinteger(L, 2, 16);
     stbtt_fontinfo info;
+#if defined(OS_WIN)
+    FILE* fp;
+    fopen_s(&fp, path, "rb");
+#else
     FILE* fp = fopen(path, "rb");
+#endif
     if (!fp)
         return luaL_error(L, "Failed to open font: %s", path);
     fseek(fp, 0, SEEK_END);
@@ -246,7 +251,7 @@ static int l_utils_LoadTTF(lua_State* L) {
         return luaL_error(L, "Failed to init font data");
 
     int ascent, descent, line_gap;
-    float fsize = font_size;
+    float fsize = (float)font_size;
     float scale = stbtt_ScaleForMappingEmToPixels(&info, fsize);
     stbtt_GetFontVMetrics(&info, &ascent, &descent, &line_gap);
     int tw, th;

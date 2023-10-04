@@ -9,7 +9,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#if defined(__WIN32)
+#if defined(__WIN32) || defined(WIN32)
 #define OS_WIN
 #elif defined(__APPLE__)
 #define OS_OSX

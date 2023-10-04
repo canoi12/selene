@@ -32,11 +32,11 @@ int luaopen_selene(lua_State* L) {
    luaL_newlib(L, reg);
 
    struct { char* name; lua_CFunction fn; } libs[] = {
-      {"sdl2", seleneopen_sdl2},
-      {"gl", seleneopen_gl},
       {"fs", seleneopen_fs},
       {"utils", seleneopen_utils},
       {"system", seleneopen_system},
+      {"sdl2", seleneopen_sdl2},
+      {"gl", seleneopen_gl},
       {NULL, NULL}
    };
    int i;
