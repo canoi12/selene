@@ -15,18 +15,18 @@ static const Uint8* keys;
  #                      #
  ************************/
 
-static int l_sdl2_OpenAudio(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, OpenAudio)
     int type = lua_type(L, 1);
     if (type != LUA_TTABLE)
         return luaL_argerror(L, 1, "Table expected");
     lua_getfield(L, 1, "sample_rate");
-    int freq = luaL_checknumber(L, -1);
+    int freq = (int)luaL_checknumber(L, -1);
     lua_pop(L, 1);
     lua_getfield(L, 1, "channels");
-    int channels = luaL_checkinteger(L, -1);
+    int channels = (int)luaL_checkinteger(L, -1);
     lua_pop(L, 1);
     lua_getfield(L, 1, "samples");
-    int samples = luaL_checkinteger(L, -1);
+    int samples = (int)luaL_checkinteger(L, -1);
     lua_pop(L, 1);
 
     SDL_AudioSpec des;
@@ -36,20 +36,17 @@ static int l_sdl2_OpenAudio(lua_State* L) {
     des.format = AUDIO_S16;
 
     lua_pushboolean(L, SDL_OpenAudio(&des, NULL) == 0);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_PauseAudio(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, PauseAudio)
     INIT_ARG();
     GET_BOOLEAN(pause);
     SDL_PauseAudio(pause);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_sdl2_CloseAudio(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, CloseAudio)
     SDL_CloseAudio();
-    return 0;
-}
+END_FUNCTION(0)
 
 /************************
  #                      #
@@ -57,166 +54,139 @@ static int l_sdl2_CloseAudio(lua_State* L) {
  #                      #
  ************************/
 
-BEGIN_REG(SDL_GLContext)
-END_REG();
-NEW_META(SDL_GLContext)
+static BEGIN_META(SDL_GLContext)
+    BEGIN_REG(SDL_GLContext)
+    END_REG()
+    NEW_META(SDL_GLContext);
+END_META(1)
 
 /************************
  #                      #
  #        Window        #
  #                      #
  ************************/
-static META_FUNCTION(SDL_Window, GetSize) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, GetSize, *win)
     int width, height;
     SDL_GetWindowSize(*win, &width, &height);
     PUSH_INTEGER(width);
     PUSH_INTEGER(height);
-    return 2;
-}
+END_FUNCTION(2)
 
-static META_FUNCTION(SDL_Window, SetSize) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, SetSize, *win)
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
     SDL_SetWindowSize(*win, width, height);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(SDL_Window, GetPosition) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, GetPosition, *win)
     int x, y;
     SDL_GetWindowPosition(*win, &x, &y);
     lua_pushinteger(L, x);
     lua_pushinteger(L, y);
-    return 2;
-}
+END_FUNCTION(2)
 
-static META_FUNCTION(SDL_Window, SetPosition) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, SetPosition, *win)
     CHECK_INTEGER(x);
     CHECK_INTEGER(y);
     SDL_SetWindowPosition(*win, x, y);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(SDL_Window, Swap) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, Swap, *win)
     SDL_GL_SwapWindow(*win);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(SDL_Window, SetBordered) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, SetBordered, *win)
     GET_BOOLEAN(value);
     SDL_SetWindowBordered(*win, value);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(SDL_Window, Maximize) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, Maximize, *win)
     SDL_MaximizeWindow(*win);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(SDL_Window, Minimize) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, Minimize, *win)
     SDL_MinimizeWindow(*win);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(SDL_Window, Restore) {
-    INIT_GET_UDATA(SDL_Window, *win);
+static BEGIN_META_FUNCTION(SDL_Window, Restore, *win)
     SDL_RestoreWindow(*win);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(SDL_Window, ShowSimpleMessageBox) {
-    INIT_GET_UDATA(SDL_Window, *win);
-    return 0;
-}
+static BEGIN_META_FUNCTION(SDL_Window, ShowSimpleMessageBox, *win)
+END_FUNCTION(0)
 
-static const NEW_REG(SDL_Window) {
-    META_FIELD(SDL_Window, GetSize),
-    META_FIELD(SDL_Window, SetSize),
-    META_FIELD(SDL_Window, GetPosition),
-    META_FIELD(SDL_Window, SetPosition),
-    META_FIELD(SDL_Window, Swap),
-    META_FIELD(SDL_Window, SetBordered),
-    META_FIELD(SDL_Window, Maximize),
-    META_FIELD(SDL_Window, Minimize),
-    META_FIELD(SDL_Window, Restore),
-    META_FIELD(SDL_Window, ShowSimpleMessageBox),
-    {NULL, NULL}
-};
+static BEGIN_META(SDL_Window)
+    BEGIN_REG(SDL_Window)
+        REG_META_FIELD(SDL_Window, GetSize),
+        REG_META_FIELD(SDL_Window, SetSize),
+        REG_META_FIELD(SDL_Window, GetPosition),
+        REG_META_FIELD(SDL_Window, SetPosition),
+        REG_META_FIELD(SDL_Window, Swap),
+        REG_META_FIELD(SDL_Window, SetBordered),
+        REG_META_FIELD(SDL_Window, Maximize),
+        REG_META_FIELD(SDL_Window, Minimize),
+        REG_META_FIELD(SDL_Window, Restore),
+        REG_META_FIELD(SDL_Window, ShowSimpleMessageBox),
+    END_REG()
+    NEW_META(SDL_Window);
+END_META(1)
 
-NEW_META(SDL_Window);
-
-static int l_sdl2_CreateWindow(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, CreateWindow)
     INIT_ARG();
     CHECK_STRING(title);
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
     int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
 
-    SDL_Window** window = lua_newuserdata(L, sizeof(void*));
-    luaL_setmetatable(L, "SDL_Window");
+    NEW_UDATA(SDL_Window, *window, sizeof(void*));
     *window = SDL_CreateWindow(
         title,
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         width, height,
         flags
     );
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_DestroyWindow(lua_State* L) {
-    SDL_Window** window = luaL_checkudata(L, 1, "SDL_Window");
+static BEGIN_FUNCTION(sdl2, DestroyWindow)
+    INIT_GET_UDATA(SDL_Window, *window);
     SDL_DestroyWindow(*window);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_sdl2_GL_SetAttribute(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GL_SetAttribute)
     INIT_ARG();
     CHECK_INTEGER(attr);
     CHECK_INTEGER(value);
     SDL_GL_SetAttribute(attr, value);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_sdl2_GL_CreateContext(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GL_CreateContext)
     INIT_GET_UDATA(SDL_Window, *win);
     NEW_UDATA(SDL_GLContext, ctx, sizeof(void*));
     *ctx = SDL_GL_CreateContext(*win);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_GL_DeleteContext(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GL_DeleteContext)
     SDL_GLContext* ctx = luaL_checkudata(L, 1, "SDL_GLContext");
     SDL_GL_DeleteContext(*ctx);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_sdl2_GL_MakeCurrent(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GL_MakeCurrent)
     INIT_GET_UDATA(SDL_GLContext, ctx);
     GET_UDATA(SDL_Window, *window);
     SDL_GL_MakeCurrent(*window, *ctx);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_sdl2_GetScancodeFromName(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GetScancodeFromName)
     INIT_ARG();
     CHECK_STRING(name);
     PUSH_INTEGER(SDL_GetScancodeFromName(name));
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_GetScancodeName(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GetScancodeName)
     INIT_ARG();
     CHECK_INTEGER(scancode);
     PUSH_STRING(SDL_GetScancodeName(scancode));
-    return 1;
-}
+END_FUNCTION(1)
 
 /************************
  #                      #
@@ -224,64 +194,54 @@ static int l_sdl2_GetScancodeName(lua_State* L) {
  #                      #
  ************************/
 
-static META_FUNCTION(SDL_Event, Poll) {
-    INIT_GET_UDATA(SDL_Event, ev);
+static BEGIN_META_FUNCTION(SDL_Event, Poll, ev)
     PUSH_BOOLEAN(SDL_PollEvent(ev));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Event, GetType) {
-    INIT_GET_UDATA(SDL_Event, ev);
+static BEGIN_META_FUNCTION(SDL_Event, GetType, ev)
     PUSH_INTEGER(ev->type);
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Event, WindowEvent) {
-    INIT_GET_UDATA(SDL_Event, ev);
+static BEGIN_META_FUNCTION(SDL_Event, WindowEvent, ev)
     PUSH_INTEGER(ev->window.event);
     PUSH_INTEGER(ev->window.windowID);
     PUSH_INTEGER(ev->window.data1);
     PUSH_INTEGER(ev->window.data2);
-    return 4;
-}
+END_FUNCTION(4)
 
-static META_FUNCTION(SDL_Event, MouseMotionEvent) {
-    INIT_GET_UDATA(SDL_Event, ev);
+static BEGIN_META_FUNCTION(SDL_Event, MouseMotionEvent, ev)
     PUSH_INTEGER(ev->motion.which);
     PUSH_INTEGER(ev->motion.state);
     PUSH_INTEGER(ev->motion.x);
     PUSH_INTEGER(ev->motion.y);
     PUSH_INTEGER(ev->motion.xrel);
     PUSH_INTEGER(ev->motion.yrel);
-    return 6;
-}
+END_FUNCTION(6)
 
-static META_FUNCTION(SDL_Event, MouseButtonEvent) {
-    INIT_GET_UDATA(SDL_Event, ev);
+static BEGIN_META_FUNCTION(SDL_Event, MouseButtonEvent, ev)
     PUSH_INTEGER(ev->button.which);
     PUSH_INTEGER(ev->button.button);
     PUSH_INTEGER(ev->button.x);
     PUSH_INTEGER(ev->button.y);
     PUSH_INTEGER(ev->button.clicks);
-    return 5;
-}
+END_FUNCTION(5)
 
-static META_FUNCTION(SDL_Event, KeyboardEvent) {
-    INIT_GET_UDATA(SDL_Event, ev);
+static BEGIN_META_FUNCTION(SDL_Event, KeyboardEvent, ev)
     PUSH_STRING(SDL_GetScancodeName(ev->key.keysym.scancode));
     PUSH_BOOLEAN(ev->key.repeat);
-    return 2;
-}
+END_FUNCTION(2)
 
-const BEGIN_REG(SDL_Event)
-    META_FIELD(SDL_Event, Poll),
-    META_FIELD(SDL_Event, GetType),
-    META_FIELD(SDL_Event, WindowEvent),
-    META_FIELD(SDL_Event, MouseMotionEvent),
-    META_FIELD(SDL_Event, MouseButtonEvent),
-    META_FIELD(SDL_Event, KeyboardEvent),
-END_REG()
-NEW_META(SDL_Event);
+static BEGIN_META(SDL_Event)
+    BEGIN_REG(SDL_Event)
+        REG_META_FIELD(SDL_Event, Poll),
+        REG_META_FIELD(SDL_Event, GetType),
+        REG_META_FIELD(SDL_Event, WindowEvent),
+        REG_META_FIELD(SDL_Event, MouseMotionEvent),
+        REG_META_FIELD(SDL_Event, MouseButtonEvent),
+        REG_META_FIELD(SDL_Event, KeyboardEvent),
+    END_REG()
+    NEW_META(SDL_Event);
+END_META(1)
 
 static int l_sdl2_NewEvent(lua_State* L) {
     SDL_Event* ev = lua_newuserdata(L, sizeof(*ev));
@@ -294,23 +254,20 @@ static int l_sdl2_NewEvent(lua_State* L) {
  #       Keyboard       #
  #                      #
  ************************/
-static int l_sdl2_CheckKeyState(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, CheckKeyState)
     INIT_ARG();
     CHECK_INTEGER(key);
     PUSH_BOOLEAN(keys[key]);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_HasScreenKeyboardSupport(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, HasScreenKeyboardSupport)
     PUSH_BOOLEAN(SDL_HasScreenKeyboardSupport());
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_IsScreenKeyboardShown(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, IsScreenKeyboardShown)
     INIT_GET_UDATA(SDL_Window, *win);
     PUSH_BOOLEAN(SDL_IsScreenKeyboardShown(*win));
-    return 1;
-}
+END_FUNCTION(1)
 
 /************************
  #                      #
@@ -318,28 +275,25 @@ static int l_sdl2_IsScreenKeyboardShown(lua_State* L) {
  #                      #
  ************************/
 
-static int l_sdl2_GetMousePosition(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GetMousePosition)
     int x, y;
     SDL_GetMouseState(&x, &y);
     PUSH_NUMBER(x);
     PUSH_NUMBER(y);
-    return 2;
-}
+END_FUNCTION(2)
 
-static int l_sdl2_GetRelativeMousePosition(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GetRelativeMousePosition)
     int x, y;
     SDL_GetRelativeMouseState(&x, &y);
     PUSH_NUMBER(x);
     PUSH_NUMBER(y);
-    return 2;
-}
+END_FUNCTION(2)
 
-static int l_sdl2_IsMouseDown(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, IsMouseDown)
     INIT_ARG();
     CHECK_INTEGER(button);
     PUSH_BOOLEAN(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(button));
-    return 1;
-}
+END_FUNCTION(1)
 
 /************************
  #                      #
@@ -347,49 +301,39 @@ static int l_sdl2_IsMouseDown(lua_State* L) {
  #                      #
  ************************/
 
-static int l_sdl2_JoystickOpen(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, JoystickOpen)
     SDL_Joystick* joy = SDL_JoystickOpen((int)luaL_checknumber(L, 1));
     if (joy) {
         NEW_UDATA(SDL_Joystick, *j, sizeof(void*));
         *j = joy;
-    } else lua_pushnil(L);
-    return 1;
-}
+    } else PUSH_NIL();
+END_FUNCTION(1)
 
-static int l_sdl2_NumJoysticks(lua_State *L) {
+static BEGIN_FUNCTION(sdl2, NumJoysticks)
     PUSH_INTEGER(SDL_NumJoysticks());
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetName) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+// Meta functions
+
+static BEGIN_META_FUNCTION(SDL_Joystick, GetName, *j)
     PUSH_STRING(SDL_JoystickName(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetVendor) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetVendor, *j)
     PUSH_INTEGER(SDL_JoystickGetVendor(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetProduct) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetProduct, *j)
     PUSH_INTEGER(SDL_JoystickGetProduct(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetProductVersion) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetProductVersion, *j)
     PUSH_INTEGER(SDL_JoystickGetProductVersion(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetType) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetType, *j)
     PUSH_INTEGER(SDL_JoystickGetType(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
 const char *joy_types[] = {
     [SDL_JOYSTICK_TYPE_UNKNOWN] = "Unknown",
@@ -404,116 +348,87 @@ const char *joy_types[] = {
     [SDL_JOYSTICK_TYPE_THROTTLE] = "Throttle",
 };
 
-static META_FUNCTION(SDL_Joystick, GetTypeString) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetTypeString, *j)
     PUSH_STRING(joy_types[SDL_JoystickGetType(*j)]);
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, NumAxes) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, NumAxes, *j)
     PUSH_INTEGER(SDL_JoystickNumAxes(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, NumBalls) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, NumBalls, *j)
     PUSH_INTEGER(SDL_JoystickNumBalls(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, NumHats) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, NumHats, *j)
     PUSH_INTEGER(SDL_JoystickNumHats(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, NumButtons) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, NumButtons, *j)
     PUSH_INTEGER(SDL_JoystickNumButtons(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetAxis) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetAxis, *j)
     CHECK_INTEGER(axis);
     PUSH_INTEGER(SDL_JoystickGetAxis(*j, axis));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetBall) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetBall, *j)
     CHECK_INTEGER(ball);
     int dx, dy;
     SDL_JoystickGetBall(*j, ball, &dx, &dy);
     PUSH_INTEGER(dx);
     PUSH_INTEGER(dy);
-    return 2;
-}
+END_FUNCTION(2)
 
-static META_FUNCTION(SDL_Joystick, GetHat) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetHat, *j)
     CHECK_INTEGER(hat);
     PUSH_INTEGER(SDL_JoystickGetHat(*j, hat));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, GetButton) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, GetButton, *j)
     CHECK_INTEGER(button);
     PUSH_INTEGER(SDL_JoystickGetButton(*j, button));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, Rumble) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, Rumble, *j)
     CHECK_INTEGER(low);
     CHECK_INTEGER(high);
     Uint32 freq = (Uint32)luaL_optinteger(L, arg++, 100);
     PUSH_BOOLEAN(SDL_JoystickRumble(*j, low, high, freq) == 0);
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, CurrentPowerLevel) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, CurrentPowerLevel, *j)
     PUSH_INTEGER(SDL_JoystickCurrentPowerLevel(*j));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_Joystick, Close) {
-    INIT_GET_UDATA(SDL_Joystick, *j);
+static BEGIN_META_FUNCTION(SDL_Joystick, Close, *j)
     if (SDL_JoystickGetAttached(*j))
         SDL_JoystickClose(*j);
-    return 0;
-}
+END_FUNCTION(0)
 
-const BEGIN_REG(SDL_Joystick)
-    META_FIELD(SDL_Joystick, GetName),
-    META_FIELD(SDL_Joystick, GetVendor),
-    META_FIELD(SDL_Joystick, GetProduct),
-    META_FIELD(SDL_Joystick, GetProductVersion),
-    META_FIELD(SDL_Joystick, GetType),
-    META_FIELD(SDL_Joystick, GetTypeString),
-    META_FIELD(SDL_Joystick, NumAxes),
-    META_FIELD(SDL_Joystick, NumBalls),
-    META_FIELD(SDL_Joystick, NumHats),
-    META_FIELD(SDL_Joystick, NumButtons),
-    META_FIELD(SDL_Joystick, GetAxis),
-    META_FIELD(SDL_Joystick, GetBall),
-    META_FIELD(SDL_Joystick, GetHat),
-    META_FIELD(SDL_Joystick, GetButton),
-    META_FIELD(SDL_Joystick, Rumble),
-    META_FIELD(SDL_Joystick, CurrentPowerLevel),
-    META_FIELD(SDL_Joystick, Close),
-END_REG()
-NEW_META(SDL_Joystick);
-
-static int l_sdl2_JoystickClose(lua_State* L) {
-    SDL_Joystick** j = luaL_checkudata(L, 1, "SDL_Joystick");
-    if (SDL_JoystickGetAttached(*j))
-        SDL_JoystickClose(*j);
-    return 0;
-}
+static BEGIN_META(SDL_Joystick)
+    BEGIN_REG(SDL_Joystick)
+        REG_META_FIELD(SDL_Joystick, GetName),
+        REG_META_FIELD(SDL_Joystick, GetVendor),
+        REG_META_FIELD(SDL_Joystick, GetProduct),
+        REG_META_FIELD(SDL_Joystick, GetProductVersion),
+        REG_META_FIELD(SDL_Joystick, GetType),
+        REG_META_FIELD(SDL_Joystick, GetTypeString),
+        REG_META_FIELD(SDL_Joystick, NumAxes),
+        REG_META_FIELD(SDL_Joystick, NumBalls),
+        REG_META_FIELD(SDL_Joystick, NumHats),
+        REG_META_FIELD(SDL_Joystick, NumButtons),
+        REG_META_FIELD(SDL_Joystick, GetAxis),
+        REG_META_FIELD(SDL_Joystick, GetBall),
+        REG_META_FIELD(SDL_Joystick, GetHat),
+        REG_META_FIELD(SDL_Joystick, GetButton),
+        REG_META_FIELD(SDL_Joystick, Rumble),
+        REG_META_FIELD(SDL_Joystick, CurrentPowerLevel),
+        REG_META_FIELD(SDL_Joystick, Close),
+    END_REG();
+    NEW_META(SDL_Joystick);
+END_META(1)
 
 /************************
  #                      #
@@ -537,252 +452,214 @@ static int l_sdl2_IsGameController(lua_State* L) {
     return 1;
 }
 
-static META_FUNCTION(SDL_GameController, GetName) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, GetName, *gc)
     PUSH_STRING(SDL_GameControllerName(*gc));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, GetVendor) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, GetVendor, *gc)
     PUSH_INTEGER(SDL_GameControllerGetVendor(*gc));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, GetProduct) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, GetProduct, *gc)
     PUSH_INTEGER(SDL_GameControllerGetProduct(*gc));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, GetProductVersion) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, GetProductVersion, *gc)
     PUSH_INTEGER(SDL_GameControllerGetProductVersion(*gc));
-    return 1;
-}
+END_FUNCTION(1)
 
 const char *gpad_axes[] = {
     "leftx", "lefty", "rightx", "righty", "triggerleft", "triggerright"
 };
 
-static META_FUNCTION(SDL_GameController, GetAxisFromString) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
-    CHECK_STRING(str);
-    PUSH_INTEGER(SDL_GameControllerGetAxisFromString(str));
-    return 1;
-}
-
-static int l_sdl2_GameControllerGetAxisFromString(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GameControllerGetAxisFromString)
     INIT_ARG();
     CHECK_STRING(str);
     PUSH_INTEGER(SDL_GameControllerGetAxisFromString(str));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, GetAxis) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, GetAxisFromString, *gc)
+    CHECK_STRING(str);
+    PUSH_INTEGER(SDL_GameControllerGetAxisFromString(str));
+END_FUNCTION(1)
+
+static BEGIN_META_FUNCTION(SDL_GameController, GetAxis, *gc)
     CHECK_INTEGER(axis);
     PUSH_NUMBER(SDL_GameControllerGetAxis(*gc, axis));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, GetButtonFromString) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, GetButtonFromString, *gc)
     CHECK_STRING(str);
     PUSH_INTEGER(SDL_GameControllerGetButtonFromString(str));
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_GameControllerGetButtonFromString(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GameControllerGetButtonFromString)
     INIT_ARG();
     CHECK_STRING(str);
     PUSH_INTEGER(SDL_GameControllerGetButtonFromString(str));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, GetButton) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, GetButton, *gc)
     CHECK_INTEGER(axis);
     PUSH_NUMBER(SDL_GameControllerGetButton(*gc, axis));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, Rumble) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, Rumble, *gc)
     CHECK_INTEGER(low);
     CHECK_INTEGER(high);
     OPT_INTEGER(freq, 100);
     PUSH_BOOLEAN(SDL_GameControllerRumble(*gc, low, high, freq) == 0);
-    return 1;
-}
+END_FUNCTION(1)
 
 const char *gpad_powerlevels[] = {
     "unknown", "empty", "low", "medium", "high", "full", "wired"
 };
 
-static META_FUNCTION(SDL_GameController, CurrentPowerLevel) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, CurrentPowerLevel, *gc)
     SDL_Joystick *j = SDL_GameControllerGetJoystick(*gc);
     PUSH_STRING(gpad_powerlevels[SDL_JoystickCurrentPowerLevel(j)+1]);
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(SDL_GameController, Close) {
-    INIT_GET_UDATA(SDL_GameController, *gc);
+static BEGIN_META_FUNCTION(SDL_GameController, Close, *gc)
     if (SDL_GameControllerGetAttached(*gc))
         SDL_GameControllerClose(*gc);
-    return 0;
-}
+END_FUNCTION(0)
 
-const BEGIN_REG(SDL_GameController)
-    META_FIELD(SDL_GameController, GetName),
-    META_FIELD(SDL_GameController, GetVendor),
-    META_FIELD(SDL_GameController, GetProduct),
-    META_FIELD(SDL_GameController, GetProductVersion),
-    META_FIELD(SDL_GameController, GetAxisFromString),
-    META_FIELD(SDL_GameController, GetAxis),
-    META_FIELD(SDL_GameController, GetButtonFromString),
-    META_FIELD(SDL_GameController, GetButton),
-    META_FIELD(SDL_GameController, Rumble),
-    META_FIELD(SDL_GameController, CurrentPowerLevel),
-    META_FIELD(SDL_GameController, Close),
-END_REG()
-NEW_META(SDL_GameController);
-
+static BEGIN_META(SDL_GameController)
+    BEGIN_REG(SDL_GameController)
+        REG_META_FIELD(SDL_GameController, GetName),
+        REG_META_FIELD(SDL_GameController, GetVendor),
+        REG_META_FIELD(SDL_GameController, GetProduct),
+        REG_META_FIELD(SDL_GameController, GetProductVersion),
+        REG_META_FIELD(SDL_GameController, GetAxisFromString),
+        REG_META_FIELD(SDL_GameController, GetAxis),
+        REG_META_FIELD(SDL_GameController, GetButtonFromString),
+        REG_META_FIELD(SDL_GameController, GetButton),
+        REG_META_FIELD(SDL_GameController, Rumble),
+        REG_META_FIELD(SDL_GameController, CurrentPowerLevel),
+        REG_META_FIELD(SDL_GameController, Close),
+    END_REG()
+    NEW_META(SDL_GameController);
+END_MODULE(1)
 
 /************************
  #                      #
  #        Timer         #
  #                      #
  ************************/
-static int l_sdl2_GetTicks(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GetTicks)
     PUSH_INTEGER(SDL_GetTicks());
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_Delay(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, Delay)
     Uint32 ms = (Uint32)luaL_checkinteger(L, 1);
     SDL_Delay(ms);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_sdl2_GetPerformanceCounter(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GetPerformanceCounter)
     PUSH_INTEGER(SDL_GetPerformanceCounter());
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_sdl2_GetPerformanceFrequency(lua_State* L) {
+static BEGIN_FUNCTION(sdl2, GetPerformanceFrequency)
     PUSH_INTEGER(SDL_GetPerformanceFrequency());
-    return 1;
-}
+END_FUNCTION(1)
 
 /************************
  #                      #
  #        Enums         #
  #                      #
  ************************/
-static struct {
-    const char* name;
-    int value;
-} l_sdl2_Enums[] = {
+BEGIN_ENUM(sdl2)
     // Events
-    {"QUIT", SDL_QUIT},
-    {"WINDOWEVENT", SDL_WINDOWEVENT},
-    {"KEYDOWN", SDL_KEYDOWN},
-    {"KEYUP", SDL_KEYUP},
-    {"MOUSEMOTION", SDL_MOUSEMOTION},
-    {"MOUSEBUTTONDOWN", SDL_MOUSEBUTTONDOWN},
-    {"MOUSEBUTTONUP", SDL_MOUSEBUTTONUP},
+    ENUM_FIELD(QUIT, SDL_),
+    ENUM_FIELD(WINDOWEVENT, SDL_),
+    ENUM_FIELD(KEYDOWN, SDL_),
+    ENUM_FIELD(KEYUP, SDL_),
+    ENUM_FIELD(MOUSEMOTION, SDL_),
+    ENUM_FIELD(MOUSEBUTTONDOWN, SDL_),
+    ENUM_FIELD(MOUSEBUTTONUP, SDL_),
 
     // Window Events
-    {"WINDOWEVENT_CLOSE", SDL_WINDOWEVENT_CLOSE},
-    {"WINDOWEVENT_SIZE_CHANGED", SDL_WINDOWEVENT_SIZE_CHANGED},
-    {"WINDOWEVENT_RESIZED", SDL_WINDOWEVENT_RESIZED},
-    {"WINDOWEVENT_MOVED", SDL_WINDOWEVENT_MOVED},
-    {"WINDOWEVENT_MINIMIZED", SDL_WINDOWEVENT_MINIMIZED},
-    {"WINDOWEVENT_MAXIMIZED", SDL_WINDOWEVENT_MAXIMIZED},
-    {"WINDOWEVENT_RESTORED", SDL_WINDOWEVENT_RESTORED},
-    {"WINDOWEVENT_SHOWN", SDL_WINDOWEVENT_SHOWN},
-    {"WINDOWEVENT_HIDDEN", SDL_WINDOWEVENT_HIDDEN},
-    {"WINDOWEVENT_ENTER", SDL_WINDOWEVENT_ENTER},
-    {"WINDOWEVENT_LEAVE", SDL_WINDOWEVENT_LEAVE},
-    {"WINDOWEVENT_FOCUS_GAINED", SDL_WINDOWEVENT_FOCUS_GAINED},
-    {"WINDOWEVENT_FOCUS_LOST", SDL_WINDOWEVENT_FOCUS_LOST},
-    {"WINDOWEVENT_TAKE_FOCUS", SDL_WINDOWEVENT_TAKE_FOCUS},
-    {"WINDOWEVENT_HIT_TEST", SDL_WINDOWEVENT_HIT_TEST},
+    ENUM_FIELD(WINDOWEVENT_CLOSE, SDL_),
+    ENUM_FIELD(WINDOWEVENT_SIZE_CHANGED, SDL_),
+    ENUM_FIELD(WINDOWEVENT_RESIZED, SDL_),
+    ENUM_FIELD(WINDOWEVENT_MOVED, SDL_),
+    ENUM_FIELD(WINDOWEVENT_MINIMIZED, SDL_),
+    ENUM_FIELD(WINDOWEVENT_MAXIMIZED, SDL_),
+    ENUM_FIELD(WINDOWEVENT_RESTORED, SDL_),
+    ENUM_FIELD(WINDOWEVENT_SHOWN, SDL_),
+    ENUM_FIELD(WINDOWEVENT_HIDDEN, SDL_),
+    ENUM_FIELD(WINDOWEVENT_ENTER, SDL_),
+    ENUM_FIELD(WINDOWEVENT_LEAVE, SDL_),
+    ENUM_FIELD(WINDOWEVENT_FOCUS_GAINED, SDL_),
+    ENUM_FIELD(WINDOWEVENT_FOCUS_LOST, SDL_),
+    ENUM_FIELD(WINDOWEVENT_TAKE_FOCUS, SDL_),
+    ENUM_FIELD(WINDOWEVENT_HIT_TEST, SDL_),
 
-    // window flags
-    {"WINDOW_RESIZABLE", SDL_WINDOW_RESIZABLE},
-    {"WINDOW_FULLSCREEN", SDL_WINDOW_FULLSCREEN},
-    {"WINDOW_FULLSCREEN_DESKTOP", SDL_WINDOW_FULLSCREEN_DESKTOP},
-    {"WINDOW_BORDERLESS", SDL_WINDOW_BORDERLESS},
-    {"WINDOW_ALWAYS_ON_TOP", SDL_WINDOW_ALWAYS_ON_TOP},
-    // message box
-    {"MESSAGEBOX_ERROR", SDL_MESSAGEBOX_ERROR},
-    {"MESSAGEBOX_WARNING", SDL_MESSAGEBOX_WARNING},
-    {"MESSAGEBOX_INFORMATION", SDL_MESSAGEBOX_INFORMATION},
-    // SDL GL
-    {"GL_DOUBLEBUFFER", SDL_GL_DOUBLEBUFFER},
-    {"GL_DEPTH_SIZE", SDL_GL_DEPTH_SIZE},
-    {"GL_STENCIL_SIZE", SDL_GL_STENCIL_SIZE},
-    {"GL_CONTEXT_PROFILE_MASK", SDL_GL_CONTEXT_PROFILE_MASK},
-    {"GL_CONTEXT_MAJOR_VERSION", SDL_GL_CONTEXT_MAJOR_VERSION},
-    {"GL_CONTEXT_MINOR_VERSION", SDL_GL_CONTEXT_MINOR_VERSION},
-    {"GL_CONTEXT_PROFILE_CORE", SDL_GL_CONTEXT_PROFILE_CORE},
-    {"GL_CONTEXT_PROFILE_COMPATIBILITY", SDL_GL_CONTEXT_PROFILE_COMPATIBILITY},
-    {"GL_CONTEXT_PROFILE_ES", SDL_GL_CONTEXT_PROFILE_ES},
-    {NULL, 0}
-};
+    // Window Flags
+    ENUM_FIELD(WINDOW_RESIZABLE, SDL_),
+    ENUM_FIELD(WINDOW_FULLSCREEN, SDL_),
+    ENUM_FIELD(WINDOW_FULLSCREEN_DESKTOP, SDL_),
+    ENUM_FIELD(WINDOW_BORDERLESS, SDL_),
+    ENUM_FIELD(WINDOW_ALWAYS_ON_TOP, SDL_),
+    // Message Box
+    ENUM_FIELD(MESSAGEBOX_ERROR, SDL_),
+    ENUM_FIELD(MESSAGEBOX_WARNING, SDL_),
+    ENUM_FIELD(MESSAGEBOX_INFORMATION, SDL_),
+    // GL
+    ENUM_FIELD(GL_DOUBLEBUFFER, SDL_),
+    ENUM_FIELD(GL_DEPTH_SIZE, SDL_),
+    ENUM_FIELD(GL_STENCIL_SIZE, SDL_),
+    ENUM_FIELD(GL_CONTEXT_PROFILE_MASK, SDL_),
+    ENUM_FIELD(GL_CONTEXT_MAJOR_VERSION, SDL_),
+    ENUM_FIELD(GL_CONTEXT_MINOR_VERSION, SDL_),
+    ENUM_FIELD(GL_CONTEXT_PROFILE_CORE, SDL_),
+    ENUM_FIELD(GL_CONTEXT_PROFILE_COMPATIBILITY, SDL_),
+    ENUM_FIELD(GL_CONTEXT_PROFILE_ES, SDL_),
+END_ENUM()
 
-int seleneopen_sdl2(lua_State* L) {
-    keys = SDL_GetKeyboardState(NULL);
-    luaL_Reg reg[] = {
+BEGIN_MODULE(sdl2)
+    BEGIN_REG(sdl2)
         // Audio
-        {"OpenAudio", l_sdl2_OpenAudio},
-        {"PauseAudio", l_sdl2_PauseAudio},
-        {"CloseAudio", l_sdl2_CloseAudio},
+        REG_FIELD(sdl2, OpenAudio),
+        REG_FIELD(sdl2, PauseAudio),
+        REG_FIELD(sdl2, CloseAudio),
         // Window
-        {"CreateWindow", l_sdl2_CreateWindow},
-        {"DestroyWindow", l_sdl2_DestroyWindow},
-        {"GL_SetAttribute", l_sdl2_GL_SetAttribute},
-        {"GL_CreateContext", l_sdl2_GL_CreateContext},
-        {"GL_MakeCurrent", l_sdl2_GL_MakeCurrent},
-        {"GL_DeleteContext", l_sdl2_GL_DeleteContext},
-        //Event
-        {"NewEvent", l_sdl2_NewEvent},
-        // keyboard
-        {"GetScancodeFromName", l_sdl2_GetScancodeFromName},
-        {"HasScreenKeyboardSupport", l_sdl2_HasScreenKeyboardSupport},
-        {"IsScreenKeyboardShown", l_sdl2_IsScreenKeyboardShown},
-        {"CheckKeyState", l_sdl2_CheckKeyState},
-        // mouse
-        {"GetMousePosition", l_sdl2_GetMousePosition},
-        {"IsMouseDown", l_sdl2_IsMouseDown},
-        // joystick
-        {"JoystickOpen", l_sdl2_JoystickOpen},
-        {"NumJoysticks", l_sdl2_NumJoysticks},
-        {"JoystickClose", l_sdl2_JoystickClose},
-        // game controller
-        {"GameControllerOpen", l_sdl2_GameControllerOpen},
-        {"IsGameController", l_sdl2_IsGameController},
-        {"GameControllerAxisFromString", l_sdl2_GameControllerGetAxisFromString},
-        {"GameControllerGetButtonFromString", l_sdl2_GameControllerGetButtonFromString},
-        // timer
-        {"GetTicks", l_sdl2_GetTicks},
-        {"Delay", l_sdl2_Delay},
-        {"GetPerformanceCounter", l_sdl2_GetPerformanceCounter},
-        {"GetPerformanceFrequency", l_sdl2_GetPerformanceFrequency},
-        {NULL, NULL}
-    };
-    luaL_newlib(L, reg);
+        REG_FIELD(sdl2, CreateWindow),
+        REG_FIELD(sdl2, DestroyWindow),
+        REG_FIELD(sdl2, GL_SetAttribute),
+        REG_FIELD(sdl2, GL_CreateContext),
+        REG_FIELD(sdl2, GL_MakeCurrent),
+        REG_FIELD(sdl2, GL_DeleteContext),
+        // Event
+        REG_FIELD(sdl2, NewEvent),
+        // Keyboard
+        REG_FIELD(sdl2, GetScancodeFromName),
+        REG_FIELD(sdl2, HasScreenKeyboardSupport),
+        REG_FIELD(sdl2, IsScreenKeyboardShown),
+        REG_FIELD(sdl2, CheckKeyState),
+        // Mouse
+        REG_FIELD(sdl2, GetMousePosition),
+        REG_FIELD(sdl2, IsMouseDown),
+        // Joystick
+        REG_FIELD(sdl2, JoystickOpen),
+        REG_FIELD(sdl2, NumJoysticks),
+        // Game Controller
+        REG_FIELD(sdl2, GameControllerOpen),
+        REG_FIELD(sdl2, IsGameController),
+        REG_FIELD(sdl2, GameControllerGetAxisFromString),
+        REG_FIELD(sdl2, GameControllerGetButtonFromString),
+        // Timer
+        REG_FIELD(sdl2, GetTicks),
+        REG_FIELD(sdl2, Delay),
+        REG_FIELD(sdl2, GetPerformanceCounter),
+        REG_FIELD(sdl2, GetPerformanceFrequency),
+    END_REG()
+    NEW_MODULE(sdl2);
     LOAD_META(SDL_Window);
     LOAD_META(SDL_GLContext);
     LOAD_META(SDL_Event);
     LOAD_META(SDL_Joystick);
     LOAD_META(SDL_GameController);
-    for (int i = 0; l_sdl2_Enums[i].name != NULL; i++) {
-        lua_pushinteger(L, l_sdl2_Enums[i].value);
-        lua_setfield(L, -2, l_sdl2_Enums[i].name);
-    }
-   return 0;
-}
+    LOAD_ENUMS(sdl2);
+END_MODULE(1)

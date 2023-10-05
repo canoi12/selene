@@ -10,23 +10,25 @@ static int _running = 0;
 
 static int l_core_reg;
 
-static int l_selene_version(lua_State* L) {
-   lua_pushstring(L, SELENE_VER);
-   return 1;
-}
+static BEGIN_FUNCTION(selene, GetVersion)
+   PUSH_STRING(SELENE_VER);
+END_FUNCTION(1)
 
-static int l_selene_running(lua_State* L) {
-   int top = lua_gettop(L);
-   if (top > 0)
-      _running = lua_toboolean(L, 1);
-   lua_pushboolean(L, _running);
-   return 1;
-}
+static BEGIN_FUNCTION(selene, SetRunning)
+   INIT_ARG();
+   GET_BOOLEAN(running);
+   _running = running;
+END_FUNCTION(0)
+
+static BEGIN_FUNCTION(selene, IsRunning)
+   PUSH_BOOLEAN(_running);
+END_FUNCTION(1)
 
 int luaopen_selene(lua_State* L) {
    luaL_Reg reg[] = {
-      {"version", l_selene_version},
-      {"running", l_selene_running},
+      REG_FIELD(selene, GetVersion),
+      REG_FIELD(selene, SetRunning),
+      REG_FIELD(selene, IsRunning),
       {NULL, NULL}
    };
    luaL_newlib(L, reg);
@@ -72,7 +74,7 @@ static int selene_init(lua_State* L, int argc, char** argv) {
     lua_getglobal(L, "selene");
     lua_newtable(L);
     int i;
-    for (int i = 0; i < argc; i++) {
+    for (i = 0; i < argc; i++) {
        lua_pushstring(L, argv[i]);
        lua_rawseti(L, -2, i+1);
     }

@@ -35,7 +35,7 @@ function graphics.init(config)
   sdl.GL_SetAttribute(sdl.GL_DOUBLEBUFFER, 1)
   sdl.GL_SetAttribute(sdl.GL_DEPTH_SIZE, 24)
   sdl.GL_SetAttribute(sdl.GL_STENCIL_SIZE, 8)
-  if selene.system.os() == "Emscripten" then
+  if selene.system.GetOS() == "Emscripten" then
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_ES)
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 2);
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 0);
@@ -45,8 +45,8 @@ function graphics.init(config)
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 3);
   end
 
-  print(selene.system.os())
-  print(selene.system.arch())
+  print(selene.system.GetOS())
+  print(selene.system.GetArch())
 
   local window = sdl.CreateWindow(
     config.window.title,

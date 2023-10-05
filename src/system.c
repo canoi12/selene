@@ -1,41 +1,37 @@
 #include "selene.h"
 
-static int l_system_os(lua_State* L) {
+static BEGIN_FUNCTION(system, GetOS)
 #if defined(__EMSCRIPTEN__)
-    lua_pushstring(L, "Emscripten");
+    PUSH_STRING("Emscripten");
     return 1;
 #endif
 #if defined(OS_WIN)
-    lua_pushstring(L, "Windows");
+    PUSH_STRING("Windows");
 #elif defined(OS_OSX)
-    lua_pushstring(L, "OSX");
+    PUSH_STRING("OSX");
 #elif defined(OS_LINUX)
-    lua_pushstring(L, "Linux");
+    PUSH_STRING("Linux");
 #elif defined(OS_BSD)
-    lua_pushstring(L, "BSD");
+    PUSH_STRING("BSD");
 #elif defined(OS_UNIX)
-    lua_pushstring(L, "Unix");
+    PUSH_STRING("Unix");
 #endif
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_system_arch(lua_State* L) {
+static BEGIN_FUNCTION(system, GetArch)
 #if defined(ARCH_X86)
-    lua_pushstring(L, "x86");
+    PUSH_STRING("x86");
 #elif defined(ARCH_X64)
-    lua_pushstring(L, "x64");
+    PUSH_STRING("x64");
 #elif defined(ARCH_ARM)
-    lua_pushstring(L, "arm");
+    PUSH_STRING("arm");
 #endif
-    return 1;
-}
+END_FUNCTION(1)
 
-int seleneopen_system(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"os", l_system_os},
-        {"arch", l_system_arch},
-        {NULL, NULL}
-    };
-    luaL_newlib(L, reg);
-    return 1;
-}
+BEGIN_MODULE(system)
+    BEGIN_REG(system)
+        REG_FIELD(system, GetOS),
+        REG_FIELD(system, GetArch),
+    END_REG()
+    NEW_MODULE(system);
+END_MODULE(1)

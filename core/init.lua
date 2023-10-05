@@ -12,7 +12,7 @@ local config = {
     samples = 2048,
   },
   window = {
-    title = "selene " .. selene.version(),
+    title = "selene " .. selene.GetVersion(),
     width = 640,
     height = 380,
     resizable = false,

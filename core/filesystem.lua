@@ -3,7 +3,7 @@ local filesystem = {}
 local basepath = "./"
 
 function filesystem.set_basepath(path)
-  local os = selene.system.os()
+  local os = selene.system.GetOS()
   if os == "Windows" then
     if path:sub(#path) ~= "\\" then
       path = path .. "\\"

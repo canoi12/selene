@@ -33,16 +33,16 @@ local window_events = {
 
 handlers[sdl.QUIT] = function(ev)
   if selene.quit_callback then
-    selene.running(not selene.quit_callback())
+    selene.SetRunning(not selene.quit_callback())
   else
-    selene.running(false)
+    selene.SetRunning(false)
   end
 end
 
 handlers[sdl.WINDOWEVENT] = function(ev)
   local we, wid, data1, data2 = ev:WindowEvent()
   if we == sdl.WINDOWEVENT_CLOSE then
-    selene.running(false)
+    selene.SetRunning(false)
   end
   if selene.window_callback then
     selene.window_callback(window_events[we], wid, data1, data2)

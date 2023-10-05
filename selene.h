@@ -53,17 +53,59 @@
 
 #define SELENE_VER "0.1.0"
 
-#define NEW_META(type)\
-int l_##type##_meta(lua_State* L) {\
-    luaL_newmetatable(L, #type);\
-    luaL_setfuncs(L, type##_reg, 0);\
-    lua_pushvalue(L, -1);\
-    lua_setfield(L, -2, "__index");\
-    return 1;\
+// Lua Module Helper
+
+// Start a function for a new selene module
+#define BEGIN_MODULE(name)\
+int seleneopen_##name(lua_State* L) {
+
+// End module
+#define END_MODULE(ret)\
+    return ret;\
 }
 
-#define NEW_REG(type)\
-luaL_Reg type##_reg[] = 
+#define NEW_MODULE(name)\
+luaL_newlib(L, name##_reg)
+
+#define MODULE_FUNCTION(name, func)\
+int l_##name##_##func(lua_State* L)
+
+#define BEGIN_FUNCTION(module, name)\
+int l_##module##_##name(lua_State* L) {
+
+#define END_FUNCTION(ret)\
+    return ret;\
+}
+
+// Lua Enum Helper
+#define BEGIN_ENUM(module)\
+struct { const char* name; int value; } module##_Enums[] = {
+
+#define END_ENUM()\
+    {NULL, 0},\
+};
+
+#define ENUM_FIELD(name, ...)\
+{#name, __VA_ARGS__##name}
+
+#define LOAD_ENUMS(module)\
+for (int i = 0; module##_Enums[i].name != NULL; i++) {\
+    lua_pushinteger(L, module##_Enums[i].value);\
+    lua_setfield(L, -2, module##_Enums[i].name);\
+}
+
+// Lua Meta Helper
+#define NEW_META(type)\
+luaL_newmetatable(L, #type);\
+luaL_setfuncs(L, type##_reg, 0);\
+lua_pushvalue(L, -1);\
+lua_setfield(L, -2, "__index")
+
+#define BEGIN_META(type)\
+int l_##type##_meta(lua_State* L) {
+
+#define END_META(ret)\
+    return ret;}
 
 #define BEGIN_REG(type)\
 luaL_Reg type##_reg[] = {
@@ -72,16 +114,24 @@ luaL_Reg type##_reg[] = {
     {NULL, NULL}\
 };
 
-#define META_FIELD(type, name)\
+#define REG_FIELD(type, name)\
+{#name, l_##type##_##name}
+
+#define REG_META_FIELD(type, name)\
 {#name, l_##type##__##name}
 
 #define META_FUNCTION(type, func)\
 int l_##type##__##func(lua_State* L)
 
+#define BEGIN_META_FUNCTION(type, name, self)\
+int l_##type##__##name(lua_State* L) {\
+    INIT_GET_UDATA(type, self);
+
 #define LOAD_META(type)\
 l_##type##_meta(L);\
 lua_setfield(L, -2, #type)
 
+// Lua Helper
 #define INIT_ARG()\
 int arg = 1
 
@@ -130,6 +180,9 @@ lua_pushstring(L, str)
 
 #define PUSH_BOOLEAN(v)\
 lua_pushboolean(L, v)
+
+#define PUSH_NIL()\
+lua_pushnil(L)
 
 #ifndef M_PI
 #define M_PI 3.14159

@@ -8,62 +8,50 @@
 
 typedef FILE* File;
 
-static META_FUNCTION(File, SeekSet) {
-    INIT_GET_UDATA(File, file);
+static BEGIN_META_FUNCTION(File, SeekSet, file)
     CHECK_INTEGER(n);
     fseek(*file, n, SEEK_SET);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(File, SeekEnd) {
-    INIT_GET_UDATA(File, file);
+static BEGIN_META_FUNCTION(File, SeekEnd, file)
     fseek(*file, 0, SEEK_END);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(File, SeekCur) {
-    INIT_GET_UDATA(File, file);
+static BEGIN_META_FUNCTION(File, SeekCur, file)
     CHECK_INTEGER(n);
     fseek(*file, n, SEEK_CUR);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(File, Tell) {
-    INIT_GET_UDATA(File, file);
+static BEGIN_META_FUNCTION(File, Tell, file)
     PUSH_INTEGER(ftell(*file));
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(File, Read) {
-    INIT_GET_UDATA(File, file);
-    return 0;
-}
+static BEGIN_META_FUNCTION(File, Read, file)
+END_FUNCTION(0)
 
-static META_FUNCTION(File, Write) {
-    INIT_GET_UDATA(File, file);
-    return 0;
-}
+static BEGIN_META_FUNCTION(File, Write, file)
+END_FUNCTION(0)
 
-static META_FUNCTION(File, Append) {
-    INIT_GET_UDATA(File, file);
-    return 0;
-}
+static BEGIN_META_FUNCTION(File, Append, file)
+END_FUNCTION(0)
 
-BEGIN_REG(File)
-    META_FIELD(File, SeekSet),
-    META_FIELD(File, SeekEnd),
-    META_FIELD(File, SeekCur),
-    META_FIELD(File, Tell),
-    META_FIELD(File, Read),
-    META_FIELD(File, Write),
-    META_FIELD(File, Append),
-END_REG()
-NEW_META(File)
+static BEGIN_META(File)
+    BEGIN_REG(File)
+        REG_META_FIELD(File, SeekSet),
+        REG_META_FIELD(File, SeekEnd),
+        REG_META_FIELD(File, SeekCur),
+        REG_META_FIELD(File, Tell),
+        REG_META_FIELD(File, Read),
+        REG_META_FIELD(File, Write),
+        REG_META_FIELD(File, Append),
+    END_REG()
+    NEW_META(File);
+END_META(1)
 
-static int l_fs_open(lua_State* L) {
-    const char* path = luaL_checkstring(L, 1);
-    FILE** file = lua_newuserdata(L, sizeof(void*));
-    luaL_setmetatable(L, "File");
+static BEGIN_FUNCTION(fs, open)
+    INIT_ARG();
+    CHECK_STRING(path);
+    NEW_UDATA(FILE, *file, sizeof(void*));
     #if defined(OS_WIN)
         fopen_s(file, path, "rb");
     #else
@@ -72,8 +60,7 @@ static int l_fs_open(lua_State* L) {
     if (!(*file)) {
         return luaL_error(L, "Failed to load file");
     }
-    return 1;
-}
+END_FUNCTION(1)
 
 static int l_fs_exists(lua_State* L) {
     struct stat info;
@@ -148,19 +135,16 @@ static int l_fs_load(lua_State* L) {
     return 1;
 }
 
-int seleneopen_fs(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"open", l_fs_open},
-		{"exists", l_fs_exists},
-		{"read", l_fs_read},
-		{"write", l_fs_write},
-		{"mkdir", l_fs_mkdir},
-		{"rmdir", l_fs_rmdir},
-        {"load", l_fs_load},
-		{NULL, NULL}
-    };
-    luaL_newlib(L, reg);
-
+BEGIN_MODULE(fs)
+    BEGIN_REG(fs)
+        REG_FIELD(fs, open),
+        REG_FIELD(fs, exists),
+        REG_FIELD(fs, read),
+        REG_FIELD(fs, write),
+        REG_FIELD(fs, mkdir),
+        REG_FIELD(fs, rmdir),
+        REG_FIELD(fs, load),
+    END_REG()
+    NEW_MODULE(fs);
     LOAD_META(File);
-    return 1;
-}
+END_MODULE(1)

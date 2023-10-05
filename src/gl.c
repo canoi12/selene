@@ -29,19 +29,20 @@ struct GLInfo {
 };
 
 static struct GLInfo s_gl_info;
+#if defined(OS_WIN)
 static Data* s_aux_data;
+#endif
 
-static int l_gl_LoadGlad(lua_State* L) {
+static BEGIN_FUNCTION(gl, LoadGlad)
 #if !defined(__EMSCRIPTEN__)
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         fprintf(stderr, "failed to initialize OpenGL context\n");
         exit(EXIT_FAILURE);
     }
 #endif
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_PrintVersion(lua_State* L) {
+static BEGIN_FUNCTION(gl, PrintVersion)
     const Uint8* version = glGetString(GL_VERSION);
     const Uint8* glsl = glGetString(GL_SHADING_LANGUAGE_VERSION);
     fprintf(stderr, "%s // %s\n", version, glsl);
@@ -74,8 +75,7 @@ static int l_gl_PrintVersion(lua_State* L) {
     }
 
     fprintf(stderr, "GL: { ver: %d.%d, glsl: %d, es: %s }\n", info->major, info->minor, info->glsl, info->es ? "true" : "false");
-    return 0;
-}
+END_FUNCTION(0)
 
 // Core
 static int l_gl_get_viewport(lua_State* L) {
@@ -88,7 +88,7 @@ static int l_gl_get_viewport(lua_State* L) {
     return 4;
 }
 
-static int l_gl_Viewport(lua_State* L) {
+static BEGIN_FUNCTION(gl, Viewport)
     int view[4];
     glGetIntegerv(GL_VIEWPORT, view);
     int args = lua_gettop(L);
@@ -96,14 +96,12 @@ static int l_gl_Viewport(lua_State* L) {
         view[i] = (int)luaL_checkinteger(L, 1+i);
     }
     glViewport(view[0], view[1], view[2], view[3]);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_ClearStencil(lua_State* L) {
+static BEGIN_FUNCTION(gl, ClearStencil)
     int s = (int)luaL_checkinteger(L, 1);
     glClearStencil(s);
-    return 0;
-}
+END_FUNCTION(0)
 
 static int l_gl_ClearDepth(lua_State *L ) {
 #if !defined(__EMSCRIPTEN__)
@@ -111,88 +109,78 @@ static int l_gl_ClearDepth(lua_State *L ) {
 #else
     glClearDepthf((float)luaL_optnumber(L, 1, 1.0f));
 #endif
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_ClearColor(lua_State* L) {
+static BEGIN_FUNCTION(gl, ClearColor)
     float color[4] = { 0.f, 0.f, 0.f, 1.f };
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++)
         color[i] = (float)lua_tonumber(L, i+1);
     glClearColor(color[0], color[1], color[2], color[3]);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_Clear(lua_State* L) {
+static BEGIN_FUNCTION(gl, Clear)
     GLenum flags = 0;
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
         flags |= luaL_checkinteger(L, 1+i);
     }
     glClear(flags);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_Enable(lua_State* L) {
+static BEGIN_FUNCTION(gl, Enable)
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
         glEnable((GLenum)luaL_checkinteger(L, 1+i));
     }
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_Disable(lua_State* L) {
+static BEGIN_FUNCTION(gl, Disable)
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
         glDisable((GLenum)luaL_checkinteger(L, 1+i));
     }
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_viewport(lua_State* L) {
+static BEGIN_FUNCTION(gl, viewport)
     int r[4] = {0, 0, 640, 380};
     for (int i = i; i < lua_gettop(L); i++) {
         r[i] = (int)luaL_checkinteger(L, 1+i);
     }
     glViewport(r[0], r[1], r[2], r[3]);
-    return 0;
-}
+END_FUNCTION(0)
 
 
-static int l_gl_Scissor(lua_State* L) {
+static BEGIN_FUNCTION(gl, Scissor)
     int x, y, w, h;
     x = (int)luaL_checkinteger(L, 1);
     y = (int)luaL_checkinteger(L, 2);
     w = (int)luaL_checkinteger(L, 3);
     h = (int)luaL_checkinteger(L, 4);
     glScissor(x, y, w, h);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_BlendFunc(lua_State* L) {
+static BEGIN_FUNCTION(gl, BlendFunc)
     int sfn, dfn;
     sfn = (int)luaL_optinteger(L, 1, GL_SRC_ALPHA);
     dfn = (int)luaL_optinteger(L, 2, GL_ONE_MINUS_SRC_ALPHA);
     glBlendFunc(sfn, dfn);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_DrawArrays(lua_State* L) {
+static BEGIN_FUNCTION(gl, DrawArrays)
     Uint16 mode = (Uint16)luaL_checkinteger(L, 1);
     Uint32 start = (Uint32)luaL_checkinteger(L, 2);
     Uint32 count = (Uint32)luaL_checkinteger(L, 3);
     glDrawArrays(mode, start, count);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_DrawElements(lua_State* L) {
+static BEGIN_FUNCTION(gl, DrawElements)
     Uint16 mode = (Uint16)luaL_checkinteger(L, 1);
     Uint32 start = (Uint32)luaL_checkinteger(L, 2);
     Uint32 count = (Uint32)luaL_checkinteger(L, 3);
     Uint16 _type = (Uint16)luaL_checkinteger(L, 4);
     glDrawElements(mode, start, _type, (void*)start);
-    return 0;
-}
+END_FUNCTION(0)
 
 // Texture
 static int l_gl_NewTexture(lua_State* L) {
@@ -202,11 +190,9 @@ static int l_gl_NewTexture(lua_State* L) {
     return 1;
 }
 
-static META_FUNCTION(Texture, gc) {
-    INIT_GET_UDATA(Texture, tex);
+static BEGIN_META_FUNCTION(Texture, gc, tex)
     glDeleteTextures(1, tex);
-    return 0;
-}
+END_FUNCTION(0)
 
 static int l_gl_BindTexture(lua_State* L) {
     int target = (int)luaL_checkinteger(L, 1);
@@ -257,10 +243,12 @@ static int l_gl_TexParameteri(lua_State* L) {
     return 0;
 }
 
-BEGIN_REG(Texture)
-    META_FIELD(Texture, gc),
-END_REG()
-NEW_META(Texture)
+static BEGIN_META(Texture)
+    BEGIN_REG(Texture)
+        REG_META_FIELD(Texture, gc),
+    END_REG()
+    NEW_META(Texture);
+END_META(1)
 
 // Framebuffer
 static int default_framebuffer;
@@ -808,81 +796,188 @@ static struct {
     {NULL, 0}
 };
 
-// luaopen
-int seleneopen_gl(lua_State* L) {
+BEGIN_ENUM(gl)
+    // Clear
+    ENUM_FIELD(COLOR_BUFFER_BIT, GL_),
+    ENUM_FIELD(DEPTH_BUFFER_BIT, GL_),
+    ENUM_FIELD(STENCIL_BUFFER_BIT, GL_),
+    // Types
+    ENUM_FIELD(BYTE, GL_),
+    ENUM_FIELD(UNSIGNED_BYTE, GL_),
+    ENUM_FIELD(SHORT, GL_),
+    ENUM_FIELD(UNSIGNED_SHORT, GL_),
+    ENUM_FIELD(INT, GL_),
+    ENUM_FIELD(UNSIGNED_INT, GL_),
+    ENUM_FIELD(FLOAT, GL_),
+#if !defined(__EMSCRIPTEN__)
+    ENUM_FIELD(DOUBLE, GL_),
+#endif
+    // Enable
+    ENUM_FIELD(DEPTH_TEST, GL_),
+    ENUM_FIELD(STENCIL_TEST, GL_),
+    ENUM_FIELD(SCISSOR_TEST, GL_),
+    ENUM_FIELD(BLEND, GL_),
+    ENUM_FIELD(CULL_FACE, GL_),
+    // Pixel
+#if !defined(__EMSCRIPTEN__)
+    ENUM_FIELD(RED, GL_),
+    ENUM_FIELD(RG, GL_),
+    ENUM_FIELD(BGR, GL_),
+    ENUM_FIELD(BGRA, GL_),
+#endif
+    ENUM_FIELD(RGB, GL_),
+    ENUM_FIELD(RGBA, GL_),
+    ENUM_FIELD(DEPTH_COMPONENT, GL_),
+    ENUM_FIELD(DEPTH_COMPONENT16, GL_),
+#if !defined(__EMSCRIPTEN__)
+    ENUM_FIELD(DEPTH_COMPONENT24, GL_),
+    ENUM_FIELD(DEPTH_COMPONENT32, GL_),
+    ENUM_FIELD(DEPTH_COMPONENT32F, GL_),
+    ENUM_FIELD(DEPTH32F_STENCIL8, GL_),
+    ENUM_FIELD(DEPTH24_STENCIL8, GL_),
+#endif
+    // Funcs
+    ENUM_FIELD(ZERO, GL_),
+    ENUM_FIELD(ONE, GL_),
+    ENUM_FIELD(SRC_COLOR, GL_),
+    ENUM_FIELD(ONE_MINUS_SRC_COLOR, GL_),
+    ENUM_FIELD(SRC_ALPHA, GL_),
+    ENUM_FIELD(ONE_MINUS_SRC_ALPHA, GL_),
+    ENUM_FIELD(DST_ALPHA, GL_),
+    ENUM_FIELD(ONE_MINUS_DST_ALPHA, GL_),
+    ENUM_FIELD(DST_COLOR, GL_),
+    ENUM_FIELD(ONE_MINUS_DST_COLOR, GL_),
+    ENUM_FIELD(SRC_ALPHA_SATURATE, GL_),
+    ENUM_FIELD(CONSTANT_COLOR, GL_),
+    ENUM_FIELD(ONE_MINUS_CONSTANT_COLOR, GL_),
+    ENUM_FIELD(CONSTANT_ALPHA, GL_),
+    ENUM_FIELD(ONE_MINUS_CONSTANT_ALPHA, GL_),
+    // Draw mode
+    ENUM_FIELD(POINTS, GL_),
+    ENUM_FIELD(LINES, GL_),
+    ENUM_FIELD(TRIANGLES, GL_),
+    // Texture targers
+    ENUM_FIELD(TEXTURE_2D, GL_),
+    ENUM_FIELD(TEXTURE_CUBE_MAP, GL_),
+    ENUM_FIELD(TEXTURE_CUBE_MAP_NEGATIVE_X, GL_),
+    ENUM_FIELD(TEXTURE_CUBE_MAP_POSITIVE_X, GL_),
+    ENUM_FIELD(TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_),
+    ENUM_FIELD(TEXTURE_CUBE_MAP_POSITIVE_Y, GL_),
+    ENUM_FIELD(TEXTURE_CUBE_MAP_NEGATIVE_Z, GL_),
+    ENUM_FIELD(TEXTURE_CUBE_MAP_POSITIVE_Z, GL_),
+    // Texture params
+    ENUM_FIELD(TEXTURE_MIN_FILTER, GL_),
+    ENUM_FIELD(TEXTURE_MAG_FILTER, GL_),
+    ENUM_FIELD(TEXTURE_WRAP_S, GL_),
+    ENUM_FIELD(TEXTURE_WRAP_T, GL_),
+    ENUM_FIELD(NEAREST, GL_),
+    ENUM_FIELD(LINEAR, GL_),
+    ENUM_FIELD(REPEAT, GL_),
+#if !defined(__EMSCRIPTEN__)
+    ENUM_FIELD(CLAMP_TO_BORDER, GL_),
+    ENUM_FIELD(CLAMP_TO_EDGE, GL_),
+#endif
+    // Framebuffer targets
+    ENUM_FIELD(FRAMEBUFFER, GL_),
+#if !defined(__EMSCRIPTEN__)
+    ENUM_FIELD(DRAW_FRAMEBUFFER, GL_),
+    ENUM_FIELD(READ_FRAMEBUFFER, GL_),
+    ENUM_FIELD(DEPTH_STENCIL_ATTACHMENT, GL_),
+#endif
+    ENUM_FIELD(COLOR_ATTACHMENT0, GL_),
+    ENUM_FIELD(DEPTH_ATTACHMENT, GL_),
+    ENUM_FIELD(STENCIL_ATTACHMENT, GL_),
+    // Buffer
+    ENUM_FIELD(ARRAY_BUFFER, GL_),
+    ENUM_FIELD(ELEMENT_ARRAY_BUFFER, GL_),
+#if !defined(__EMSCRIPTEN__)
+    ENUM_FIELD(UNIFORM_BUFFER, GL_),
+    ENUM_FIELD(DYNAMIC_READ, GL_),
+    ENUM_FIELD(DYNAMIC_COPY, GL_),
+    ENUM_FIELD(STATIC_READ, GL_),
+    ENUM_FIELD(STATIC_COPY, GL_),
+    ENUM_FIELD(STREAM_READ, GL_),
+    ENUM_FIELD(STREAM_COPY, GL_),
+#endif
+    ENUM_FIELD(DYNAMIC_DRAW, GL_),
+    ENUM_FIELD(STATIC_DRAW, GL_),
+    ENUM_FIELD(STREAM_DRAW, GL_),
+    // Shader
+    ENUM_FIELD(FRAGMENT_SHADER, GL_),
+    ENUM_FIELD(VERTEX_SHADER, GL_),
+#if !defined(__EMSCRIPTEN__)
+    ENUM_FIELD(GEOMETRY_SHADER, GL_),
+#endif
+END_ENUM()
+
+BEGIN_MODULE(gl)
+#if defined(OS_WIN)
     s_aux_data = lua_newuserdata(L, sizeof(Data));
     luaL_setmetatable(L, "Data");
     s_aux_data->offset = 0;
     s_aux_data->size = 40 * sizeof(float);
     s_aux_data->data = malloc(s_aux_data->size);
     lua_rawsetp(L, LUA_REGISTRYINDEX, s_aux_data);
-
-    luaL_Reg reg[] = {
-        {"LoadGlad", l_gl_LoadGlad},
-        {"PrintVersion", l_gl_PrintVersion},
+#endif
+    BEGIN_REG(gl)
+        REG_FIELD(gl, LoadGlad),
+        REG_FIELD(gl, PrintVersion),
         // Core
-        {"Viewport", l_gl_Viewport},
-        {"Clear", l_gl_Clear},
-        {"ClearColor", l_gl_ClearColor},
-        {"ClearDepth", l_gl_ClearDepth},
-        {"ClearStencil", l_gl_ClearStencil},
-        {"Enable", l_gl_Enable},
-        {"Disable", l_gl_Disable},
-        {"Scissor", l_gl_Scissor},
-        {"BlendFunc", l_gl_BlendFunc},
-        {"DrawArrays", l_gl_DrawArrays},
-        {"DrawElements", l_gl_DrawElements},
+        REG_FIELD(gl, Viewport),
+        REG_FIELD(gl, Clear),
+        REG_FIELD(gl, ClearColor),
+        REG_FIELD(gl, ClearDepth),
+        REG_FIELD(gl, ClearStencil),
+        REG_FIELD(gl, Enable),
+        REG_FIELD(gl, Disable),
+        REG_FIELD(gl, Scissor),
+        REG_FIELD(gl, BlendFunc),
+        REG_FIELD(gl, DrawArrays),
+        REG_FIELD(gl, DrawElements),
         // Texture
-        {"NewTexture", l_gl_NewTexture},
-        {"BindTexture", l_gl_BindTexture},
-        {"TexImage2D", l_gl_TexImage2D},
-        {"TexSubImage2D", l_gl_TexSubImage2D},
-        {"TexParameteri", l_gl_TexParameteri},
+        REG_FIELD(gl, NewTexture),
+        REG_FIELD(gl, BindTexture),
+        REG_FIELD(gl, TexImage2D),
+        REG_FIELD(gl, TexSubImage2D),
+        REG_FIELD(gl, TexParameteri),
         // Framebuffer
-        {"NewFramebuffer", l_gl_NewFramebuffer},
-        {"BindFramebuffer", l_gl_BindFramebuffer},
-        {"AttachTexture2D", l_gl_AttachTexture2D},
+        REG_FIELD(gl, NewFramebuffer),
+        REG_FIELD(gl, BindFramebuffer),
+        REG_FIELD(gl, AttachTexture2D),
         // Vertex
-        {"NewVertexArray", l_gl_NewVertexArray},
-        {"BindVertexArray", l_gl_BindVertexArray},
-        {"EnableVertexAttribArray", l_gl_EnableVertexAttribArray},
-        {"DisableVertexAttribArray", l_gl_DisableVertexAttribArray},
-        {"VertexAttribPointer", l_gl_VertexAttribPointer},
+        REG_FIELD(gl, NewVertexArray),
+        REG_FIELD(gl, BindVertexArray),
+        REG_FIELD(gl, EnableVertexAttribArray),
+        REG_FIELD(gl, DisableVertexAttribArray),
+        REG_FIELD(gl, VertexAttribPointer),
         // Buffer
-        {"NewBuffer", l_gl_NewBuffer},
-        {"BindBuffer", l_gl_BindBuffer},
-        {"BufferData", l_gl_BufferData},
-        {"BufferSubData", l_gl_BufferSubData},
+        REG_FIELD(gl, NewBuffer),
+        REG_FIELD(gl, BindBuffer),
+        REG_FIELD(gl, BufferData),
+        REG_FIELD(gl, BufferSubData),
         // Shader
-        {"NewShader", l_gl_NewShader},
-        {"ShaderSource", l_gl_ShaderSource},
-        {"CompileShader", l_gl_CompileShader},
+        REG_FIELD(gl, NewShader),
+        REG_FIELD(gl, ShaderSource),
+        REG_FIELD(gl, CompileShader),
         // Program
-        {"NewProgram", l_gl_NewProgram},
-        {"UseProgram", l_gl_UseProgram},
-        {"AttachShader", l_gl_AttachShader},
-        {"LinkProgram", l_gl_LinkProgram},
-        {"GetAttribLocation", l_gl_GetAttribLocation},
-        {"GetUniformLocation", l_gl_GetUniformLocation},
-        {"Uniform1fv", l_gl_Uniform1fv},
-        {"Uniform2fv", l_gl_Uniform2fv},
-        {"Uniform3fv", l_gl_Uniform3fv},
-        {"Uniform4fv", l_gl_Uniform4fv},
-        {"UniformMatrix4fv", l_gl_UniformMatrix4fv},
-        {NULL, NULL}
-    };
-    luaL_newlib(L, reg);
-
-    for (int i = 0; l_gl_Enums[i].name != NULL; i++) {
-        lua_pushinteger(L, l_gl_Enums[i].value);
-        lua_setfield(L, -2, l_gl_Enums[i].name);
-    }
-
+        REG_FIELD(gl, NewProgram),
+        REG_FIELD(gl, UseProgram),
+        REG_FIELD(gl, AttachShader),
+        REG_FIELD(gl, LinkProgram),
+        REG_FIELD(gl, GetAttribLocation),
+        REG_FIELD(gl, GetUniformLocation),
+        REG_FIELD(gl, Uniform1fv),
+        REG_FIELD(gl, Uniform2fv),
+        REG_FIELD(gl, Uniform3fv),
+        REG_FIELD(gl, Uniform4fv),
+        REG_FIELD(gl, UniformMatrix4fv),
+    END_REG()
+    NEW_MODULE(gl);
+    LOAD_ENUMS(gl);
     LOAD_META(Texture);
     LOAD_META(Framebuffer);
     LOAD_META(Shader);
     LOAD_META(Program);
     LOAD_META(VertexArray);
     LOAD_META(Buffer);
-    return 1;
-}
+END_MODULE(1)

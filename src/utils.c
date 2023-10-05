@@ -5,37 +5,28 @@
 #include "stb_truetype.h"
 #include "linmath.h"
 
-static META_FUNCTION(Data, Realloc) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, Realloc, data)
     CHECK_INTEGER(size);
     if (size < data->offset)
         data->offset = size - 1;
     data->data = realloc(data->data, size);
     data->size = size;
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Data, GetOffset) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, GetOffset, data)
     PUSH_INTEGER(data->offset);
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(Data, SetOffset) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, SetOffset, data)
     CHECK_INTEGER(offset);
     data->offset = offset > data->size ? data->size : offset;
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(Data, GetSize) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, GetSize, data)
     PUSH_INTEGER(data->size);
-    return 1;
-}
+END_FUNCTION(1)
 
-static META_FUNCTION(Data, Write) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, Write, data)
     int args = lua_gettop(L)-1;
     int error = (data->offset+args) > data->size;
     if (error) return luaL_error(L, "Data overflow");
@@ -46,10 +37,9 @@ static META_FUNCTION(Data, Write) {
         dt[i] = value;
     }
     data->offset += args;
-    return 0;
-}
-static META_FUNCTION(Data, WriteInt) {
-    INIT_GET_UDATA(Data, data);
+END_FUNCTION(0)
+
+static BEGIN_META_FUNCTION(Data, WriteInt, data)
     int args = lua_gettop(L)-1;
     int error = (data->offset+(args*4)) > data->size;
     if (error) return luaL_error(L, "Data overflow");
@@ -59,11 +49,9 @@ static META_FUNCTION(Data, WriteInt) {
         dt[i] = value;
     }
     data->offset += args*4;
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Data, WriteFloat) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, WriteFloat, data)
     int args = lua_gettop(L)-1;
     int error = (data->offset+(args*4)) > data->size;
     if (error) return luaL_error(L, "Data overflow");
@@ -73,11 +61,9 @@ static META_FUNCTION(Data, WriteFloat) {
         dt[i] = value;
     }
     data->offset += args*4;
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Data, WriteString) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, WriteString, data)
     size_t size;
     const char* str = luaL_checklstring(L, 2, &size);
     int error = (data->offset+size) > data->size;
@@ -88,74 +74,63 @@ static META_FUNCTION(Data, WriteString) {
         dt++;
     }
     data->offset += size;
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Data, gc) {
-    INIT_GET_UDATA(Data, data);
+static BEGIN_META_FUNCTION(Data, gc, data)
     if (data->data) {
         free(data->data);
         data->data = NULL;
     }
-    return 0;
-}
+END_FUNCTION(0)
 
-BEGIN_REG(Data)
-    META_FIELD(Data, Realloc),
-    META_FIELD(Data, GetOffset),
-    META_FIELD(Data, SetOffset),
-    META_FIELD(Data, GetSize),
-    META_FIELD(Data, Write),
-    META_FIELD(Data, WriteInt),
-    META_FIELD(Data, WriteFloat),
-    META_FIELD(Data, WriteString),
-    META_FIELD(Data, gc),
-END_REG()
-NEW_META(Data)
+static BEGIN_META(Data)
+    BEGIN_REG(Data)
+        REG_META_FIELD(Data, Realloc),
+        REG_META_FIELD(Data, GetOffset),
+        REG_META_FIELD(Data, SetOffset),
+        REG_META_FIELD(Data, GetSize),
+        REG_META_FIELD(Data, Write),
+        REG_META_FIELD(Data, WriteInt),
+        REG_META_FIELD(Data, WriteFloat),
+        REG_META_FIELD(Data, WriteString),
+        REG_META_FIELD(Data, gc),
+    END_REG()
+    NEW_META(Data);
+END_META(1)
 
-static int l_utils_NewData(lua_State* L) {
+static BEGIN_FUNCTION(utils, NewData)
     int size = (int)luaL_checkinteger(L, 1);
-    Data* data = lua_newuserdata(L, sizeof(*data));
-    luaL_setmetatable(L, "Data");
+    NEW_UDATA(Data, data, sizeof(*data));
     data->offset = 0;
     data->size = size;
     data->data = malloc(size);
-    return 1;
-}
+END_FUNCTION(1)
 
 
 // Matrix
 typedef mat4x4 Mat4;
-static META_FUNCTION(Mat4, Identity) {
-    INIT_GET_UDATA(Mat4, mat);
+static BEGIN_META_FUNCTION(Mat4, Identity, mat)
     mat4x4_identity(*mat);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Mat4, Translate) {
-    INIT_GET_UDATA(Mat4, mat);
+static BEGIN_META_FUNCTION(Mat4, Translate, mat)
     CHECK_NUMBER(float, x);
     CHECK_NUMBER(float, y);
     OPT_NUMBER(float, z, 0.f);
     mat4x4_translate_in_place(*mat, x, y, z);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Mat4, Scale) {
-    INIT_GET_UDATA(Mat4, mat);
+static BEGIN_META_FUNCTION(Mat4, Scale, mat)
     CHECK_NUMBER(float, x);
     CHECK_NUMBER(float, y);
     OPT_NUMBER(float, z, 0.f);
     mat4x4_scale_aniso(*mat, *mat, x, y, z);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Mat4, Rotate) {
-    return 0;
-}
+static BEGIN_META_FUNCTION(Mat4, Rotate, mat)
+END_FUNCTION(0)
 
-static META_FUNCTION(Mat4, Ortho) {
-    INIT_GET_UDATA(Mat4, mat);
+static BEGIN_META_FUNCTION(Mat4, Ortho, mat)
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
     CHECK_NUMBER(float, bottom);
@@ -163,11 +138,9 @@ static META_FUNCTION(Mat4, Ortho) {
     CHECK_NUMBER(float, near);
     CHECK_NUMBER(float, far);
     mat4x4_ortho(*mat, left, right, bottom, top, near, far);
-    return 0;
-}
+END_FUNCTION(0)
 
-static META_FUNCTION(Mat4, Frustum) {
-    INIT_GET_UDATA(Mat4, mat);
+static BEGIN_META_FUNCTION(Mat4, Frustum, mat)
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
     CHECK_NUMBER(float, bottom);
@@ -175,18 +148,19 @@ static META_FUNCTION(Mat4, Frustum) {
     CHECK_NUMBER(float, near);
     CHECK_NUMBER(float, far);
     mat4x4_frustum(*mat, left, right, bottom, top, near, far);
-    return 0;
-}
+END_FUNCTION(0)
 
-BEGIN_REG(Mat4)
-    META_FIELD(Mat4, Identity),
-    META_FIELD(Mat4, Translate),
-    META_FIELD(Mat4, Scale),
-    META_FIELD(Mat4, Rotate),
-    META_FIELD(Mat4, Ortho),
-    META_FIELD(Mat4, Frustum),
-END_REG()
-NEW_META(Mat4)
+static BEGIN_META(Mat4)
+    BEGIN_REG(Mat4)
+        REG_META_FIELD(Mat4, Identity),
+        REG_META_FIELD(Mat4, Translate),
+        REG_META_FIELD(Mat4, Scale),
+        REG_META_FIELD(Mat4, Rotate),
+        REG_META_FIELD(Mat4, Ortho),
+        REG_META_FIELD(Mat4, Frustum),
+    END_REG()
+    NEW_META(Mat4);
+END_META(1)
 
 static int l_utils_NewMat4(lua_State* L) {
     mat4x4* m = lua_newuserdata(L, sizeof(*m));
@@ -251,18 +225,13 @@ static int l_utils_LoadTTF(lua_State* L) {
     return 4;
 }
 
-int seleneopen_utils(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"NewData", l_utils_NewData},
-        {"NewMat4", l_utils_NewMat4},
-        {"LoadImageData", l_utils_LoadImageData},
-        {NULL, NULL}
-    };
-    luaL_newlib(L, reg);
-
-    l_Mat4_meta(L);
-    lua_setfield(L, -2, "Mat4");
-    l_Data_meta(L);
-    lua_setfield(L, -2, "Data");
-    return 1;
-}
+BEGIN_MODULE(utils)
+    BEGIN_REG(utils)
+        REG_FIELD(utils, NewData),
+        REG_FIELD(utils, NewMat4),
+        REG_FIELD(utils, LoadImageData),
+    END_REG()
+    NEW_MODULE(utils);
+    LOAD_META(Data);
+    LOAD_META(Mat4);
+END_MODULE(1)
