@@ -1,6 +1,7 @@
 #include "SDL_audio.h"
 #include "SDL_events.h"
 #include "SDL_joystick.h"
+#include "SDL_keyboard.h"
 #include "SDL_mouse.h"
 #include "lauxlib.h"
 #include "lua.h"
@@ -619,6 +620,7 @@ BEGIN_ENUM(sdl2)
 END_ENUM()
 
 BEGIN_MODULE(sdl2)
+    keys = SDL_GetKeyboardState(NULL);
     BEGIN_REG(sdl2)
         // Audio
         REG_FIELD(sdl2, OpenAudio),
