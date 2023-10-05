@@ -194,7 +194,7 @@ function graphics.finish()
 end
 
 function graphics.swap()
-  sdl.GL_SwapWindow(graphics.window)
+  graphics.window:Swap()
 end
 
 function graphics.draw_point(x, y)

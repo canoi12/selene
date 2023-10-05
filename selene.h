@@ -85,6 +85,10 @@ lua_setfield(L, -2, #type)
 #define INIT_ARG()\
 int arg = 1
 
+#define NEW_UDATA(type, name, s)\
+type* name = lua_newuserdata(L, s);\
+luaL_setmetatable(L, #type)
+
 #define GET_UDATA(type, name, ...)\
 __VA_ARGS__##type* name = luaL_checkudata(L, arg++, #type)
 

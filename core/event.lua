@@ -89,8 +89,8 @@ function event.init()
 end
 
 function event.poll()
-  while sdl.PollEvent(ev) do
-    local tp = ev:type()
+  while ev:Poll() do
+    local tp = ev:GetType()
     if handlers[tp] then handlers[tp](ev) end
   end
 end

@@ -9,7 +9,7 @@ local config = {
   audio = {
     sample_rate = 44100,
     channels = 2,
-    buffer = 2048,
+    samples = 2048,
   },
   window = {
     title = "selene " .. selene.version(),
@@ -99,6 +99,10 @@ function core.init()
   event.init()
   graphics.init(config)
 
+  if not sdl.OpenAudio(config.audio) then
+    error('Failed to init SDL2 Audio')
+  end
+
   if filesystem.exists('main.lua') then
     xpcall(function() require('main') end, _error)
   else
@@ -121,6 +125,7 @@ end
 
 function core.deinit()
   graphics.deinit()
+  sdl.CloseAudio()
 end
 
 return core

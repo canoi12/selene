@@ -1,12 +1,71 @@
+#include "SDL_audio.h"
+#include "SDL_events.h"
+#include "SDL_joystick.h"
+#include "SDL_mouse.h"
+#include "lauxlib.h"
+#include "lua.h"
 #include "selene.h"
 
-static const Uint8* keys;
 
-NEW_REG(SDL_GLContext) {
-    {NULL, NULL}
-};
+
+static const Uint8* keys;
+/************************
+ #                      #
+ #        Audio         #
+ #                      #
+ ************************/
+
+static int l_sdl2_OpenAudio(lua_State* L) {
+    int type = lua_type(L, 1);
+    if (type != LUA_TTABLE)
+        return luaL_argerror(L, 1, "Table expected");
+    lua_getfield(L, 1, "sample_rate");
+    int freq = luaL_checknumber(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, 1, "channels");
+    int channels = luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, 1, "samples");
+    int samples = luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+
+    SDL_AudioSpec des;
+    des.freq = freq;
+    des.channels = channels;
+    des.samples = samples;
+    des.format = AUDIO_S16;
+
+    lua_pushboolean(L, SDL_OpenAudio(&des, NULL) == 0);
+    return 1;
+}
+
+static int l_sdl2_PauseAudio(lua_State* L) {
+    INIT_ARG();
+    GET_BOOLEAN(pause);
+    SDL_PauseAudio(pause);
+    return 0;
+}
+
+static int l_sdl2_CloseAudio(lua_State* L) {
+    SDL_CloseAudio();
+    return 0;
+}
+
+/************************
+ #                      #
+ #      GLContext       #
+ #                      #
+ ************************/
+
+BEGIN_REG(SDL_GLContext)
+END_REG();
 NEW_META(SDL_GLContext)
 
+/************************
+ #                      #
+ #        Window        #
+ #                      #
+ ************************/
 static META_FUNCTION(SDL_Window, GetSize) {
     INIT_GET_UDATA(SDL_Window, *win);
     int width, height;
@@ -126,10 +185,9 @@ static int l_sdl2_GL_SetAttribute(lua_State* L) {
 }
 
 static int l_sdl2_GL_CreateContext(lua_State* L) {
-    SDL_Window** window = luaL_checkudata(L, 1, "SDL_Window");
-    SDL_GLContext* ctx = lua_newuserdata(L, sizeof(void*));
-    luaL_setmetatable(L, "SDL_GLContext");
-    *ctx = SDL_GL_CreateContext(*window);
+    INIT_GET_UDATA(SDL_Window, *win);
+    NEW_UDATA(SDL_GLContext, ctx, sizeof(void*));
+    *ctx = SDL_GL_CreateContext(*win);
     return 1;
 }
 
@@ -140,29 +198,35 @@ static int l_sdl2_GL_DeleteContext(lua_State* L) {
 }
 
 static int l_sdl2_GL_MakeCurrent(lua_State* L) {
-    SDL_GLContext* ctx = luaL_checkudata(L, 1, "SDL_GLContext");
-    SDL_Window** window = luaL_checkudata(L, 2, "SDL_Window");
+    INIT_GET_UDATA(SDL_GLContext, ctx);
+    GET_UDATA(SDL_Window, *window);
     SDL_GL_MakeCurrent(*window, *ctx);
     return 0;
 }
 
-static int l_sdl2_GL_SwapWindow(lua_State* L) {
-    SDL_Window** window = luaL_checkudata(L, 1, "SDL_Window");
-    SDL_GL_SwapWindow(*window);
-    return 0;
-}
-
 static int l_sdl2_GetScancodeFromName(lua_State* L) {
-    const char* name = luaL_checkstring(L, 1);
-    lua_pushinteger(L, SDL_GetScancodeFromName(name));
+    INIT_ARG();
+    CHECK_STRING(name);
+    PUSH_INTEGER(SDL_GetScancodeFromName(name));
     return 1;
 }
 
-// Event
+static int l_sdl2_GetScancodeName(lua_State* L) {
+    INIT_ARG();
+    CHECK_INTEGER(scancode);
+    PUSH_STRING(SDL_GetScancodeName(scancode));
+    return 1;
+}
+
+/************************
+ #                      #
+ #        Event         #
+ #                      #
+ ************************/
 
 static META_FUNCTION(SDL_Event, Poll) {
     INIT_GET_UDATA(SDL_Event, ev);
-    lua_pushboolean(L, SDL_PollEvent(ev));
+    PUSH_BOOLEAN(SDL_PollEvent(ev));
     return 1;
 }
 
@@ -209,15 +273,14 @@ static META_FUNCTION(SDL_Event, KeyboardEvent) {
     return 2;
 }
 
-const NEW_REG(SDL_Event) {
+const BEGIN_REG(SDL_Event)
     META_FIELD(SDL_Event, Poll),
     META_FIELD(SDL_Event, GetType),
     META_FIELD(SDL_Event, WindowEvent),
     META_FIELD(SDL_Event, MouseMotionEvent),
     META_FIELD(SDL_Event, MouseButtonEvent),
     META_FIELD(SDL_Event, KeyboardEvent),
-    {NULL, NULL}
-};
+END_REG()
 NEW_META(SDL_Event);
 
 static int l_sdl2_NewEvent(lua_State* L) {
@@ -226,13 +289,11 @@ static int l_sdl2_NewEvent(lua_State* L) {
     return 1;
 }
 
-static int l_sdl2_PollEvent(lua_State* L) {
-    SDL_Event* ev = luaL_checkudata(L, 1, "SDL_Event");
-    lua_pushboolean(L, SDL_PollEvent(ev));
-    return 1;
-}
-
-// Keyboard
+/************************
+ #                      #
+ #       Keyboard       #
+ #                      #
+ ************************/
 static int l_sdl2_CheckKeyState(lua_State* L) {
     INIT_ARG();
     CHECK_INTEGER(key);
@@ -251,11 +312,25 @@ static int l_sdl2_IsScreenKeyboardShown(lua_State* L) {
     return 1;
 }
 
+/************************
+ #                      #
+ #         Mouse        #
+ #                      #
+ ************************/
+
 static int l_sdl2_GetMousePosition(lua_State* L) {
     int x, y;
     SDL_GetMouseState(&x, &y);
-    lua_pushnumber(L, x);
-    lua_pushnumber(L, y);
+    PUSH_NUMBER(x);
+    PUSH_NUMBER(y);
+    return 2;
+}
+
+static int l_sdl2_GetRelativeMousePosition(lua_State* L) {
+    int x, y;
+    SDL_GetRelativeMouseState(&x, &y);
+    PUSH_NUMBER(x);
+    PUSH_NUMBER(y);
     return 2;
 }
 
@@ -266,20 +341,23 @@ static int l_sdl2_IsMouseDown(lua_State* L) {
     return 1;
 }
 
-// Joystick
+/************************
+ #                      #
+ #       Joystick       #
+ #                      #
+ ************************/
 
 static int l_sdl2_JoystickOpen(lua_State* L) {
     SDL_Joystick* joy = SDL_JoystickOpen((int)luaL_checknumber(L, 1));
     if (joy) {
-        SDL_Joystick** j = lua_newuserdata(L, sizeof(void*));
-        luaL_setmetatable(L, "SDL_Joystick");
+        NEW_UDATA(SDL_Joystick, *j, sizeof(void*));
         *j = joy;
     } else lua_pushnil(L);
     return 1;
 }
 
 static int l_sdl2_NumJoysticks(lua_State *L) {
-    lua_pushinteger(L, SDL_NumJoysticks());
+    PUSH_INTEGER(SDL_NumJoysticks());
     return 1;
 }
 
@@ -409,7 +487,7 @@ static META_FUNCTION(SDL_Joystick, Close) {
     return 0;
 }
 
-const NEW_REG(SDL_Joystick) {
+const BEGIN_REG(SDL_Joystick)
     META_FIELD(SDL_Joystick, GetName),
     META_FIELD(SDL_Joystick, GetVendor),
     META_FIELD(SDL_Joystick, GetProduct),
@@ -427,8 +505,7 @@ const NEW_REG(SDL_Joystick) {
     META_FIELD(SDL_Joystick, Rumble),
     META_FIELD(SDL_Joystick, CurrentPowerLevel),
     META_FIELD(SDL_Joystick, Close),
-    {NULL, NULL}
-};
+END_REG()
 NEW_META(SDL_Joystick);
 
 static int l_sdl2_JoystickClose(lua_State* L) {
@@ -438,21 +515,25 @@ static int l_sdl2_JoystickClose(lua_State* L) {
     return 0;
 }
 
-// Game Controller
+/************************
+ #                      #
+ #    Game Controller   #
+ #                      #
+ ************************/
 static int l_sdl2_GameControllerOpen(lua_State* L) {
-    int index = (int)luaL_checkinteger(L, 1);
+    INIT_ARG();
+    CHECK_INTEGER(index);
     SDL_GameController* ctrl = SDL_GameControllerOpen(index);
     if (!ctrl) lua_pushnil(L);
     else {
-        SDL_GameController** controller = lua_newuserdata(L, sizeof(void*));
+        NEW_UDATA(SDL_GameController, *controller, sizeof(void*));
         *controller = ctrl;
-        luaL_setmetatable(L, "SDL_GameController");
     }
     return 1;
 }
 
 static int l_sdl2_IsGameController(lua_State* L) {
-    lua_pushboolean(L, SDL_IsGameController((int)luaL_checkinteger(L, 1)));
+    PUSH_BOOLEAN(SDL_IsGameController((int)luaL_checkinteger(L, 1)));
     return 1;
 }
 
@@ -530,7 +611,7 @@ static META_FUNCTION(SDL_GameController, Rumble) {
     INIT_GET_UDATA(SDL_GameController, *gc);
     CHECK_INTEGER(low);
     CHECK_INTEGER(high);
-    Uint32 freq = (Uint32)luaL_optinteger(L, arg++, 100);
+    OPT_INTEGER(freq, 100);
     PUSH_BOOLEAN(SDL_GameControllerRumble(*gc, low, high, freq) == 0);
     return 1;
 }
@@ -553,7 +634,7 @@ static META_FUNCTION(SDL_GameController, Close) {
     return 0;
 }
 
-const NEW_REG(SDL_GameController) {
+const BEGIN_REG(SDL_GameController)
     META_FIELD(SDL_GameController, GetName),
     META_FIELD(SDL_GameController, GetVendor),
     META_FIELD(SDL_GameController, GetProduct),
@@ -565,14 +646,17 @@ const NEW_REG(SDL_GameController) {
     META_FIELD(SDL_GameController, Rumble),
     META_FIELD(SDL_GameController, CurrentPowerLevel),
     META_FIELD(SDL_GameController, Close),
-    {NULL, NULL}
-};
+END_REG()
 NEW_META(SDL_GameController);
 
-// timer
 
+/************************
+ #                      #
+ #        Timer         #
+ #                      #
+ ************************/
 static int l_sdl2_GetTicks(lua_State* L) {
-    lua_pushinteger(L, SDL_GetTicks());
+    PUSH_INTEGER(SDL_GetTicks());
     return 1;
 }
 
@@ -583,15 +667,20 @@ static int l_sdl2_Delay(lua_State* L) {
 }
 
 static int l_sdl2_GetPerformanceCounter(lua_State* L) {
-    lua_pushinteger(L, SDL_GetPerformanceCounter());
+    PUSH_INTEGER(SDL_GetPerformanceCounter());
     return 1;
 }
 
 static int l_sdl2_GetPerformanceFrequency(lua_State* L) {
-    lua_pushinteger(L, SDL_GetPerformanceFrequency());
+    PUSH_INTEGER(SDL_GetPerformanceFrequency());
     return 1;
 }
 
+/************************
+ #                      #
+ #        Enums         #
+ #                      #
+ ************************/
 static struct {
     const char* name;
     int value;
@@ -648,16 +737,19 @@ static struct {
 int seleneopen_sdl2(lua_State* L) {
     keys = SDL_GetKeyboardState(NULL);
     luaL_Reg reg[] = {
+        // Audio
+        {"OpenAudio", l_sdl2_OpenAudio},
+        {"PauseAudio", l_sdl2_PauseAudio},
+        {"CloseAudio", l_sdl2_CloseAudio},
+        // Window
         {"CreateWindow", l_sdl2_CreateWindow},
         {"DestroyWindow", l_sdl2_DestroyWindow},
-        {"GL_SwapWindow", l_sdl2_GL_SwapWindow},
         {"GL_SetAttribute", l_sdl2_GL_SetAttribute},
         {"GL_CreateContext", l_sdl2_GL_CreateContext},
         {"GL_MakeCurrent", l_sdl2_GL_MakeCurrent},
         {"GL_DeleteContext", l_sdl2_GL_DeleteContext},
         //Event
         {"NewEvent", l_sdl2_NewEvent},
-        {"PollEvent", l_sdl2_PollEvent},
         // keyboard
         {"GetScancodeFromName", l_sdl2_GetScancodeFromName},
         {"HasScreenKeyboardSupport", l_sdl2_HasScreenKeyboardSupport},
