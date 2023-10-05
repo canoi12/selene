@@ -6,72 +6,69 @@
 #endif
 #include <sys/stat.h>
 
-static int l_file__SeekSet(lua_State* L) {
-    FILE** file = luaL_checkudata(L, 1, "File");
-    int n = luaL_checkinteger(L, 2);
+typedef FILE* File;
+
+static META_FUNCTION(File, SeekSet) {
+    INIT_GET_UDATA(File, file);
+    CHECK_INTEGER(n);
     fseek(*file, n, SEEK_SET);
     return 0;
 }
 
-static int l_file__SeekEnd(lua_State* L) {
-    FILE** file = luaL_checkudata(L, 1, "File");
+static META_FUNCTION(File, SeekEnd) {
+    INIT_GET_UDATA(File, file);
     fseek(*file, 0, SEEK_END);
     return 0;
 }
 
-static int l_file__SeekCur(lua_State* L) {
-    FILE** file = luaL_checkudata(L, 1, "File");
-    int n = luaL_checkinteger(L, 2);
+static META_FUNCTION(File, SeekCur) {
+    INIT_GET_UDATA(File, file);
+    CHECK_INTEGER(n);
     fseek(*file, n, SEEK_CUR);
     return 0;
 }
 
-static int l_file__Tell(lua_State* L) {
-    FILE** file = luaL_checkudata(L, 1, "File");
-    lua_pushnumber(L, ftell(*file));
+static META_FUNCTION(File, Tell) {
+    INIT_GET_UDATA(File, file);
+    PUSH_INTEGER(ftell(*file));
     return 1;
 }
 
-static int l_file__Read(lua_State* L) {
-    FILE** file = luaL_checkudata(L, 1, "File");
-    return 1;
+static META_FUNCTION(File, Read) {
+    INIT_GET_UDATA(File, file);
+    return 0;
 }
 
-static int l_file__Write(lua_State* L) {
-    FILE** file = luaL_checkudata(L, 1, "File");
-    return 1;
+static META_FUNCTION(File, Write) {
+    INIT_GET_UDATA(File, file);
+    return 0;
 }
 
-static int l_file__Append(lua_State* L) {
-    FILE** file = luaL_checkudata(L, 1, "File");
-    return 1;
+static META_FUNCTION(File, Append) {
+    INIT_GET_UDATA(File, file);
+    return 0;
 }
 
-static int l_file_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"Read", l_file__Read},
-        {"Write", l_file__Write},
-        {"Append", l_file__Append},
-        {"SeekSet", l_file__SeekSet},
-        {"SeekEnd", l_file__SeekEnd},
-        {"SeekCur", l_file__SeekCur},
-        {"Tell", l_file__Tell},
-//        {"decode_image", l_file__decode_image},
-//        {"to_data", l_file__to_data},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "File");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+BEGIN_REG(File)
+    META_FIELD(File, SeekSet),
+    META_FIELD(File, SeekEnd),
+    META_FIELD(File, SeekCur),
+    META_FIELD(File, Tell),
+    META_FIELD(File, Read),
+    META_FIELD(File, Write),
+    META_FIELD(File, Append),
+END_REG()
+NEW_META(File)
 
 static int l_fs_open(lua_State* L) {
     const char* path = luaL_checkstring(L, 1);
     FILE** file = lua_newuserdata(L, sizeof(void*));
     luaL_setmetatable(L, "File");
-    *file = fopen(path, "rb");
+    #if defined(OS_WIN)
+        fopen_s(file, path, "rb");
+    #else
+        *file = fopen(path, "rb");
+    #endif
     if (!(*file)) {
         return luaL_error(L, "Failed to load file");
     }
@@ -89,7 +86,13 @@ static int l_fs_exists(lua_State* L) {
 
 static int l_fs_read(lua_State* L) {
     const char* path = luaL_checkstring(L, 1);
-    FILE* fp = fopen(path, "rb");
+    #if defined(OS_WIN)
+        FILE* fp;
+        fopen_s(&fp, path, "rb");
+    #else
+        FILE* fp = fopen(path, "rb");
+    #endif
+    
     if (!fp)
         return luaL_error(L, "Failed to read file: %s", path);
     fseek(fp, 0, SEEK_END);
@@ -109,7 +112,12 @@ static int l_fs_write(lua_State* L) {
 	const char* path = luaL_checkstring(L, 1);
 	const char* text = luaL_checkstring(L, 2);
 
-	FILE* fp = fopen(path, "w");
+    #if defined(OS_WIN)
+        FILE* fp;
+        fopen_s(&fp, path, "w");
+    #else
+	    FILE* fp = fopen(path, "w");
+    #endif
 	if (!fp)
         return luaL_error(L, "failed to create file %s\n", path);
 	fprintf(fp, "%s", text);
@@ -153,7 +161,6 @@ int seleneopen_fs(lua_State* L) {
     };
     luaL_newlib(L, reg);
 
-    l_file_meta(L);
-    lua_setfield(L, -2, "File");
+    LOAD_META(File);
     return 1;
 }

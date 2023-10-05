@@ -53,6 +53,80 @@
 
 #define SELENE_VER "0.1.0"
 
+#define NEW_META(type)\
+int l_##type##_meta(lua_State* L) {\
+    luaL_newmetatable(L, #type);\
+    luaL_setfuncs(L, type##_reg, 0);\
+    lua_pushvalue(L, -1);\
+    lua_setfield(L, -2, "__index");\
+    return 1;\
+}
+
+#define NEW_REG(type)\
+luaL_Reg type##_reg[] = 
+
+#define BEGIN_REG(type)\
+luaL_Reg type##_reg[] = {
+
+#define END_REG()\
+    {NULL, NULL}\
+};
+
+#define META_FIELD(type, name)\
+{#name, l_##type##__##name}
+
+#define META_FUNCTION(type, func)\
+int l_##type##__##func(lua_State* L)
+
+#define LOAD_META(type)\
+l_##type##_meta(L);\
+lua_setfield(L, -2, #type)
+
+#define INIT_ARG()\
+int arg = 1
+
+#define GET_UDATA(type, name, ...)\
+__VA_ARGS__##type* name = luaL_checkudata(L, arg++, #type)
+
+#define INIT_GET_UDATA(type, name, ...)\
+int arg = 1; __VA_ARGS__##type* name = luaL_checkudata(L, arg++, #type)
+
+#define GET_NUMBER(type, name)\
+type name = lua_tonumber(L, arg++)
+
+#define GET_INTEGER(name)\
+int name = (int)lua_tointeger(L, arg++)
+
+#define GET_BOOLEAN(name)\
+int name = lua_toboolean(L, arg++)
+
+#define CHECK_NUMBER(type, name)\
+type name = (type)luaL_checknumber(L, arg++)
+
+#define CHECK_INTEGER(name)\
+int name = (int)luaL_checkinteger(L, arg++)
+
+#define CHECK_STRING(name)\
+const char* name = luaL_checkstring(L, arg++)
+
+#define OPT_NUMBER(type, name, def)\
+type name = (type)luaL_optnumber(L, arg++, def)
+
+#define OPT_INTEGER(name, def)\
+int name = (int)luaL_optinteger(L, arg++, def)
+
+#define PUSH_NUMBER(name)\
+lua_pushnumber(L, name)
+
+#define PUSH_INTEGER(name)\
+lua_pushinteger(L, name)
+
+#define PUSH_STRING(str)\
+lua_pushstring(L, str)
+
+#define PUSH_BOOLEAN(v)\
+lua_pushboolean(L, v)
+
 #ifndef M_PI
 #define M_PI 3.14159
 #endif

@@ -202,8 +202,8 @@ static int l_gl_NewTexture(lua_State* L) {
     return 1;
 }
 
-static int l_Texture__gc(lua_State* L) {
-    Texture* tex = luaL_checkudata(L, 1, "Texture");
+static META_FUNCTION(Texture, gc) {
+    INIT_GET_UDATA(Texture, tex);
     glDeleteTextures(1, tex);
     return 0;
 }
@@ -257,17 +257,10 @@ static int l_gl_TexParameteri(lua_State* L) {
     return 0;
 }
 
-static int l_Texture_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"__gc", l_Texture__gc},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "Texture");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+BEGIN_REG(Texture)
+    META_FIELD(Texture, gc),
+END_REG()
+NEW_META(Texture)
 
 // Framebuffer
 static int default_framebuffer;
@@ -885,20 +878,11 @@ int seleneopen_gl(lua_State* L) {
         lua_setfield(L, -2, l_gl_Enums[i].name);
     }
 
-    l_Texture_meta(L);
-    lua_setfield(L, -2, "Texture");
-
-    l_Framebuffer_meta(L);
-    lua_setfield(L, -2, "Framebuffer");
-
-    l_Shader_meta(L);
-    lua_setfield(L, -2, "Shader");
-    l_Program_meta(L);
-    lua_setfield(L, -2, "Program");
-
-    l_VertexArray_meta(L);
-    lua_setfield(L, -2, "VertexArray");
-    l_Buffer_meta(L);
-    lua_setfield(L, -2, "Buffer");
+    LOAD_META(Texture);
+    LOAD_META(Framebuffer);
+    LOAD_META(Shader);
+    LOAD_META(Program);
+    LOAD_META(VertexArray);
+    LOAD_META(Buffer);
     return 1;
 }

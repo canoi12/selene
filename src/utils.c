@@ -5,79 +5,79 @@
 #include "stb_truetype.h"
 #include "linmath.h"
 
-static int l_Data__Realloc(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
-    int size = luaL_checkinteger(L, 2);
-    if (size < data->offset) data->offset = size - 1;
+static META_FUNCTION(Data, Realloc) {
+    INIT_GET_UDATA(Data, data);
+    CHECK_INTEGER(size);
+    if (size < data->offset)
+        data->offset = size - 1;
     data->data = realloc(data->data, size);
     data->size = size;
     return 0;
 }
 
-static int l_Data__GetOffset(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
-    lua_pushinteger(L, data->offset);
+static META_FUNCTION(Data, GetOffset) {
+    INIT_GET_UDATA(Data, data);
+    PUSH_INTEGER(data->offset);
     return 1;
 }
 
-static int l_Data__SetOffset(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
-    int offset = luaL_checkinteger(L, 2);
+static META_FUNCTION(Data, SetOffset) {
+    INIT_GET_UDATA(Data, data);
+    CHECK_INTEGER(offset);
     data->offset = offset > data->size ? data->size : offset;
-    return 0;
-}
-
-static int l_Data__GetSize(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
-    lua_pushinteger(L, data->size);
     return 1;
 }
 
-static int l_Data__Write(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
+static META_FUNCTION(Data, GetSize) {
+    INIT_GET_UDATA(Data, data);
+    PUSH_INTEGER(data->size);
+    return 1;
+}
+
+static META_FUNCTION(Data, Write) {
+    INIT_GET_UDATA(Data, data);
     int args = lua_gettop(L)-1;
     int error = (data->offset+args) > data->size;
     if (error) return luaL_error(L, "Data overflow");
 
     char* dt = ((char*)data->data) + data->offset;
     for (int i = 0; i < args; i++) {
-        char value = luaL_checkinteger(L, 2+i);
+        char value = (char)luaL_checkinteger(L, 2+i);
         dt[i] = value;
     }
     data->offset += args;
     return 0;
 }
-
-static int l_Data__WriteInt(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
+static META_FUNCTION(Data, WriteInt) {
+    INIT_GET_UDATA(Data, data);
     int args = lua_gettop(L)-1;
     int error = (data->offset+(args*4)) > data->size;
     if (error) return luaL_error(L, "Data overflow");
     int* dt = (int*)((char*)data->data + data->offset);
     for (int i = 0; i < args; i++) {
-        int value = luaL_checknumber(L, 2+i);
+        int value = (int)luaL_checkinteger(L, 2+i);
         dt[i] = value;
     }
     data->offset += args*4;
     return 0;
 }
 
-static int l_Data__WriteFloat(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
+static META_FUNCTION(Data, WriteFloat) {
+    INIT_GET_UDATA(Data, data);
     int args = lua_gettop(L)-1;
     int error = (data->offset+(args*4)) > data->size;
     if (error) return luaL_error(L, "Data overflow");
     float* dt = (float*)((char*)data->data + data->offset);
     for (int i = 0; i < args; i++) {
-        float value = luaL_checknumber(L, 2+i);
+        float value = (float)luaL_checknumber(L, 2+i);
         dt[i] = value;
     }
     data->offset += args*4;
     return 0;
 }
 
-static int l_Data__WriteString(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
+static META_FUNCTION(Data, WriteString) {
+    INIT_GET_UDATA(Data, data);
     size_t size;
     const char* str = luaL_checklstring(L, 2, &size);
     int error = (data->offset+size) > data->size;
@@ -91,8 +91,8 @@ static int l_Data__WriteString(lua_State* L) {
     return 0;
 }
 
-static int l_Data__gc(lua_State* L) {
-    Data* data = luaL_checkudata(L, 1, "Data");
+static META_FUNCTION(Data, gc) {
+    INIT_GET_UDATA(Data, data);
     if (data->data) {
         free(data->data);
         data->data = NULL;
@@ -100,28 +100,21 @@ static int l_Data__gc(lua_State* L) {
     return 0;
 }
 
-static int l_Data_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"Realloc", l_Data__Realloc},
-        {"GetOffset", l_Data__GetOffset},
-        {"SetOffset", l_Data__SetOffset},
-        {"GetSize", l_Data__GetSize},
-        {"Write", l_Data__Write},
-        {"WriteInt", l_Data__WriteInt},
-        {"WriteFloat", l_Data__WriteFloat},
-        {"WriteString", l_Data__WriteString},
-        {"__gc", l_Data__gc},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "Data");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+BEGIN_REG(Data)
+    META_FIELD(Data, Realloc),
+    META_FIELD(Data, GetOffset),
+    META_FIELD(Data, SetOffset),
+    META_FIELD(Data, GetSize),
+    META_FIELD(Data, Write),
+    META_FIELD(Data, WriteInt),
+    META_FIELD(Data, WriteFloat),
+    META_FIELD(Data, WriteString),
+    META_FIELD(Data, gc),
+END_REG()
+NEW_META(Data)
 
 static int l_utils_NewData(lua_State* L) {
-    int size = luaL_checkinteger(L, 1);
+    int size = (int)luaL_checkinteger(L, 1);
     Data* data = lua_newuserdata(L, sizeof(*data));
     luaL_setmetatable(L, "Data");
     data->offset = 0;
@@ -132,74 +125,68 @@ static int l_utils_NewData(lua_State* L) {
 
 
 // Matrix
-static int l_Mat4__Identity(lua_State* L) {
-    mat4x4* mat = luaL_checkudata(L, 1, "Mat4");
+typedef mat4x4 Mat4;
+static META_FUNCTION(Mat4, Identity) {
+    INIT_GET_UDATA(Mat4, mat);
     mat4x4_identity(*mat);
     return 0;
 }
 
-static int l_Mat4__Translate(lua_State* L) {
-    mat4x4* mat = luaL_checkudata(L, 1, "Mat4");
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
-    float z = luaL_optnumber(L, 4, 0.f);
+static META_FUNCTION(Mat4, Translate) {
+    INIT_GET_UDATA(Mat4, mat);
+    CHECK_NUMBER(float, x);
+    CHECK_NUMBER(float, y);
+    OPT_NUMBER(float, z, 0.f);
     mat4x4_translate_in_place(*mat, x, y, z);
     return 0;
 }
 
-static int l_Mat4__Scale(lua_State* L) {
-    mat4x4* mat = luaL_checkudata(L, 1, "Mat4");
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
-    float z = luaL_optnumber(L, 4, 1.f);
+static META_FUNCTION(Mat4, Scale) {
+    INIT_GET_UDATA(Mat4, mat);
+    CHECK_NUMBER(float, x);
+    CHECK_NUMBER(float, y);
+    OPT_NUMBER(float, z, 0.f);
     mat4x4_scale_aniso(*mat, *mat, x, y, z);
     return 0;
 }
 
-static int l_Mat4__Rotate(lua_State* L) {
+static META_FUNCTION(Mat4, Rotate) {
     return 0;
 }
 
-static int l_Mat4__Ortho(lua_State* L) {
-    mat4x4* mat = luaL_checkudata(L, 1, "Mat4");
-    float left = luaL_checknumber(L, 2);
-    float right = luaL_checknumber(L, 3);
-    float bottom = luaL_checknumber(L, 4);
-    float top = luaL_checknumber(L, 5);
-    float near = luaL_checknumber(L, 6);
-    float far = luaL_checknumber(L, 7);
+static META_FUNCTION(Mat4, Ortho) {
+    INIT_GET_UDATA(Mat4, mat);
+    CHECK_NUMBER(float, left);
+    CHECK_NUMBER(float, right);
+    CHECK_NUMBER(float, bottom);
+    CHECK_NUMBER(float, top);
+    CHECK_NUMBER(float, near);
+    CHECK_NUMBER(float, far);
     mat4x4_ortho(*mat, left, right, bottom, top, near, far);
     return 0;
 }
 
-static int l_Mat4__Frustum(lua_State* L) {
-    mat4x4* mat = luaL_checkudata(L, 1, "Mat4");
-    float left = luaL_checknumber(L, 2);
-    float right = luaL_checknumber(L, 3);
-    float bottom = luaL_checknumber(L, 4);
-    float top = luaL_checknumber(L, 5);
-    float near = luaL_checknumber(L, 6);
-    float far = luaL_checknumber(L, 7);
+static META_FUNCTION(Mat4, Frustum) {
+    INIT_GET_UDATA(Mat4, mat);
+    CHECK_NUMBER(float, left);
+    CHECK_NUMBER(float, right);
+    CHECK_NUMBER(float, bottom);
+    CHECK_NUMBER(float, top);
+    CHECK_NUMBER(float, near);
+    CHECK_NUMBER(float, far);
     mat4x4_frustum(*mat, left, right, bottom, top, near, far);
     return 0;
 }
 
-static int l_Mat4_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"Identity", l_Mat4__Identity},
-        {"Translate", l_Mat4__Translate},
-        {"Scale", l_Mat4__Scale},
-        {"Rotate", l_Mat4__Rotate},
-        {"Ortho", l_Mat4__Ortho},
-        {"Frustum", l_Mat4__Frustum},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "Mat4");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+BEGIN_REG(Mat4)
+    META_FIELD(Mat4, Identity),
+    META_FIELD(Mat4, Translate),
+    META_FIELD(Mat4, Scale),
+    META_FIELD(Mat4, Rotate),
+    META_FIELD(Mat4, Ortho),
+    META_FIELD(Mat4, Frustum),
+END_REG()
+NEW_META(Mat4)
 
 static int l_utils_NewMat4(lua_State* L) {
     mat4x4* m = lua_newuserdata(L, sizeof(*m));
@@ -210,7 +197,7 @@ static int l_utils_NewMat4(lua_State* L) {
 
 static int l_utils_LoadImageData(lua_State* L) {
     const char* path = luaL_checkstring(L, 1);
-    int req = luaL_optinteger(L, 2, STBI_rgb_alpha);
+    int req = (int)luaL_optinteger(L, 2, STBI_rgb_alpha);
     int w, h, c;
     Uint8* pixels = stbi_load(path, &w, &h, &c, req);
     Data* d = lua_newuserdata(L, sizeof(*d));
