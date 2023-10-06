@@ -183,26 +183,23 @@ static BEGIN_FUNCTION(gl, DrawElements)
 END_FUNCTION(0)
 
 // Texture
-static int l_gl_NewTexture(lua_State* L) {
-    Texture* tex = lua_newuserdata(L, sizeof(*tex));
-    luaL_setmetatable(L, "Texture");
+static BEGIN_FUNCTION(gl, NewTexture)
+    NEW_UDATA(Texture, tex, sizeof(*tex));
     glGenTextures(1, tex);
-    return 1;
-}
+END_FUNCTION(1);
 
 static BEGIN_META_FUNCTION(Texture, gc, tex)
     glDeleteTextures(1, tex);
 END_FUNCTION(0)
 
-static int l_gl_BindTexture(lua_State* L) {
+static BEGIN_FUNCTION(gl, BindTexture)
     int target = (int)luaL_checkinteger(L, 1);
     Texture* tex = luaL_testudata(L, 2, "Texture");
     if (tex) glBindTexture(target, *tex);
     else glBindTexture(target, 0);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_TexImage2D(lua_State* L) {
+static BEGIN_FUNCTION(gl, TexImage2D)
     int target = (int)luaL_checkinteger(L, 1);
     int internal = (int)luaL_checkinteger(L, 2);
     int width = (int)luaL_checkinteger(L, 3);
@@ -215,10 +212,9 @@ static int l_gl_TexImage2D(lua_State* L) {
         data = dt->data;
     }
     glTexImage2D(target, 0, internal, width, height, 0, format, type_, data);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_TexSubImage2D(lua_State* L) {
+static BEGIN_FUNCTION(gl, TexSubImage2D)
     int target = (int)luaL_checkinteger(L, 1);
     int xoffset = (int)luaL_checkinteger(L, 2);
     int yoffset = (int)luaL_checkinteger(L, 3);
@@ -232,16 +228,14 @@ static int l_gl_TexSubImage2D(lua_State* L) {
         data = dt->data;
     }
     glTexSubImage2D(target, 0, xoffset, yoffset, width, height, format, type_, data);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_TexParameteri(lua_State* L) {
+static BEGIN_FUNCTION(gl, TexParameteri)
     int target = (int)luaL_checkinteger(L, 1);
     int pname = (int)luaL_checkinteger(L, 2);
     int param = (int)luaL_checkinteger(L, 3);
     glTexParameteri(target, pname, param);
-    return 0;
-}
+END_FUNCTION(0)
 
 static BEGIN_META(Texture)
     BEGIN_REG(Texture)
@@ -251,90 +245,73 @@ static BEGIN_META(Texture)
 END_META(1)
 
 // Framebuffer
-static int default_framebuffer;
-static int l_gl_NewFramebuffer(lua_State* L) {
+static BEGIN_FUNCTION(gl, NewFramebuffer)
     Framebuffer* buffer = lua_newuserdata(L, sizeof(*buffer));
     luaL_setmetatable(L, "Framebuffer");
     glGenFramebuffers(1, buffer);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_Framebuffer__gc(lua_State* L) {
-    Framebuffer* fbo = luaL_checkudata(L, 1, "Framebuffer");
+static BEGIN_META_FUNCTION(Framebuffer, gc, fbo)
     glDeleteFramebuffers(1, fbo);
-    return 0;
-}
+END_FUNCTION(1)
 
-static int l_gl_BindFramebuffer(lua_State* L) {
+static BEGIN_FUNCTION(gl, BindFramebuffer)
     int target = (int)luaL_checkinteger(L, 1);
     Framebuffer* buffer = luaL_testudata(L, 2, "Framebuffer");
     if (buffer) glBindFramebuffer(target, *buffer);
     else glBindFramebuffer(target, 0);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_AttachTexture2D(lua_State* L) {
+static BEGIN_FUNCTION(gl, AttachTexture2D)
     int target = (int)luaL_checkinteger(L, 1);
     int attachment = (int)luaL_checkinteger(L, 2);
     int tex_target = (int)luaL_checkinteger(L, 3);
     Texture* tex = luaL_checkudata(L, 4, "Texture");
     glFramebufferTexture2D(target, attachment, tex_target, *tex, 0);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_Framebuffer_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"__gc", l_Framebuffer__gc},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "Framebuffer");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+static BEGIN_META(Framebuffer)
+    BEGIN_REG(Framebuffer)
+        REG_META_FIELD(Framebuffer, gc),
+    END_REG()
+    NEW_META(Framebuffer);
+END_META(1)
 
 // Vertex Array
 
-static int l_gl_NewVertexArray(lua_State* L) {
+static BEGIN_FUNCTION(gl, NewVertexArray)
     VertexArray* vao = lua_newuserdata(L, sizeof(*vao));
     luaL_setmetatable(L, "VertexArray");
 #if !defined(__EMSCRIPTEN__)
     glGenVertexArrays(1, vao);
 #endif
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_VertexArray__gc(lua_State* L) {
-    VertexArray* vao = luaL_checkudata(L, 1, "VertexArray");
+static BEGIN_META_FUNCTION(VertexArray, gc, vao)
 #if !defined(__EMSCRIPTEN__)
     glDeleteVertexArrays(1, vao);
 #endif
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_BindVertexArray(lua_State* L) {
+static BEGIN_FUNCTION(gl, BindVertexArray)
     VertexArray* vao = luaL_testudata(L, 1, "VertexArray");
 #if !defined(__EMSCRIPTEN__)
     if (vao) glBindVertexArray(*vao);
     else glBindVertexArray(0);
 #endif
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_EnableVertexAttribArray(lua_State* L) {
+static BEGIN_FUNCTION(gl, EnableVertexAttribArray)
     int attrib = (int)luaL_checkinteger(L, 1);
     glEnableVertexAttribArray(attrib);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_DisableVertexAttribArray(lua_State* L) {
+static BEGIN_FUNCTION(gl, DisableVertexAttribArray)
     int attrib = (int)luaL_checkinteger(L, 1);
     glDisableVertexAttribArray(attrib);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_VertexAttribPointer(lua_State* L) {
+static BEGIN_FUNCTION(gl, VertexAttribPointer)
     int attrib = (int)luaL_checkinteger(L, 1);
     int size = (int)luaL_checkinteger(L, 2);
     int type = (int)luaL_checkinteger(L, 3);
@@ -342,98 +319,76 @@ static int l_gl_VertexAttribPointer(lua_State* L) {
     int stride = (int)luaL_checkinteger(L, 5);
     int offset = (int)luaL_checkinteger(L, 6);
     glVertexAttribPointer(attrib, size, type, normalized, stride, (void*)offset);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_VertexArray_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"__gc", l_VertexArray__gc},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "VertexArray");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+static BEGIN_META(VertexArray)
+    BEGIN_REG(VertexArray)
+    REG_META_FIELD(VertexArray, gc),
+    END_REG()
+    NEW_META(VertexArray);
+END_META(1)
 
 // Buffer
-static int l_gl_NewBuffer(lua_State* L) {
+static BEGIN_FUNCTION(gl, NewBuffer)
     Buffer* buffer = lua_newuserdata(L, sizeof(*buffer));
     luaL_setmetatable(L, "Buffer");
     glGenBuffers(1, buffer);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_Buffer__gc(lua_State* L) {
-    Buffer* b = luaL_checkudata(L, 1, BUFFER_META);
+static BEGIN_META_FUNCTION(Buffer, gc, b)
     glDeleteBuffers(1, b);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_BindBuffer(lua_State* L) {
+static BEGIN_FUNCTION(gl, BindBuffer)
     int target = (int)luaL_checkinteger(L, 1);
     Buffer* b = luaL_testudata(L, 2, BUFFER_META);
     if (b) glBindBuffer(target, *b);
     else glBindBuffer(target, 0);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_BufferData(lua_State* L) {
+static BEGIN_FUNCTION(gl, BufferData)
     int target = (int)luaL_checkinteger(L, 1);
     int size = (int)luaL_checkinteger(L, 2);
     int usage = (int)luaL_checkinteger(L, 3);
     Data* data = luaL_testudata(L, 4, "Data");
     if (data) glBufferData(target, size, data->data, usage);
     else glBufferData(target, size, NULL, usage);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_BufferSubData(lua_State* L) {
+static BEGIN_FUNCTION(gl, BufferSubData)
     int target = (int)luaL_checkinteger(L, 1);
     int start = (int)luaL_checkinteger(L, 2);
     int size = (int)luaL_checkinteger(L, 3);
     Data* data = luaL_checkudata(L, 4, "Data");
     glBufferSubData(target, start, size, data->data);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_Buffer_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"__gc", l_Buffer__gc},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "Buffer");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
-
+static BEGIN_META(Buffer)
+    BEGIN_REG(Buffer)
+    REG_META_FIELD(Buffer, gc),
+    END_REG()
+    NEW_META(Buffer);
+END_META(1)
 // Shader
-static int l_gl_NewShader(lua_State* L) {
+static BEGIN_FUNCTION(gl, NewShader)
     int gl_enum = (int)luaL_checkinteger(L, 1);
     Shader* s = lua_newuserdata(L, sizeof(*s));
     luaL_setmetatable(L, "Shader");
     *s = glCreateShader(gl_enum);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_Shader__gc(lua_State* L) {
-    Shader* s = luaL_checkudata(L, 1, "Shader");
+static BEGIN_META_FUNCTION(Shader, gc, s)
     glDeleteShader(*s);
     *s = 0;
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_ShaderSource(lua_State* L) {
+static BEGIN_FUNCTION(gl, ShaderSource)
     Shader* s = luaL_checkudata(L, 1, "Shader");
     const char* source = luaL_checkstring(L, 2);
     glShaderSource(*s, 1, &source, NULL);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_CompileShader(lua_State* L) {
+static BEGIN_FUNCTION(gl, CompileShader)
     Shader* s = luaL_checkudata(L, 1, "Shader");
     glCompileShader(*s);
     int success = 0;
@@ -454,46 +409,36 @@ static int l_gl_CompileShader(lua_State* L) {
         log[len] = '\0';
         return luaL_error(L, "Failed to compile shader: %s\n", log);
     }
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_Shader_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"__gc", l_Shader__gc},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "Shader");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+static BEGIN_META(Shader)
+    BEGIN_REG(Shader)
+        REG_META_FIELD(Shader, gc),
+    END_REG()
+    NEW_META(Shader);
+END_META(1)
 
 // Program
-static int l_gl_NewProgram(lua_State* L) {
+static BEGIN_FUNCTION(gl, NewProgram)
     Program* p = lua_newuserdata(L, sizeof(*p));
     luaL_setmetatable(L, "Program");
     *p = glCreateProgram();
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_Program__gc(lua_State* L) {
-    Program* p = luaL_checkudata(L, 1, "Program");
+static BEGIN_META_FUNCTION(Program, gc, p)
     glDeleteProgram(*p);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_AttachShader(lua_State* L) {
+static BEGIN_FUNCTION(gl, AttachShader)
     Program* p = luaL_checkudata(L, 1, "Program");
     int args = lua_gettop(L)-1;
     for (int i = 0; i < args; i++) {
         Shader* s = luaL_checkudata(L, 2+i, "Shader");
         glAttachShader(*p, *s);
     }
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_LinkProgram(lua_State* L) {
+static BEGIN_FUNCTION(gl, LinkProgram)
     Program* p = luaL_checkudata(L, 1, "Program");
     glLinkProgram(*p);
     int success = 0;
@@ -514,34 +459,29 @@ static int l_gl_LinkProgram(lua_State* L) {
         log[len] = '\0';
         return luaL_error(L, "Failed to link program: %s\n", log);
     }
+END_FUNCTION(0)
 
-    return 0;
-}
-
-static int l_gl_UseProgram(lua_State* L) {
+static BEGIN_FUNCTION(gl, UseProgram)
     Program* p = luaL_testudata(L, 1, "Program");
     if (p) glUseProgram(*p);
     else glUseProgram(0);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_GetAttribLocation(lua_State* L) {
+static BEGIN_FUNCTION(gl, GetAttribLocation)
     Program* p = luaL_checkudata(L, 1, "Program");
     const char* name = luaL_checkstring(L, 2);
     int loc = glGetAttribLocation(*p, name);
     lua_pushinteger(L, loc);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_gl_GetUniformLocation(lua_State* L) {
+static BEGIN_FUNCTION(gl, GetUniformLocation)
     Program* p = luaL_checkudata(L, 1, "Program");
     const char* name = luaL_checkstring(L, 2);
     int loc = glGetUniformLocation(*p, name);
     lua_pushinteger(L, loc);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_gl_Uniform1fv(lua_State* L) {
+static BEGIN_FUNCTION(gl, Uniform1fv)
     int location = (int)luaL_checkinteger(L, 1);
     int args = (int)lua_gettop(L) - 1;
 #if defined(OS_WIN)
@@ -558,10 +498,9 @@ static int l_gl_Uniform1fv(lua_State* L) {
         values[i] = (float)luaL_checknumber(L, 2+i);
     }
     glUniform1fv(location, args, values);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_Uniform2fv(lua_State* L) {
+static BEGIN_FUNCTION(gl, Uniform2fv)
     int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 2;
@@ -588,10 +527,9 @@ static int l_gl_Uniform2fv(lua_State* L) {
         v += 2;
     }
     glUniform2fv(location, args, values);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_Uniform3fv(lua_State* L) {
+static BEGIN_FUNCTION(gl, Uniform3fv)
     int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 3;
@@ -618,10 +556,9 @@ static int l_gl_Uniform3fv(lua_State* L) {
         v += 3;
     }
     glUniform3fv(location, args, values);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_Uniform4fv(lua_State* L) {
+static BEGIN_FUNCTION(gl, Uniform4fv)
     int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 4;
@@ -648,155 +585,26 @@ static int l_gl_Uniform4fv(lua_State* L) {
         v += 4;
     }
     glUniform4fv(location, args, values);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_gl_UniformMatrix4fv(lua_State* L) {
-    int location = (int)luaL_checkinteger(L, 1);
-    int count = (int)luaL_checkinteger(L, 2);
-    int normalize = lua_toboolean(L, 3);
-    mat4x4* m = luaL_checkudata(L, 4, "Mat4");
+static BEGIN_FUNCTION(gl, UniformMatrix4fv)
+    INIT_ARG();
+    CHECK_INTEGER(location);
+    CHECK_INTEGER(count);
+    GET_BOOLEAN(normalize);
+    mat4x4* m = luaL_checkudata(L, arg++, "Mat4");
     glUniformMatrix4fv(location, count, normalize, **m);
-    return 0;
-}
+END_FUNCTION(0)
 
 
-static int l_Program_meta(lua_State* L) {
-    luaL_Reg reg[] = {
-        {"__gc", l_Program__gc},
-        {NULL, NULL}
-    };
-    luaL_newmetatable(L, "Program");
-    luaL_setfuncs(L, reg, 0);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
+static BEGIN_META(Program)
+    BEGIN_REG(Program)
+    REG_META_FIELD(Program, gc),
+    END_REG()
+    NEW_META(Program);
+END_META(1)
 
-static int l_gl_gl(lua_State* L) {
-    lua_newtable(L);
-    return 1;
-}
-
-static struct {
-    const char* name;
-    GLenum value;
-} l_gl_Enums[] = {
-    // Clear
-    {"COLOR_BUFFER_BIT", GL_COLOR_BUFFER_BIT},
-    {"DEPTH_BUFFER_BIT", GL_DEPTH_BUFFER_BIT},
-    {"STENCIL_BUFFER_BIT", GL_STENCIL_BUFFER_BIT},
-    // Types
-    {"BYTE", GL_BYTE},
-    {"UNSIGNED_BYTE", GL_UNSIGNED_BYTE},
-    {"SHORT", GL_SHORT},
-    {"UNSIGNED_SHORT", GL_UNSIGNED_SHORT},
-    {"INT", GL_INT},
-    {"UNSIGNED_INT", GL_UNSIGNED_INT},
-    {"FLOAT", GL_FLOAT},
-#if !defined(__EMSCRIPTEN__)
-    {"DOUBLE", GL_DOUBLE},
-#endif
-    // Enable
-    {"DEPTH_TEST", GL_DEPTH_TEST},
-    {"STENCIL_TEST", GL_STENCIL_TEST},
-    {"SCISSOR_TEST", GL_SCISSOR_TEST},
-    {"BLEND", GL_BLEND},
-    {"CULL_FACE", GL_CULL_FACE},
-    // Pixel
-#if !defined(__EMSCRIPTEN__)
-    {"RED", GL_RED},
-    {"RG", GL_RG},
-    {"BGR", GL_BGR},
-    {"BGRA", GL_BGRA},
-#endif
-    {"RGB", GL_RGB},
-    {"RGBA", GL_RGBA},
-    {"DEPTH_COMPONENT", GL_DEPTH_COMPONENT},
-    {"DEPTH_COMPONENT16", GL_DEPTH_COMPONENT16},
-#if !defined(__EMSCRIPTEN__)
-    {"DEPTH_COMPONENT24", GL_DEPTH_COMPONENT24},
-    {"DEPTH_COMPONENT32", GL_DEPTH_COMPONENT32},
-    {"DEPTH_COMPONENT32F", GL_DEPTH_COMPONENT32F},
-    {"DEPTH32F_STENCIL8", GL_DEPTH32F_STENCIL8},
-    {"DEPTH24_STENCIL8", GL_DEPTH24_STENCIL8},
-#endif
-    // Funcs
-    {"ZERO", GL_ZERO},
-    {"ONE", GL_ONE},
-    {"SRC_COLOR", GL_SRC_COLOR},
-    {"ONE_MINUS_SRC_COLOR", GL_ONE_MINUS_SRC_COLOR},
-    {"SRC_ALPHA", GL_SRC_ALPHA},
-    {"ONE_MINUS_SRC_ALPHA", GL_ONE_MINUS_SRC_ALPHA},
-    {"DST_ALPHA", GL_DST_ALPHA},
-    {"ONE_MINUS_DST_ALPHA", GL_ONE_MINUS_DST_ALPHA},
-    {"DST_COLOR", GL_DST_COLOR},
-    {"ONE_MINUS_DST_COLOR", GL_ONE_MINUS_DST_COLOR},
-    {"SRC_ALPHA_SATURATE", GL_SRC_ALPHA_SATURATE},
-    {"CONSTANT_COLOR", GL_CONSTANT_COLOR},
-    {"ONE_MINUS_CONSTANT_COLOR", GL_ONE_MINUS_CONSTANT_COLOR},
-    {"CONSTANT_ALPHA", GL_CONSTANT_ALPHA},
-    {"ONE_MINUS_CONSTANT_ALPHA", GL_ONE_MINUS_CONSTANT_ALPHA},
-    // Draw mode
-    {"POINTS", GL_POINTS},
-    {"LINES", GL_LINES},
-    {"TRIANGLES", GL_TRIANGLES},
-    // Texture targers
-    {"TEXTURE_2D", GL_TEXTURE_2D},
-    {"TEXTURE_CUBE_MAP", GL_TEXTURE_CUBE_MAP},
-    {"TEXTURE_CUBE_MAP_NEGATIVE_X", GL_TEXTURE_CUBE_MAP_NEGATIVE_X},
-    {"TEXTURE_CUBE_MAP_POSITIVE_X", GL_TEXTURE_CUBE_MAP_POSITIVE_X},
-    {"TEXTURE_CUBE_MAP_NEGATIVE_Y", GL_TEXTURE_CUBE_MAP_NEGATIVE_Y},
-    {"TEXTURE_CUBE_MAP_POSITIVE_Y", GL_TEXTURE_CUBE_MAP_POSITIVE_Y},
-    {"TEXTURE_CUBE_MAP_NEGATIVE_Z", GL_TEXTURE_CUBE_MAP_NEGATIVE_Z},
-    {"TEXTURE_CUBE_MAP_POSITIVE_Z", GL_TEXTURE_CUBE_MAP_POSITIVE_Z},
-    // Texture params
-    {"TEXTURE_MIN_FILTER", GL_TEXTURE_MIN_FILTER},
-    {"TEXTURE_MAG_FILTER", GL_TEXTURE_MAG_FILTER},
-    {"TEXTURE_WRAP_S", GL_TEXTURE_WRAP_S},
-    {"TEXTURE_WRAP_T", GL_TEXTURE_WRAP_T},
-    {"NEAREST", GL_NEAREST},
-    {"LINEAR", GL_LINEAR},
-    {"REPEAT", GL_NEAREST},
-#if !defined(__EMSCRIPTEN__)
-    {"CLAMP_TO_BORDER", GL_CLAMP_TO_BORDER},
-    {"CLAMP_TO_EDGE", GL_CLAMP_TO_EDGE},
-#endif
-    // Framebuffer targets
-    {"FRAMEBUFFER", GL_FRAMEBUFFER},
-#if !defined(__EMSCRIPTEN__)
-    {"DRAW_FRAMEBUFFER", GL_DRAW_FRAMEBUFFER},
-    {"READ_FRAMEBUFFER", GL_READ_FRAMEBUFFER},
-    {"DEPTH_STENCIL_ATTACHMENT", GL_DEPTH_STENCIL_ATTACHMENT},
-#endif
-    {"COLOR_ATTACHMENT0", GL_COLOR_ATTACHMENT0},
-    {"DEPTH_ATTACHMENT", GL_DEPTH_ATTACHMENT},
-    {"STENCIL_ATTACHMENT", GL_STENCIL_ATTACHMENT},
-    // Buffer
-    {"ARRAY_BUFFER", GL_ARRAY_BUFFER},
-    {"ELEMENT_ARRAY_BUFFER", GL_ELEMENT_ARRAY_BUFFER},
-#if !defined(__EMSCRIPTEN__)
-    {"UNIFORM_BUFFER", GL_UNIFORM_BUFFER},
-    {"DYNAMIC_READ", GL_DYNAMIC_READ},
-    {"DYNAMIC_COPY", GL_DYNAMIC_COPY},
-    {"STATIC_READ", GL_STATIC_READ},
-    {"STATIC_COPY", GL_STATIC_COPY},
-    {"STREAM_READ", GL_STREAM_READ},
-    {"STREAM_COPY", GL_STREAM_COPY},
-#endif
-    {"DYNAMIC_DRAW", GL_DYNAMIC_DRAW},
-    {"STATIC_DRAW", GL_STATIC_DRAW},
-    {"STREAM_DRAW", GL_STREAM_DRAW},
-    // Shader
-    {"FRAGMENT_SHADER", GL_FRAGMENT_SHADER},
-    {"VERTEX_SHADER", GL_VERTEX_SHADER},
-#if !defined(__EMSCRIPTEN__)
-    {"GEOMETRY_SHADER", GL_GEOMETRY_SHADER},
-#endif
-    {NULL, 0}
-};
-
-BEGIN_ENUM(gl)
+static const BEGIN_ENUM(gl)
     // Clear
     ENUM_FIELD(COLOR_BUFFER_BIT, GL_),
     ENUM_FIELD(DEPTH_BUFFER_BIT, GL_),

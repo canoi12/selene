@@ -1,5 +1,6 @@
 #include "SDL_audio.h"
 #include "SDL_events.h"
+#include "SDL_gamecontroller.h"
 #include "SDL_joystick.h"
 #include "SDL_keyboard.h"
 #include "SDL_mouse.h"
@@ -448,10 +449,11 @@ static int l_sdl2_GameControllerOpen(lua_State* L) {
     return 1;
 }
 
-static int l_sdl2_IsGameController(lua_State* L) {
-    PUSH_BOOLEAN(SDL_IsGameController((int)luaL_checkinteger(L, 1)));
-    return 1;
-}
+static BEGIN_FUNCTION(sdl2, IsGameController)
+    INIT_ARG();
+    CHECK_INTEGER(joy);
+    PUSH_BOOLEAN(SDL_IsGameController(joy));
+END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(SDL_GameController, GetName, *gc)
     PUSH_STRING(SDL_GameControllerName(*gc));

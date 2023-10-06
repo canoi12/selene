@@ -215,13 +215,81 @@ static int l_utils_LoadTTF(lua_State* L) {
     float fsize = (float)font_size;
     float scale = stbtt_ScaleForMappingEmToPixels(&info, fsize);
     stbtt_GetFontVMetrics(&info, &ascent, &descent, &line_gap);
+    int baseline = (int)(ascent * scale);
+
     int tw, th;
     tw = th = 0;
 
     int i;
-    for (i = 0; i < 256; i++) {
+    struct {
+        int ax, ay;
+        int bl, bw;
+        int bh, bt;
+        int tx;
+    } glyphs[256];
 
+    for (i = 0; i < 256; i++) {
+        int ax, bl;
+        int x0, y0, x1, y1;
+        int w, h;
+
+        stbtt_GetCodepointHMetrics(&info, i, &ax, &bl);
+        stbtt_GetCodepointBitmapBox(&info, i, scale, scale, &x0, &y0, &x1, &y1);
+
+        w = x1 - x0;
+        h = y1 - y0;
+
+        glyphs[i].ax = (int)(ax * scale);
+        glyphs[i].ay = 0;
+        glyphs[i].bl = (int)(bl * scale);
+        glyphs[i].bw = w;
+        glyphs[i].bh = h;
+        glyphs[i].bt = baseline + y0;
+
+        tw += w;
+        th = MAX(th, h);
     }
+
+    int height = th;
+    const int final_size = tw * th;
+
+    Uint32* bitmap = malloc(final_size * sizeof(Uint32));
+    memset(bitmap, 0, final_size * sizeof(Uint32));
+    int x = 0;
+    for (int i = 0; i < 256; i++) {
+        int ww = glyphs[i].bw;
+        int hh = glyphs[i].bh;
+        int ssize = ww * hh;
+        int ox, oy;
+
+        unsigned char* bmp = stbtt_GetCodepointBitmap(&info, 0, scale, i, NULL, NULL, &ox, &oy);
+        int xx, yy;
+        for (int j = 0; j < ssize; j++) {
+            xx = (j % ww) + x;
+            if (j != 0 && j % ww == 0)
+                yy += tw;
+
+            Uint8* b = (Uint8*)&bitmap[xx + yy];
+            b[0] = 255;
+            b[1] = 255;
+            b[2] = 255;
+            b[3] = bmp[j];
+        }
+        stbtt_FreeBitmap(bmp, info.userdata);
+
+        glyphs[i].tx = x;
+
+        x += glyphs[i].bw;
+    }
+
+    Uint32* tex = lua_newuserdata(L, sizeof(*tex));
+    luaL_setmetatable(L, "Texture");
+    glBindTexture(GL_TEXTURE_2D, *tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    free(bitmap);
+
     return 4;
 }
 
