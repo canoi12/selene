@@ -51,6 +51,8 @@
     #endif
 #endif
 
+#include "linmath.h"
+
 #define SELENE_VER "0.1.0"
 
 // Lua Module Helper
@@ -71,7 +73,7 @@ luaL_newlib(L, name##_reg)
 int l_##name##_##func(lua_State* L)
 
 #define BEGIN_FUNCTION(module, name)\
-int l_##module##_##name(lua_State* L) {
+int l_##module##_##name(lua_State* L) {INIT_ARG();
 
 #define END_FUNCTION(ret)\
     return ret;\
@@ -123,7 +125,7 @@ luaL_Reg type##_reg[] = {
 #define META_FUNCTION(type, func)\
 int l_##type##__##func(lua_State* L)
 
-#define BEGIN_META_FUNCTION(type, name, self)\
+#define BEGIN_META_FUNCTION(type, name)\
 int l_##type##__##name(lua_State* L) {\
     INIT_GET_UDATA(type, self);
 
@@ -135,9 +137,15 @@ lua_setfield(L, -2, #type)
 #define INIT_ARG()\
 int arg = 1
 
-#define NEW_UDATA(type, name, s)\
-type* name = lua_newuserdata(L, s);\
+#define NEW_UDATA(type, name)\
+type* name = (type*)lua_newuserdata(L, sizeof(type));\
 luaL_setmetatable(L, #type)
+
+#define CHECK_UDATA(type, name)\
+type* name = (type*)luaL_checkudata(L, arg++, #type)
+
+#define TEST_UDATA(type, name)\
+type* name = (type*)luaL_testudata(L, arg++, #type)
 
 #define GET_UDATA(type, name, ...)\
 __VA_ARGS__##type* name = luaL_checkudata(L, arg++, #type)
@@ -192,19 +200,42 @@ lua_pushnil(L)
 #define CLAMP(v, a, b) (MAX(a, MIN(v, b)))
 #define DEG2RAD(deg) ((deg)*(M_PI/180.0))
 #define RAD2DEG(rad) ((rad)*(180.0/M_PI))
+#define STR(x) #x
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+// OpenGL
+typedef unsigned int Texture;
+typedef unsigned int Framebuffer;
+typedef unsigned int Program;
+typedef unsigned int Shader;
+typedef unsigned int VertexArray;
+typedef unsigned int Buffer;
+
+// Filesystem
+typedef FILE* File;
+
+// SDL2
+typedef SDL_Window* Window;
+typedef SDL_Joystick* Joystick;
+typedef SDL_GameController* GameController;
+typedef SDL_Event Event;
+typedef SDL_GLContext GLContext;
+
+// Math
+typedef mat4x4 Mat4;
+
+// utils
 typedef struct {
     int offset, size;
     void* data;
 } Data;
 
+int seleneopen_fs(lua_State* L);
 int seleneopen_gl(lua_State* L);
 int seleneopen_sdl2(lua_State* L);
-int seleneopen_fs(lua_State* L);
 int seleneopen_utils(lua_State* L);
 
 int seleneopen_system(lua_State* L);

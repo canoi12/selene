@@ -6,33 +6,31 @@
 #endif
 #include <sys/stat.h>
 
-typedef FILE* File;
-
-static BEGIN_META_FUNCTION(File, SeekSet, file)
+static BEGIN_META_FUNCTION(File, SeekSet)
     CHECK_INTEGER(n);
-    fseek(*file, n, SEEK_SET);
+    fseek(*self, n, SEEK_SET);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(File, SeekEnd, file)
-    fseek(*file, 0, SEEK_END);
+static BEGIN_META_FUNCTION(File, SeekEnd)
+    fseek(*self, 0, SEEK_END);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(File, SeekCur, file)
+static BEGIN_META_FUNCTION(File, SeekCur)
     CHECK_INTEGER(n);
-    fseek(*file, n, SEEK_CUR);
+    fseek(*self, n, SEEK_CUR);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(File, Tell, file)
-    PUSH_INTEGER(ftell(*file));
+static BEGIN_META_FUNCTION(File, Tell)
+    PUSH_INTEGER(ftell(*self));
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(File, Read, file)
+static BEGIN_META_FUNCTION(File, Read)
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(File, Write, file)
+static BEGIN_META_FUNCTION(File, Write)
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(File, Append, file)
+static BEGIN_META_FUNCTION(File, Append)
 END_FUNCTION(0)
 
 static BEGIN_META(File)
@@ -49,9 +47,8 @@ static BEGIN_META(File)
 END_META(1)
 
 static BEGIN_FUNCTION(fs, open)
-    INIT_ARG();
     CHECK_STRING(path);
-    NEW_UDATA(FILE, *file, sizeof(void*));
+    NEW_UDATA(File, file);
     #if defined(OS_WIN)
         fopen_s(file, path, "rb");
     #else
@@ -62,17 +59,17 @@ static BEGIN_FUNCTION(fs, open)
     }
 END_FUNCTION(1)
 
-static int l_fs_exists(lua_State* L) {
+static BEGIN_FUNCTION(fs, exists)
     struct stat info;
-    const char* path = luaL_checkstring(L, 1);
+    CHECK_STRING(path);
     int exists = 1;
-    if (stat(path, &info) == -1) exists = 0;
-    lua_pushboolean(L, exists);
-    return 1;
-}
+    if (stat(path, &info) == -1)
+        exists = 0;
+    PUSH_BOOLEAN(exists);
+END_FUNCTION(1)
 
-static int l_fs_read(lua_State* L) {
-    const char* path = luaL_checkstring(L, 1);
+static BEGIN_FUNCTION(fs, read)
+    CHECK_STRING(path);
     #if defined(OS_WIN)
         FILE* fp;
         fopen_s(&fp, path, "rb");
@@ -89,15 +86,14 @@ static int l_fs_read(lua_State* L) {
     data[size] = '\0';
     fread(data, 1, size+1, fp);
     fclose(fp);
-    lua_pushstring(L, (const char*)data);
-    lua_pushinteger(L, size);
+    PUSH_STRING(data);
+    PUSH_INTEGER(size);
     free(data);
-    return 2;
-}
+END_FUNCTION(2)
 
-static int l_fs_write(lua_State* L) {
-	const char* path = luaL_checkstring(L, 1);
-	const char* text = luaL_checkstring(L, 2);
+static BEGIN_FUNCTION(fs, write)
+    CHECK_STRING(path);
+    CHECK_STRING(text);
 
     #if defined(OS_WIN)
         FILE* fp;
@@ -109,31 +105,27 @@ static int l_fs_write(lua_State* L) {
         return luaL_error(L, "failed to create file %s\n", path);
 	fprintf(fp, "%s", text);
 	fclose(fp);
-	lua_pushboolean(L, 1);
-	return 1;
-}
+    PUSH_BOOLEAN(1);
+END_FUNCTION(1)
 
-static int l_fs_mkdir(lua_State* L) {
-	const char* path = luaL_checkstring(L, 1);
+static BEGIN_FUNCTION(fs, mkdir)
+    CHECK_STRING(path);
 #if defined(OS_WIN)
     mkdir(path);
 #else
     mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 #endif
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_fs_rmdir(lua_State* L) {
-	const char* path = luaL_checkstring(L, 1);
+static BEGIN_FUNCTION(fs, rmdir)
+    CHECK_STRING(path);
     rmdir(path);
-    return 0;
-}
+END_FUNCTION(0)
 
-static int l_fs_load(lua_State* L) {
-    const char* path = luaL_checkstring(L, 1);
+static BEGIN_FUNCTION(fs, load)
+    CHECK_STRING(path);
     luaL_loadfile(L, path);
-    return 1;
-}
+END_FUNCTION(1)
 
 BEGIN_MODULE(fs)
     BEGIN_REG(fs)

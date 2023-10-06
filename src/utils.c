@@ -3,83 +3,82 @@
 
 #include "stb_image.h"
 #include "stb_truetype.h"
-#include "linmath.h"
 
-static BEGIN_META_FUNCTION(Data, Realloc, data)
+static BEGIN_META_FUNCTION(Data, Realloc)
     CHECK_INTEGER(size);
-    if (size < data->offset)
-        data->offset = size - 1;
-    data->data = realloc(data->data, size);
-    data->size = size;
+    if (size < self->offset)
+        self->offset = size - 1;
+    self->data = realloc(self->data, size);
+    self->size = size;
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Data, GetOffset, data)
-    PUSH_INTEGER(data->offset);
+static BEGIN_META_FUNCTION(Data, GetOffset)
+    PUSH_INTEGER(self->offset);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Data, SetOffset, data)
+static BEGIN_META_FUNCTION(Data, SetOffset)
     CHECK_INTEGER(offset);
-    data->offset = offset > data->size ? data->size : offset;
+    self->offset = offset > self->size ? self->size : offset;
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Data, GetSize, data)
-    PUSH_INTEGER(data->size);
+static BEGIN_META_FUNCTION(Data, GetSize)
+    PUSH_INTEGER(self->size);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Data, Write, data)
+static BEGIN_META_FUNCTION(Data, Write)
     int args = lua_gettop(L)-1;
-    int error = (data->offset+args) > data->size;
+    int error = (self->offset+args) > self->size;
     if (error) return luaL_error(L, "Data overflow");
 
-    char* dt = ((char*)data->data) + data->offset;
+    char* dt = ((char*)self->data) + self->offset;
     for (int i = 0; i < args; i++) {
         char value = (char)luaL_checkinteger(L, 2+i);
         dt[i] = value;
     }
-    data->offset += args;
+    self->offset += args;
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Data, WriteInt, data)
+static BEGIN_META_FUNCTION(Data, WriteInt)
     int args = lua_gettop(L)-1;
-    int error = (data->offset+(args*4)) > data->size;
+    int error = (self->offset+(args*4)) > self->size;
     if (error) return luaL_error(L, "Data overflow");
-    int* dt = (int*)((char*)data->data + data->offset);
+    int* dt = (int*)((char*)self->data + self->offset);
     for (int i = 0; i < args; i++) {
         int value = (int)luaL_checkinteger(L, 2+i);
         dt[i] = value;
     }
-    data->offset += args*4;
+    self->offset += args*4;
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Data, WriteFloat, data)
+static BEGIN_META_FUNCTION(Data, WriteFloat)
     int args = lua_gettop(L)-1;
-    int error = (data->offset+(args*4)) > data->size;
+    int error = (self->offset+(args*4)) > self->size;
     if (error) return luaL_error(L, "Data overflow");
-    float* dt = (float*)((char*)data->data + data->offset);
+    float* dt = (float*)((char*)self->data + self->offset);
     for (int i = 0; i < args; i++) {
         float value = (float)luaL_checknumber(L, 2+i);
         dt[i] = value;
     }
-    data->offset += args*4;
+    self->offset += args*4;
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Data, WriteString, data)
+static BEGIN_META_FUNCTION(Data, WriteString)
     size_t size;
     const char* str = luaL_checklstring(L, 2, &size);
-    int error = (data->offset+size) > data->size;
+    int error = (self->offset+size) > self->size;
     if (error) return luaL_error(L, "Data overflow");
-    char* dt = (char*)data->data + data->offset;
+    char* dt = (char*)self->data + self->offset;
     for (char* p = (char*)str; *p != '\0'; p++) {
         *dt = *p;
         dt++;
     }
-    data->offset += size;
+    self->offset += size;
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Data, gc, data)
-    if (data->data) {
-        free(data->data);
-        data->data = NULL;
+static BEGIN_META_FUNCTION(Data, gc)
+    if (self->data) {
+        free(self->data);
+        self->data = NULL;
     }
 END_FUNCTION(0)
 
@@ -99,8 +98,8 @@ static BEGIN_META(Data)
 END_META(1)
 
 static BEGIN_FUNCTION(utils, NewData)
-    int size = (int)luaL_checkinteger(L, 1);
-    NEW_UDATA(Data, data, sizeof(*data));
+    CHECK_INTEGER(size);
+    NEW_UDATA(Data, data);
     data->offset = 0;
     data->size = size;
     data->data = malloc(size);
@@ -109,45 +108,47 @@ END_FUNCTION(1)
 
 // Matrix
 typedef mat4x4 Mat4;
-static BEGIN_META_FUNCTION(Mat4, Identity, mat)
-    mat4x4_identity(*mat);
+static BEGIN_META_FUNCTION(Mat4, Identity)
+    mat4x4_identity(*self);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Mat4, Translate, mat)
+static BEGIN_META_FUNCTION(Mat4, Translate)
     CHECK_NUMBER(float, x);
     CHECK_NUMBER(float, y);
     OPT_NUMBER(float, z, 0.f);
-    mat4x4_translate_in_place(*mat, x, y, z);
+    mat4x4_translate_in_place(*self, x, y, z);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Mat4, Scale, mat)
+static BEGIN_META_FUNCTION(Mat4, Scale)
     CHECK_NUMBER(float, x);
     CHECK_NUMBER(float, y);
     OPT_NUMBER(float, z, 0.f);
-    mat4x4_scale_aniso(*mat, *mat, x, y, z);
+    mat4x4_scale_aniso(*self, *self, x, y, z);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Mat4, Rotate, mat)
+static BEGIN_META_FUNCTION(Mat4, Rotate)
+    CHECK_INTEGER(angle);
+    mat4x4_rotate_Z(*self, *self, angle);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Mat4, Ortho, mat)
+static BEGIN_META_FUNCTION(Mat4, Ortho)
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
     CHECK_NUMBER(float, bottom);
     CHECK_NUMBER(float, top);
     CHECK_NUMBER(float, near);
     CHECK_NUMBER(float, far);
-    mat4x4_ortho(*mat, left, right, bottom, top, near, far);
+    mat4x4_ortho(*self, left, right, bottom, top, near, far);
 END_FUNCTION(0)
 
-static BEGIN_META_FUNCTION(Mat4, Frustum, mat)
+static BEGIN_META_FUNCTION(Mat4, Frustum)
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
     CHECK_NUMBER(float, bottom);
     CHECK_NUMBER(float, top);
     CHECK_NUMBER(float, near);
     CHECK_NUMBER(float, far);
-    mat4x4_frustum(*mat, left, right, bottom, top, near, far);
+    mat4x4_frustum(*self, left, right, bottom, top, near, far);
 END_FUNCTION(0)
 
 static BEGIN_META(Mat4)
@@ -162,33 +163,29 @@ static BEGIN_META(Mat4)
     NEW_META(Mat4);
 END_META(1)
 
-static int l_utils_NewMat4(lua_State* L) {
-    mat4x4* m = lua_newuserdata(L, sizeof(*m));
-    luaL_setmetatable(L, "Mat4");
+static BEGIN_FUNCTION(utils, NewMat4)
+    NEW_UDATA(Mat4, m);
     mat4x4_identity(*m);
-    return 1;
-}
+END_FUNCTION(1)
 
-static int l_utils_LoadImageData(lua_State* L) {
-    const char* path = luaL_checkstring(L, 1);
-    int req = (int)luaL_optinteger(L, 2, STBI_rgb_alpha);
+static BEGIN_FUNCTION(utils, LoadImageData)
+    CHECK_STRING(path);
+    OPT_INTEGER(req, STBI_rgb_alpha);
     int w, h, c;
     Uint8* pixels = stbi_load(path, &w, &h, &c, req);
-    Data* d = lua_newuserdata(L, sizeof(*d));
-    luaL_setmetatable(L, "Data");
+    NEW_UDATA(Data, d);
     d->offset = 0;
     d->size = w * h * req;
     d->data = pixels;
 
-    lua_pushinteger(L, w);
-    lua_pushinteger(L, h);
-    lua_pushinteger(L, req);
-    return 4;
-}
+    PUSH_INTEGER(w);
+    PUSH_INTEGER(h);
+    PUSH_INTEGER(req);
+END_FUNCTION(4)
 
-static int l_utils_LoadTTF(lua_State* L) {
-    const char* path = luaL_checkstring(L, 1);
-    int font_size = (int)luaL_optinteger(L, 2, 16);
+static BEGIN_FUNCTION(utils, LoadTTF)
+    CHECK_STRING(path);
+    OPT_INTEGER(font_size, 16);
     stbtt_fontinfo info;
 #if defined(OS_WIN)
     FILE* fp;
@@ -264,6 +261,7 @@ static int l_utils_LoadTTF(lua_State* L) {
 
         unsigned char* bmp = stbtt_GetCodepointBitmap(&info, 0, scale, i, NULL, NULL, &ox, &oy);
         int xx, yy;
+        xx = yy = 0;
         for (int j = 0; j < ssize; j++) {
             xx = (j % ww) + x;
             if (j != 0 && j % ww == 0)
@@ -281,17 +279,23 @@ static int l_utils_LoadTTF(lua_State* L) {
 
         x += glyphs[i].bw;
     }
+    
+    NEW_UDATA(Texture, tex);
+    int target = GL_TEXTURE_2D;
+    glBindTexture(target, *tex);
+    glTexImage2D(target, 0, GL_RGBA, tw, th, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    Uint32* tex = lua_newuserdata(L, sizeof(*tex));
-    luaL_setmetatable(L, "Texture");
-    glBindTexture(GL_TEXTURE_2D, *tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glBindTexture(target, 0);
+
+    PUSH_INTEGER(tw);
+    PUSH_INTEGER(th);
 
     free(bitmap);
-
-    return 4;
-}
+END_FUNCTION(4)
 
 BEGIN_MODULE(utils)
     BEGIN_REG(utils)

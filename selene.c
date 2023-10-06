@@ -15,7 +15,6 @@ static BEGIN_FUNCTION(selene, GetVersion)
 END_FUNCTION(1)
 
 static BEGIN_FUNCTION(selene, SetRunning)
-   INIT_ARG();
    GET_BOOLEAN(running);
    _running = running;
 END_FUNCTION(0)

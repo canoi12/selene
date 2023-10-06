@@ -1,27 +1,5 @@
 #include "selene.h"
 
-#include "stb_image.h"
-#include "stb_truetype.h"
-#include "linmath.h"
-
-#define TEXTURE_META "Texture"
-#define FRAMEBUFFER_META "Framebuffer"
-
-#define SHADER_META "Shader"
-#define PROGRAM_META "Program"
-
-#define VERTEX_ARRAY_META "VertexArray"
-#define BUFFER_META "Buffer"
-
-typedef unsigned int Texture;
-typedef unsigned int Framebuffer;
-
-typedef unsigned int Shader;
-typedef unsigned int Program;
-
-typedef unsigned int VertexArray;
-typedef unsigned int Buffer;
-
 struct GLInfo {
     Uint8 major, minor;
     Uint16 glsl;
@@ -182,14 +160,18 @@ static BEGIN_FUNCTION(gl, DrawElements)
     glDrawElements(mode, start, _type, (void*)start);
 END_FUNCTION(0)
 
-// Texture
+/************************
+ #                      #
+ #       Texture        #
+ #                      #
+ ************************/
 static BEGIN_FUNCTION(gl, NewTexture)
-    NEW_UDATA(Texture, tex, sizeof(*tex));
+    NEW_UDATA(Texture, tex);
     glGenTextures(1, tex);
 END_FUNCTION(1);
 
-static BEGIN_META_FUNCTION(Texture, gc, tex)
-    glDeleteTextures(1, tex);
+static BEGIN_META_FUNCTION(Texture, gc)
+    glDeleteTextures(1, self);
 END_FUNCTION(0)
 
 static BEGIN_FUNCTION(gl, BindTexture)
@@ -244,15 +226,19 @@ static BEGIN_META(Texture)
     NEW_META(Texture);
 END_META(1)
 
-// Framebuffer
+/************************
+ #                      #
+ #      Framebuffer     #
+ #                      #
+ ************************/
 static BEGIN_FUNCTION(gl, NewFramebuffer)
     Framebuffer* buffer = lua_newuserdata(L, sizeof(*buffer));
     luaL_setmetatable(L, "Framebuffer");
     glGenFramebuffers(1, buffer);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Framebuffer, gc, fbo)
-    glDeleteFramebuffers(1, fbo);
+static BEGIN_META_FUNCTION(Framebuffer, gc)
+    glDeleteFramebuffers(1, self);
 END_FUNCTION(1)
 
 static BEGIN_FUNCTION(gl, BindFramebuffer)
@@ -277,7 +263,11 @@ static BEGIN_META(Framebuffer)
     NEW_META(Framebuffer);
 END_META(1)
 
-// Vertex Array
+/************************
+ #                      #
+ #     Vertex Array     #
+ #                      #
+ ************************/
 
 static BEGIN_FUNCTION(gl, NewVertexArray)
     VertexArray* vao = lua_newuserdata(L, sizeof(*vao));
@@ -287,9 +277,9 @@ static BEGIN_FUNCTION(gl, NewVertexArray)
 #endif
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(VertexArray, gc, vao)
+static BEGIN_META_FUNCTION(VertexArray, gc)
 #if !defined(__EMSCRIPTEN__)
-    glDeleteVertexArrays(1, vao);
+    glDeleteVertexArrays(1, self);
 #endif
 END_FUNCTION(0)
 
@@ -328,20 +318,23 @@ static BEGIN_META(VertexArray)
     NEW_META(VertexArray);
 END_META(1)
 
-// Buffer
+/************************
+ #                      #
+ #        Buffer        #
+ #                      #
+ ************************/
 static BEGIN_FUNCTION(gl, NewBuffer)
-    Buffer* buffer = lua_newuserdata(L, sizeof(*buffer));
-    luaL_setmetatable(L, "Buffer");
+    NEW_UDATA(Buffer, buffer);
     glGenBuffers(1, buffer);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Buffer, gc, b)
-    glDeleteBuffers(1, b);
+static BEGIN_META_FUNCTION(Buffer, gc)
+    glDeleteBuffers(1, self);
 END_FUNCTION(0)
 
 static BEGIN_FUNCTION(gl, BindBuffer)
-    int target = (int)luaL_checkinteger(L, 1);
-    Buffer* b = luaL_testudata(L, 2, BUFFER_META);
+    CHECK_INTEGER(target);
+    TEST_UDATA(Buffer, b);
     if (b) glBindBuffer(target, *b);
     else glBindBuffer(target, 0);
 END_FUNCTION(0)
@@ -350,16 +343,16 @@ static BEGIN_FUNCTION(gl, BufferData)
     int target = (int)luaL_checkinteger(L, 1);
     int size = (int)luaL_checkinteger(L, 2);
     int usage = (int)luaL_checkinteger(L, 3);
-    Data* data = luaL_testudata(L, 4, "Data");
+    Data* data = luaL_testudata(L, 4, STR(Data));
     if (data) glBufferData(target, size, data->data, usage);
     else glBufferData(target, size, NULL, usage);
 END_FUNCTION(0)
 
 static BEGIN_FUNCTION(gl, BufferSubData)
-    int target = (int)luaL_checkinteger(L, 1);
-    int start = (int)luaL_checkinteger(L, 2);
-    int size = (int)luaL_checkinteger(L, 3);
-    Data* data = luaL_checkudata(L, 4, "Data");
+    CHECK_INTEGER(target);
+    CHECK_INTEGER(start);
+    CHECK_INTEGER(size);
+    CHECK_UDATA(Data, data);
     glBufferSubData(target, start, size, data->data);
 END_FUNCTION(0)
 
@@ -369,33 +362,35 @@ static BEGIN_META(Buffer)
     END_REG()
     NEW_META(Buffer);
 END_META(1)
-// Shader
+
+/************************
+ #                      #
+ #        Shader        #
+ #                      #
+ ************************/
 static BEGIN_FUNCTION(gl, NewShader)
     int gl_enum = (int)luaL_checkinteger(L, 1);
-    Shader* s = lua_newuserdata(L, sizeof(*s));
-    luaL_setmetatable(L, "Shader");
+    NEW_UDATA(Shader, s);
     *s = glCreateShader(gl_enum);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Shader, gc, s)
-    glDeleteShader(*s);
-    *s = 0;
+static BEGIN_META_FUNCTION(Shader, gc)
+    glDeleteShader(*self);
+    *self = 0;
 END_FUNCTION(0)
 
-static BEGIN_FUNCTION(gl, ShaderSource)
-    Shader* s = luaL_checkudata(L, 1, "Shader");
-    const char* source = luaL_checkstring(L, 2);
-    glShaderSource(*s, 1, &source, NULL);
+static BEGIN_META_FUNCTION(Shader, Source)
+    CHECK_STRING(source);
+    glShaderSource(*self, 1, &source, NULL);
 END_FUNCTION(0)
 
-static BEGIN_FUNCTION(gl, CompileShader)
-    Shader* s = luaL_checkudata(L, 1, "Shader");
-    glCompileShader(*s);
+static BEGIN_META_FUNCTION(Shader, Compile)
+    glCompileShader(*self);
     int success = 0;
-    glGetShaderiv(*s, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(*self, GL_COMPILE_STATUS, &success);
     if (!success) {
         int len;
-        glGetShaderiv(*s, GL_INFO_LOG_LENGTH, &len);
+        glGetShaderiv(*self, GL_INFO_LOG_LENGTH, &len);
     #if defined(OS_WIN)
         if (len+1 > s_aux_data->size) {
             s_aux_data->size = (len+1)*2;
@@ -405,7 +400,7 @@ static BEGIN_FUNCTION(gl, CompileShader)
     #else
         char log[len+1];
     #endif
-        glGetShaderInfoLog(*s, len, NULL, log);
+        glGetShaderInfoLog(*self, len, NULL, log);
         log[len] = '\0';
         return luaL_error(L, "Failed to compile shader: %s\n", log);
     }
@@ -413,39 +408,39 @@ END_FUNCTION(0)
 
 static BEGIN_META(Shader)
     BEGIN_REG(Shader)
+        REG_META_FIELD(Shader, Source),
+        REG_META_FIELD(Shader, Compile),
         REG_META_FIELD(Shader, gc),
     END_REG()
     NEW_META(Shader);
 END_META(1)
 
-// Program
+/************************
+ #                      #
+ #       Program        #
+ #                      #
+ ************************/
 static BEGIN_FUNCTION(gl, NewProgram)
     Program* p = lua_newuserdata(L, sizeof(*p));
     luaL_setmetatable(L, "Program");
     *p = glCreateProgram();
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Program, gc, p)
-    glDeleteProgram(*p);
-END_FUNCTION(0)
-
-static BEGIN_FUNCTION(gl, AttachShader)
-    Program* p = luaL_checkudata(L, 1, "Program");
-    int args = lua_gettop(L)-1;
-    for (int i = 0; i < args; i++) {
-        Shader* s = luaL_checkudata(L, 2+i, "Shader");
-        glAttachShader(*p, *s);
+static BEGIN_META_FUNCTION(Program, Attach)
+    int args = lua_gettop(L);
+    while (arg < args) {
+        CHECK_UDATA(Shader, s);
+        glAttachShader(*self, *s);
     }
-END_FUNCTION(0)
+END_FUNCTION(1)
 
-static BEGIN_FUNCTION(gl, LinkProgram)
-    Program* p = luaL_checkudata(L, 1, "Program");
-    glLinkProgram(*p);
+static BEGIN_META_FUNCTION(Program, Link)
+    glLinkProgram(*self);
     int success = 0;
-    glGetProgramiv(*p, GL_LINK_STATUS, &success);
+    glGetProgramiv(*self, GL_LINK_STATUS, &success);
     if (!success) {
         int len;
-        glGetProgramiv(*p, GL_INFO_LOG_LENGTH, &len);
+        glGetProgramiv(*self, GL_INFO_LOG_LENGTH, &len);
     #if defined(OS_WIN)
         if (len+1 > s_aux_data->size) {
             s_aux_data->size = (len+1)*2;
@@ -455,31 +450,33 @@ static BEGIN_FUNCTION(gl, LinkProgram)
     #else
         char log[len+1];
     #endif
-        glGetProgramInfoLog(*p, len, NULL, log);
+        glGetProgramInfoLog(*self, len, NULL, log);
         log[len] = '\0';
         return luaL_error(L, "Failed to link program: %s\n", log);
     }
 END_FUNCTION(0)
 
-static BEGIN_FUNCTION(gl, UseProgram)
-    Program* p = luaL_testudata(L, 1, "Program");
+static BEGIN_FUNCTION(Program, _Use)
+    TEST_UDATA(Program, p);
     if (p) glUseProgram(*p);
     else glUseProgram(0);
 END_FUNCTION(0)
 
-static BEGIN_FUNCTION(gl, GetAttribLocation)
-    Program* p = luaL_checkudata(L, 1, "Program");
+static BEGIN_META_FUNCTION(Program, GetAttribLocation)
     const char* name = luaL_checkstring(L, 2);
-    int loc = glGetAttribLocation(*p, name);
+    int loc = glGetAttribLocation(*self, name);
     lua_pushinteger(L, loc);
 END_FUNCTION(1)
 
-static BEGIN_FUNCTION(gl, GetUniformLocation)
-    Program* p = luaL_checkudata(L, 1, "Program");
+static BEGIN_META_FUNCTION(Program, GetUniformLocation)
     const char* name = luaL_checkstring(L, 2);
-    int loc = glGetUniformLocation(*p, name);
+    int loc = glGetUniformLocation(*self, name);
     lua_pushinteger(L, loc);
 END_FUNCTION(1)
+
+static BEGIN_META_FUNCTION(Program, gc)
+    glDeleteProgram(*self);
+END_FUNCTION(0)
 
 static BEGIN_FUNCTION(gl, Uniform1fv)
     int location = (int)luaL_checkinteger(L, 1);
@@ -588,17 +585,21 @@ static BEGIN_FUNCTION(gl, Uniform4fv)
 END_FUNCTION(0)
 
 static BEGIN_FUNCTION(gl, UniformMatrix4fv)
-    INIT_ARG();
     CHECK_INTEGER(location);
     CHECK_INTEGER(count);
     GET_BOOLEAN(normalize);
-    mat4x4* m = luaL_checkudata(L, arg++, "Mat4");
+    Mat4* m = luaL_checkudata(L, arg++, "Mat4");
     glUniformMatrix4fv(location, count, normalize, **m);
 END_FUNCTION(0)
 
 
 static BEGIN_META(Program)
     BEGIN_REG(Program)
+    REG_META_FIELD(Program, Use),
+    REG_META_FIELD(Program, Attach),
+    REG_META_FIELD(Program, Link),
+    REG_META_FIELD(Program, GetAttribLocation),
+    REG_META_FIELD(Program, GetUniformLocation),
     REG_META_FIELD(Program, gc),
     END_REG()
     NEW_META(Program);
@@ -765,15 +766,8 @@ BEGIN_MODULE(gl)
         REG_FIELD(gl, BufferSubData),
         // Shader
         REG_FIELD(gl, NewShader),
-        REG_FIELD(gl, ShaderSource),
-        REG_FIELD(gl, CompileShader),
         // Program
         REG_FIELD(gl, NewProgram),
-        REG_FIELD(gl, UseProgram),
-        REG_FIELD(gl, AttachShader),
-        REG_FIELD(gl, LinkProgram),
-        REG_FIELD(gl, GetAttribLocation),
-        REG_FIELD(gl, GetUniformLocation),
         REG_FIELD(gl, Uniform1fv),
         REG_FIELD(gl, Uniform2fv),
         REG_FIELD(gl, Uniform3fv),
