@@ -305,7 +305,7 @@ static BEGIN_FUNCTION(utils, LoadTTF)
         lua_setfield(L, -2, "bw");
         lua_pushinteger(L, glyphs[i].tx);
         lua_setfield(L, -2, "tx");
-        lua_rawseti(L, -2, i+1);
+        lua_rawseti(L, -2, i);
     }
 END_FUNCTION(4)
 

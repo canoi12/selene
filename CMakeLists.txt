@@ -7,7 +7,7 @@ message("Compiling for ${CMAKE_SYSTEM_NAME}")
 set(USE_FLAGS "")
 if (CMAKE_SYSTEM_NAME MATCHES "Emscripten")
     set(USE_FLAGS "${USE_FLAGS} -s EXPORTED_FUNCTIONS=\"['_malloc']\" --embed-file core/")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_SDL=2 -s FULL_ES2 -s EXPORTED_FUNCTIONS=\"['_malloc']\" --emrun")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_SDL=2 -s FULL_ES2 -s EXPORTED_FUNCTIONS=\"['_malloc']\" --embed-file core/ --emrun")
     # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS}")
     set(CMAKE_EXECUTABLE_SUFFIX .html)
     set(EMSCRIPTEN 1)
@@ -59,12 +59,9 @@ if (COPY_DLL)
     endif()
 endif()
 
-if (EMSCRIPTEN MATCHES 1)
-    message("Entra aqui??")
-    file(GLOB CORE_DIR core/)
-    add_custom_command(
-        TARGET ${PROJECT_NAME} PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/core $<TARGET_FILE_DIR:${PROJECT_NAME}>/core
-    )
-endif()
+file(GLOB CORE_DIR core/)
+add_custom_command(
+    TARGET ${PROJECT_NAME} PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/core $<TARGET_FILE_DIR:${PROJECT_NAME}>/core
+)

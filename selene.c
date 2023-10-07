@@ -1,4 +1,6 @@
 #include "selene.h"
+#include "lua.h"
+#include <stdlib.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -7,8 +9,8 @@
 #include "stb_truetype.h"
 
 static int _running = 0;
-
 static int l_core_reg;
+static char _exec_path[512];
 
 static BEGIN_FUNCTION(selene, GetVersion)
    PUSH_STRING(SELENE_VER);
@@ -21,6 +23,10 @@ END_FUNCTION(0)
 
 static BEGIN_FUNCTION(selene, IsRunning)
    PUSH_BOOLEAN(_running);
+END_FUNCTION(1)
+
+static BEGIN_FUNCTION(selene, GetExecPath)
+    PUSH_STRING(_exec_path);
 END_FUNCTION(1)
 
 int luaopen_selene(lua_State* L) {
@@ -53,6 +59,7 @@ int luaopen_selene(lua_State* L) {
 
 static int selene_init(lua_State* L, int argc, char** argv) {
     fprintf(stderr, "Hello Selene\n");
+    printf("Hello Selene\n");
 
     int flags = SDL_INIT_SENSOR;
     flags |= SDL_INIT_AUDIO |
@@ -67,10 +74,22 @@ static int selene_init(lua_State* L, int argc, char** argv) {
        exit(EXIT_FAILURE);
     }
 
+    strcpy(_exec_path, argv[0]);
+#if defined(OS_WIN)
+    const char* test_string = "\\selene";
+#else
+    const char* test_string = "/selene";
+#endif
+    char* str = strstr(_exec_path, test_string);
+    if (str) {
+        int index = str - _exec_path;
+        _exec_path[index+1] = '\0';
+    }
+
     luaL_openlibs(L);
     luaL_requiref(L, "selene", luaopen_selene, 1);
 
-    lua_getglobal(L, "selene");
+    lua_pushvalue(L, -1);
     lua_newtable(L);
     int i;
     for (i = 0; i < argc; i++) {
@@ -78,9 +97,14 @@ static int selene_init(lua_State* L, int argc, char** argv) {
        lua_rawseti(L, -2, i+1);
     }
     lua_setfield(L, -2, "args");
-    lua_pop(L, 1);
+    char core_path[1024];
+    /*
+    strcpy(core_path, _exec_path);
+    strcat(core_path, "core/init.lua");
+    */
+    strcpy(core_path, "core/init.lua");
 
-    if (luaL_dofile(L, "core/init.lua") != LUA_OK) {
+    if (luaL_dofile(L, core_path) != LUA_OK) {
        const char* error_buf = lua_tostring(L, -1);
        fprintf(stderr, "Failed to load selene core init: %s\n", error_buf);
        exit(EXIT_FAILURE);

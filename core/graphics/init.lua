@@ -75,8 +75,6 @@ function graphics.init(config)
   gl.EnableVertexAttribArray(2)
 
   local program = default.shader.program
-  print(program:GetAttribLocation('a_Position'))
-  print(program:GetAttribLocation('a_Color'))
   gl.VertexAttribPointer(program:GetAttribLocation("a_Position"), 2, gl.FLOAT, false, 32, 0)
   gl.VertexAttribPointer(program:GetAttribLocation("a_Color"), 4, gl.FLOAT, false, 32, 8)
   gl.VertexAttribPointer(program:GetAttribLocation("a_Texcoord"), 2, gl.FLOAT, false, 32, 24)
@@ -214,7 +212,7 @@ function graphics.draw_point(x, y)
   set_image()
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
-  vertex_data:WriteFloat(x, y, r, g, b, a, 0, 0)
+  default.batch:push(x, y, r, g, b, a, 0, 0)
 end
 
 function graphics.draw_line(x0, y0, x1, y1)
@@ -232,17 +230,17 @@ function graphics.draw_rectangle(x, y, width, height)
 
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
-  vertex_data:WriteFloat(x, y, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x+width, y, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x, y, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x+width, y, r, g, b, a, 0.0, 0.0)
 
-  vertex_data:WriteFloat(x+width, y, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x+width, y+height, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x+width, y, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
 
-  vertex_data:WriteFloat(x+width, y+height, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x, y+height, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x, y+height, r, g, b, a, 0.0, 0.0)
 
-  vertex_data:WriteFloat(x, y+height, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x, y, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x, y+height, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x, y, r, g, b, a, 0.0, 0.0)
 end
 
 function graphics.fill_rectangle(x, y, width, height)
@@ -251,13 +249,13 @@ function graphics.fill_rectangle(x, y, width, height)
 
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
-  vertex_data:WriteFloat(x, y, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x+width, y, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x+width, y+height, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x, y, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x+width, y, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
 
-  vertex_data:WriteFloat(x, y, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x+width, y+height, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x, y+height, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x, y, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x, y+height, r, g, b, a, 0.0, 0.0)
 end
 
 function graphics.draw_circle(x, y, radius, sides)
@@ -274,12 +272,12 @@ function graphics.draw_circle(x, y, radius, sides)
 
     local xx = x + (math.cos(tetha) * radius)
     local yy = y + (math.sin(tetha) * radius)
-    vertex_data:WriteFloat(xx, yy, r, g, b, a, u, v)
+    default.batch:push(xx, yy, r, g, b, a, u, v)
 
     tetha = (i * pi2) / sides
     xx = x + (math.cos(tetha) * radius)
     yy = y + (math.sin(tetha) * radius)
-    vertex_data:WriteFloat(xx, yy, r, g, b, a, u, v)
+    default.batch:push(xx, yy, r, g, b, a, u, v)
   end
 end
 
@@ -294,17 +292,17 @@ function graphics.fill_circle(x, y, radius, sides)
   local r,g,b,a = table.unpack(current.draw_color)
   local u, v = 0, 0
   for i=1,sides do
-    vertex_data:WriteFloat(x, y, r, g, b, a, u, v)
+    default.batch:push(x, y, r, g, b, a, u, v)
 
     local tetha = ((i-1) * pi2) / sides
     local xx = x + (math.cos(tetha) * radius)
     local yy = y + (math.sin(tetha) * radius)
-    vertex_data:WriteFloat(xx, yy, r, g, b, a, u, v)
+    default.batch:push(xx, yy, r, g, b, a, u, v)
 
     tetha = (i * pi2) / sides
     xx = x + (math.cos(tetha) * radius)
     yy = y + (math.sin(tetha) * radius)
-    vertex_data:WriteFloat(xx, yy, r, g, b, a, u, v)
+    default.batch:push(xx, yy, r, g, b, a, u, v)
   end
 end
 
@@ -314,14 +312,14 @@ function graphics.draw_triangle(x0, y0, x1, y1, x2, y2)
 
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
-  vertex_data:WriteFloat(x0, y0, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x1, y1, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x0, y0, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x1, y1, r, g, b, a, 0.0, 0.0)
 
-  vertex_data:WriteFloat(x1, y1, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x2, y2, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x1, y1, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x2, y2, r, g, b, a, 0.0, 0.0)
 
-  vertex_data:WriteFloat(x2, y2, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x0, y0, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x2, y2, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x0, y0, r, g, b, a, 0.0, 0.0)
 end
 
 function graphics.fill_triangle(x0, y0, x1, y1, x2, y2)
@@ -329,9 +327,9 @@ function graphics.fill_triangle(x0, y0, x1, y1, x2, y2)
   set_draw_mode('triangles')
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
-  vertex_data:WriteFloat(x0, y0, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x1, y1, r, g, b, a, 0.0, 0.0)
-  vertex_data:WriteFloat(x2, y2, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x0, y0, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x1, y1, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x2, y2, r, g, b, a, 0.0, 0.0)
 end
 
 function graphics.draw(obj, rect, x, y)
@@ -346,13 +344,13 @@ function graphics.draw(obj, rect, x, y)
 
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
-  vertex_data:WriteFloat(x, y, r, g, b, a, uv[1], uv[2])
-  vertex_data:WriteFloat(x+rect.w, y, r, g, b, a, uv[3], uv[2])
-  vertex_data:WriteFloat(x+rect.w, y+rect.h, r, g, b, a, uv[3], uv[4])
+  default.batch:push(x, y, r, g, b, a, uv[1], uv[2])
+  default.batch:push(x+rect.w, y, r, g, b, a, uv[3], uv[2])
+  default.batch:push(x+rect.w, y+rect.h, r, g, b, a, uv[3], uv[4])
 
-  vertex_data:WriteFloat(x, y, r, g, b, a, uv[1], uv[2])
-  vertex_data:WriteFloat(x+rect.w, y+rect.h, r, g, b, a, uv[3], uv[4])
-  vertex_data:WriteFloat(x, y+rect.h, r, g, b, a, uv[1], uv[4])
+  default.batch:push(x, y, r, g, b, a, uv[1], uv[2])
+  default.batch:push(x+rect.w, y+rect.h, r, g, b, a, uv[3], uv[4])
+  default.batch:push(x, y+rect.h, r, g, b, a, uv[1], uv[4])
 end
 
 function graphics.print(text, x, y)
@@ -366,25 +364,33 @@ function graphics.print(text, x, y)
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
   for i=1,#text do
-    local codepoint = selene.utils.UTF8Codepoint(text:sub(i, i))
-    local rect = font.rects[codepoint-1]
+    local c = text:sub(i, i)
+    local codepoint = selene.utils.UTF8Codepoint(c)
+    local rect = font.rects[codepoint]
 
-    local xx = x + rect.bl
-    local yy = y + rect.bt
-    
-    local uv = {}
-    uv[1] = rect.tx / image.width
-    uv[2] = 0
-    uv[3] = uv[1] + (rect.bw / image.width)
-    uv[4] = uv[2] + (rect.bh / image.height)
+    if c == '\n' then
+      x = 0
+      y = y + image.height
+    elseif c == '\t' then
+      x = x + rect.bw * 2
+    else
+      local xx = x + rect.bl
+      local yy = y + rect.bt
 
-    vertex_data:WriteFloat(xx, yy, r, g, b, a, uv[1], uv[2])
-    vertex_data:WriteFloat(xx+rect.bw, yy, r, g, b, a, uv[3], uv[2])
-    vertex_data:WriteFloat(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
+      local uv = {}
+      uv[1] = rect.tx / image.width
+      uv[2] = 0
+      uv[3] = uv[1] + (rect.bw / image.width)
+      uv[4] = uv[2] + (rect.bh / image.height)
 
-    vertex_data:WriteFloat(xx, yy, r, g, b, a, uv[1], uv[2])
-    vertex_data:WriteFloat(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
-    vertex_data:WriteFloat(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
+      default.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
+      default.batch:push(xx+rect.bw, yy, r, g, b, a, uv[3], uv[2])
+      default.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
+
+      default.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
+      default.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
+      default.batch:push(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
+    end
 
     x = x + rect.ax
     y = y + rect.ay

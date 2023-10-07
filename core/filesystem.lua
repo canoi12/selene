@@ -4,17 +4,19 @@ local basepath = "./"
 
 function filesystem.set_basepath(path)
   local os = selene.system.GetOS()
+  local b1 = '\\'
+  local b2 = '/'
+
   if os == "Windows" then
-    if path:sub(#path) == '/' then
-      path[#path] = '\\'
-    end
-    if path:sub(#path) ~= "\\" then
-      path = path .. "\\"
-    end
-  else
-    if path:sub(#path) ~= "/" then
-      path = path .. "/"
-    end
+    b1 = '/'
+    b2 = '\\'
+  end
+
+  if path:sub(#path) == b1 then
+    path[#path] = b2
+  end
+  if path:sub(#path) ~= b2 then
+    path = path .. b2
   end
   basepath = path
 end

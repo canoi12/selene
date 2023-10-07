@@ -18,6 +18,13 @@ local function push_vertex(batch, vertex)
 end
 
 function Batch:push(x, y, r, g, b, a, u, v)
+  if self.data:GetOffset() + 1 >= self.size then
+    self.size = self.size * 2
+    self.data:Realloc(self.size)
+    gl.BindBuffer(gl.ARRAY_BUFFER, self.vbo)
+    gl.BufferData(gl.ARRAY_BUFFER, self.size, gl.DYNAMIC_DRAW)
+    gl.BindBuffer(gl.ARRAY_BUFFER)
+  end
   self.data:WriteFloat(x, y, r, g, b, a, u, v)
 end
 
