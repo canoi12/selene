@@ -356,9 +356,12 @@ end
 function graphics.print(text, x, y)
   set_image(current.font.image)
   set_draw_mode('triangles')
-
   x = x or 0
   y = y or 0
+
+  local ox = x or 0
+  local oy = y or 0
+
   local font = current.font
   local image = font.image
   local r,g,b,a = table.unpack(current.draw_color)
@@ -369,13 +372,13 @@ function graphics.print(text, x, y)
     local rect = font.rects[codepoint]
 
     if c == '\n' then
-      x = 0
-      y = y + image.height
+      ox = x
+      oy = oy + image.height
     elseif c == '\t' then
-      x = x + rect.bw * 2
+      ox = ox + rect.bw * 2
     else
-      local xx = x + rect.bl
-      local yy = y + rect.bt
+      local xx = ox + rect.bl
+      local yy = oy + rect.bt
 
       local uv = {}
       uv[1] = rect.tx / image.width
@@ -392,8 +395,8 @@ function graphics.print(text, x, y)
       default.batch:push(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
     end
 
-    x = x + rect.ax
-    y = y + rect.ay
+    ox = ox + rect.ax
+    oy = oy + rect.ay
   end
 end
 
