@@ -29,6 +29,8 @@ function selene.draw()
   graphics.draw(canvas)
 
   graphics.draw_rectangle(x, y + 95, 32, 16)
+
+  graphics.print('olar', 0, 320)
 end
 
 function selene.mouse_button_callback(pressed, which, btn)

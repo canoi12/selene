@@ -77,7 +77,7 @@ end
 
 function core.init()
   local args = selene.args
-  local basepath = "./"
+  local basepath = "."
   if #args > 1 then
     basepath = args[2]
   end

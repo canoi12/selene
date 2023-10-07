@@ -16,10 +16,12 @@ function Image:constructor(...)
     height = args[2]
 
     gl.BindTexture(self.target, texture)
-    gl.TexImage2D(gl.TEXTURE_2D, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
+    gl.TexImage2D(gl.TEXTURE_2D, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE, args[3])
     gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
     gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
     gl.BindTexture(self.target)
+    self.width = width
+    self.height = height
     self.comps = 4
     self.data = selene.utils.NewData(self.width * self.height * 4)
   elseif type(args[1]) == "string" then

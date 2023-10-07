@@ -428,7 +428,7 @@ END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Program, AttachShader)
     int args = lua_gettop(L);
-    while (arg < args) {
+    while (arg <= args) {
         CHECK_UDATA(Shader, s);
         glAttachShader(*self, *s);
     }
@@ -463,9 +463,9 @@ static BEGIN_FUNCTION(gl, UseProgram)
 END_FUNCTION(0)
 
 static BEGIN_META_FUNCTION(Program, GetAttribLocation)
-    const char* name = luaL_checkstring(L, 2);
+    CHECK_STRING(name);
     int loc = glGetAttribLocation(*self, name);
-    lua_pushinteger(L, loc);
+    PUSH_INTEGER(loc);
 END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Program, GetUniformLocation)

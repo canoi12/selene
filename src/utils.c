@@ -250,9 +250,19 @@ static BEGIN_FUNCTION(utils, LoadTTF)
     int height = th;
     const int final_size = tw * th;
 
-    Uint32* bitmap = malloc(final_size * sizeof(Uint32));
-    memset(bitmap, 0, final_size * sizeof(Uint32));
+    NEW_UDATA(Data, dt);
+    dt->offset = 0;
+    dt->size = final_size * sizeof(Uint32);
+    dt->data = malloc(dt->size);
+
+    Uint32* bitmap = dt->data;
+    memset(bitmap, 0, dt->size);
     int x = 0;
+
+    PUSH_INTEGER(tw);
+    PUSH_INTEGER(th);
+
+    lua_newtable(L);
     for (int i = 0; i < 256; i++) {
         int ww = glyphs[i].bw;
         int hh = glyphs[i].bh;
@@ -278,30 +288,65 @@ static BEGIN_FUNCTION(utils, LoadTTF)
         glyphs[i].tx = x;
 
         x += glyphs[i].bw;
+
+        lua_newtable(L);
+        int p = 1;
+        lua_pushinteger(L, glyphs[i].ax);
+        lua_setfield(L, -2, "ax");
+        lua_pushinteger(L, glyphs[i].ay);
+        lua_setfield(L, -2, "ay");
+        lua_pushinteger(L, glyphs[i].bh);
+        lua_setfield(L, -2, "bh");
+        lua_pushinteger(L, glyphs[i].bl);
+        lua_setfield(L, -2, "bl");
+        lua_pushinteger(L, glyphs[i].bt);
+        lua_setfield(L, -2, "bt");
+        lua_pushinteger(L, glyphs[i].bw);
+        lua_setfield(L, -2, "bw");
+        lua_pushinteger(L, glyphs[i].tx);
+        lua_setfield(L, -2, "tx");
+        lua_rawseti(L, -2, i+1);
     }
-    
-    NEW_UDATA(Texture, tex);
-    int target = GL_TEXTURE_2D;
-    glBindTexture(target, *tex);
-    glTexImage2D(target, 0, GL_RGBA, tw, th, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
-    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(target, 0);
-
-    PUSH_INTEGER(tw);
-    PUSH_INTEGER(th);
-
-    free(bitmap);
 END_FUNCTION(4)
+
+#define MAX_UNICODE 0x10FFFF
+static BEGIN_FUNCTION(utils, UTF8Codepoint)
+    CHECK_STRING(str);
+    char* p = (char*)str;
+    int codepoint = *str;
+    if (codepoint < 0x80) {
+        PUSH_INTEGER(codepoint);
+        return 1;
+    }
+
+    switch (codepoint & 0xf0)
+    {
+        case 0xf0:
+            codepoint = ((p[0] & 0x07) << 18) | ((p[1] & 0x3f) << 12) | ((p[2] & 0x3f) << 6) | ((p[3] & 0x3f));
+            break;
+        case 0xe0: {
+            codepoint = ((p[0] & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | ((p[2] & 0x3f));
+            break;
+        }
+        case 0xc0:
+        case 0xd0: {
+            codepoint = ((p[0] & 0x1f) << 6) | ((p[1] & 0x3f));
+            break;
+        }
+        default:
+            codepoint = -1;
+    }
+    if (codepoint > MAX_UNICODE) codepoint = -1;
+    PUSH_INTEGER(codepoint);
+END_FUNCTION(1)
 
 BEGIN_MODULE(utils)
     BEGIN_REG(utils)
         REG_FIELD(utils, NewData),
         REG_FIELD(utils, NewMat4),
         REG_FIELD(utils, LoadImageData),
+        REG_FIELD(utils, LoadTTF),
+        REG_FIELD(utils, UTF8Codepoint),
     END_REG()
     NEW_MODULE(utils);
     LOAD_META(Data);
