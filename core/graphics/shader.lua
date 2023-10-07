@@ -62,20 +62,20 @@ void main() {
   end
 
   local vert = gl.NewShader(gl.VERTEX_SHADER)
-  gl.ShaderSource(vert, temp)
-  gl.CompileShader(vert)
+  vert:Source(temp)
+  vert:Compile()
 
   temp = ""
   for i,src in ipairs(frag_source) do
     temp = temp .. src
   end
   local frag = gl.NewShader(gl.FRAGMENT_SHADER)
-  gl.ShaderSource(frag, temp)
-  gl.CompileShader(frag)
+  frag:Source(temp)
+  frag:Compile()
 
   local prog = gl.NewProgram()
-  gl.AttachShader(prog, vert, frag)
-  gl.LinkProgram(prog)
+  prog:AttachShader(vert, frag)
+  prog:Link()
 
   self.program = prog
   self.vert = vert
@@ -85,26 +85,26 @@ end
 local funcs = {
   ["number"] = function(prog, name, ...)
     local nums = {...}
-    local location = gl.GetUniformLocation(prog.program, name)
+    local location = prog.program:GetUniformLocation(name)
     gl.Uniform1fv(location, ...)
   end,
   ["table"] = function(prog, name, ...)
     local tables = {...}
     local len = #tables[1]
     if len == 2 then
-      local location = gl.GetUniformLocation(prog.program, name)
+      local location = prog.program:GetUniformLocation(name)
       gl.Uniform2fv(location, ...)
     elseif len == 3 then
-      local location = gl.GetUniformLocation(prog.program, name)
+      local location = prog.program:GetUniformLocation(name)
       gl.Uniform3fv(location, ...)
     elseif len == 4 then
-      local location = gl.GetUniformLocation(prog.program, name)
+      local location = prog.program:GetUniformLocation(name)
       gl.Uniform4fv(location, ...)
     end
   end,
   ["userdata"] = function(prog, name, ...)
     local mat = {...}
-    local location = gl.GetUniformLocation(prog.program, name)
+    local location = prog.program:GetUniformLocation(name)
     gl.UniformMatrix4fv(location, 1, false, mat[1])
   end
 }

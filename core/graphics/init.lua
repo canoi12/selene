@@ -74,9 +74,9 @@ function graphics.init(config)
   gl.EnableVertexAttribArray(2)
 
   local program = default.shader.program
-  gl.VertexAttribPointer(gl.GetAttribLocation(program, "a_Position"), 2, gl.FLOAT, false, 32, 0)
-  gl.VertexAttribPointer(gl.GetAttribLocation(program, "a_Color"), 4, gl.FLOAT, false, 32, 8)
-  gl.VertexAttribPointer(gl.GetAttribLocation(program, "a_Texcoord"), 2, gl.FLOAT, false, 32, 24)
+  gl.VertexAttribPointer(program:GetAttribLocation("a_Position"), 2, gl.FLOAT, false, 32, 0)
+  gl.VertexAttribPointer(program:GetAttribLocation("a_Color"), 4, gl.FLOAT, false, 32, 8)
+  gl.VertexAttribPointer(program:GetAttribLocation("a_Texcoord"), 2, gl.FLOAT, false, 32, 24)
 
   gl.BindVertexArray()
   gl.BindBuffer(gl.ARRAY_BUFFER)

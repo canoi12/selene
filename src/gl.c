@@ -426,7 +426,7 @@ static BEGIN_FUNCTION(gl, NewProgram)
     *p = glCreateProgram();
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Program, Attach)
+static BEGIN_META_FUNCTION(Program, AttachShader)
     int args = lua_gettop(L);
     while (arg < args) {
         CHECK_UDATA(Shader, s);
@@ -456,7 +456,7 @@ static BEGIN_META_FUNCTION(Program, Link)
     }
 END_FUNCTION(0)
 
-static BEGIN_FUNCTION(Program, _Use)
+static BEGIN_FUNCTION(gl, UseProgram)
     TEST_UDATA(Program, p);
     if (p) glUseProgram(*p);
     else glUseProgram(0);
@@ -595,8 +595,7 @@ END_FUNCTION(0)
 
 static BEGIN_META(Program)
     BEGIN_REG(Program)
-    REG_META_FIELD(Program, Use),
-    REG_META_FIELD(Program, Attach),
+    REG_META_FIELD(Program, AttachShader),
     REG_META_FIELD(Program, Link),
     REG_META_FIELD(Program, GetAttribLocation),
     REG_META_FIELD(Program, GetUniformLocation),
@@ -766,6 +765,7 @@ BEGIN_MODULE(gl)
         REG_FIELD(gl, BufferSubData),
         // Shader
         REG_FIELD(gl, NewShader),
+        REG_FIELD(gl, UseProgram),
         // Program
         REG_FIELD(gl, NewProgram),
         REG_FIELD(gl, Uniform1fv),
