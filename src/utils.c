@@ -3,90 +3,87 @@
 
 #include "stb_image.h"
 #include "stb_truetype.h"
+#define STB_VORBIS_HEADER_ONLY
+#include "stb_vorbis.h"
 
 static BEGIN_META_FUNCTION(Data, Realloc)
     CHECK_INTEGER(size);
-    if (size < self->offset)
-        self->offset = size - 1;
     self->data = realloc(self->data, size);
-    self->size = size;
 END_FUNCTION(0)
-
-static BEGIN_META_FUNCTION(Data, GetOffset)
-    PUSH_INTEGER(self->offset);
-END_FUNCTION(1)
-
-static BEGIN_META_FUNCTION(Data, SetOffset)
-    CHECK_INTEGER(offset);
-    self->offset = offset > self->size ? self->size : offset;
-END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Data, GetSize)
     PUSH_INTEGER(self->size);
 END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Data, Write)
-    int args = lua_gettop(L)-1;
-    int error = (self->offset+args) > self->size;
+    CHECK_INTEGER(offset);
+    int args = lua_gettop(L)-2;
+    int error = (offset+args) > self->size;
     if (error) return luaL_error(L, "Data overflow");
 
-    char* dt = ((char*)self->data) + self->offset;
+    char* dt = ((char*)self->data) + offset;
     for (int i = 0; i < args; i++) {
-        char value = (char)luaL_checkinteger(L, 2+i);
+        char value = (char)luaL_checkinteger(L, 3+i);
         dt[i] = value;
     }
-    self->offset += args;
-END_FUNCTION(0)
+    PUSH_INTEGER(offset + args);
+END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Data, WriteInt)
-    int args = lua_gettop(L)-1;
-    int error = (self->offset+(args*4)) > self->size;
+    CHECK_INTEGER(offset);
+    int args = lua_gettop(L);
+    int error = (offset+(args*4)) > self->size;
     if (error) return luaL_error(L, "Data overflow");
-    int* dt = (int*)((char*)self->data + self->offset);
-    for (int i = 0; i < args; i++) {
-        int value = (int)luaL_checkinteger(L, 2+i);
-        dt[i] = value;
+    int* data = (int*)((char*)self->data + offset);
+    while (arg <= args) {
+        CHECK_INTEGER(value);
+        *data = value;
+        data++;
     }
-    self->offset += args*4;
-END_FUNCTION(0)
+    PUSH_INTEGER(offset + (args*4));
+END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Data, WriteFloat)
-    int args = lua_gettop(L)-1;
-    int error = (self->offset+(args*4)) > self->size;
+    CHECK_INTEGER(offset);
+    int args = lua_gettop(L);
+    int error = (offset+(args*4)) > self->size;
     if (error) return luaL_error(L, "Data overflow");
-    float* dt = (float*)((char*)self->data + self->offset);
-    for (int i = 0; i < args; i++) {
-        float value = (float)luaL_checknumber(L, 2+i);
-        dt[i] = value;
+
+    float* data = (float*)((char*)self->data +offset);
+    while (arg <= args) {
+        CHECK_NUMBER(float, value);
+        *data = value;
+        data++;
     }
-    self->offset += args*4;
-END_FUNCTION(0)
+   PUSH_INTEGER(offset + (args*4));
+END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Data, WriteString)
+    CHECK_INTEGER(offset);
     size_t size;
-    const char* str = luaL_checklstring(L, 2, &size);
-    int error = (self->offset+size) > self->size;
+    const char* str = luaL_checklstring(L, arg++, &size);
+    int error = (offset+size) > self->size;
     if (error) return luaL_error(L, "Data overflow");
-    char* dt = (char*)self->data + self->offset;
+    char* data = (char*)self->data + offset;
     for (char* p = (char*)str; *p != '\0'; p++) {
-        *dt = *p;
-        dt++;
+        *data = *p;
+        data++;
     }
-    self->offset += size;
-END_FUNCTION(0)
+    offset += size;
+    PUSH_INTEGER(offset + size);
+END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(Data, gc)
     if (self->data) {
         free(self->data);
         self->data = NULL;
+        self->size = 0;
     }
 END_FUNCTION(0)
 
 static BEGIN_META(Data)
     BEGIN_REG(Data)
         REG_META_FIELD(Data, Realloc),
-        REG_META_FIELD(Data, GetOffset),
-        REG_META_FIELD(Data, SetOffset),
         REG_META_FIELD(Data, GetSize),
         REG_META_FIELD(Data, Write),
         REG_META_FIELD(Data, WriteInt),
@@ -100,7 +97,6 @@ END_META(1)
 static BEGIN_FUNCTION(utils, NewData)
     CHECK_INTEGER(size);
     NEW_UDATA(Data, data);
-    data->offset = 0;
     data->size = size;
     data->data = malloc(size);
 END_FUNCTION(1)
@@ -127,7 +123,7 @@ static BEGIN_META_FUNCTION(Mat4, Scale)
 END_FUNCTION(0)
 
 static BEGIN_META_FUNCTION(Mat4, Rotate)
-    CHECK_INTEGER(angle);
+    CHECK_NUMBER(float, angle);
     mat4x4_rotate_Z(*self, *self, angle);
 END_FUNCTION(0)
 
@@ -174,7 +170,6 @@ static BEGIN_FUNCTION(utils, LoadImageData)
     int w, h, c;
     Uint8* pixels = stbi_load(path, &w, &h, &c, req);
     NEW_UDATA(Data, d);
-    d->offset = 0;
     d->size = w * h * req;
     d->data = pixels;
 
@@ -251,7 +246,6 @@ static BEGIN_FUNCTION(utils, LoadTTF)
     const int final_size = tw * th;
 
     NEW_UDATA(Data, dt);
-    dt->offset = 0;
     dt->size = final_size * sizeof(Uint32);
     dt->data = malloc(dt->size);
 
@@ -307,6 +301,7 @@ static BEGIN_FUNCTION(utils, LoadTTF)
         lua_setfield(L, -2, "tx");
         lua_rawseti(L, -2, i);
     }
+    free(data);
 END_FUNCTION(4)
 
 #define MAX_UNICODE 0x10FFFF
@@ -340,6 +335,20 @@ static BEGIN_FUNCTION(utils, UTF8Codepoint)
     PUSH_INTEGER(codepoint);
 END_FUNCTION(1)
 
+static void _audio_callback(void* userdata, Uint8* stream, int len) {
+
+}
+
+static BEGIN_FUNCTION(utils, GetAudioCallback)
+    lua_pushlightuserdata(L, _audio_callback);
+END_FUNCTION(1)
+
+static BEGIN_FUNCTION(utils, LoadOgg)
+END_FUNCTION(1)
+
+static BEGIN_META(AudioSource)
+END_FUNCTION(1)
+
 BEGIN_MODULE(utils)
     BEGIN_REG(utils)
         REG_FIELD(utils, NewData),
@@ -347,8 +356,13 @@ BEGIN_MODULE(utils)
         REG_FIELD(utils, LoadImageData),
         REG_FIELD(utils, LoadTTF),
         REG_FIELD(utils, UTF8Codepoint),
+        REG_FIELD(utils, GetAudioCallback),
+        REG_FIELD(utils, LoadOgg),
     END_REG()
     NEW_MODULE(utils);
     LOAD_META(Data);
     LOAD_META(Mat4);
 END_MODULE(1)
+
+#undef STB_VORBIS_HEADER_ONLY
+#include "stb_vorbis.h"

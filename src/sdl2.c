@@ -20,12 +20,18 @@ static BEGIN_FUNCTION(sdl2, OpenAudio)
     lua_getfield(L, 1, "samples");
     int samples = (int)luaL_checkinteger(L, -1);
     lua_pop(L, 1);
+    lua_getfield(L, 1, "callback");
+    void* callback = NULL;
+    if (lua_type(L, -1) == LUA_TLIGHTUSERDATA)
+        callback = lua_touserdata(L, -1);
+    lua_pop(L, 1);
 
     SDL_AudioSpec des;
     des.freq = freq;
     des.channels = channels;
     des.samples = samples;
     des.format = AUDIO_S16;
+    des.callback = callback;
 
     lua_pushboolean(L, SDL_OpenAudio(&des, NULL) == 0);
 END_FUNCTION(1)

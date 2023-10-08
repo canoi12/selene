@@ -722,7 +722,6 @@ BEGIN_MODULE(gl)
 #if defined(OS_WIN)
     s_aux_data = lua_newuserdata(L, sizeof(Data));
     luaL_setmetatable(L, "Data");
-    s_aux_data->offset = 0;
     s_aux_data->size = 40 * sizeof(float);
     s_aux_data->data = malloc(s_aux_data->size);
     lua_rawsetp(L, LUA_REGISTRYINDEX, s_aux_data);

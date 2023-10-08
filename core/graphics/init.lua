@@ -2,11 +2,11 @@ local gl = selene.gl
 local sdl = selene.sdl2
 local graphics = {}
 
-local Image = require 'core.graphics.image'
-local Batch = require 'core.graphics.batch'
-local Shader = require 'core.graphics.shader'
-local Canvas = require 'core.graphics.canvas'
-local Font = require 'core.graphics.font'
+local Image = require 'core.graphics.Image'
+local Batch = require 'core.graphics.Batch'
+local Shader = require 'core.graphics.Shader'
+local Canvas = require 'core.graphics.Canvas'
+local Font = require 'core.graphics.Font'
 
 local current = {
   mode = 'triangles',
@@ -83,7 +83,7 @@ function graphics.init(config)
   gl.BindBuffer(gl.ARRAY_BUFFER)
 
   local image_data = selene.utils.NewData(4)
-  image_data:Write(255, 255, 255, 255)
+  image_data:Write(0, 255, 255, 255, 255)
   default.image = setmetatable({}, { __index = Image })
   default.image.target = gl.TEXTURE_2D
   default.image.texture = gl.NewTexture()
@@ -220,8 +220,8 @@ function graphics.draw_line(x0, y0, x1, y1)
   set_draw_mode('lines')
 
   local r,g,b,a = table.unpack(current.draw_color)
-  default.batch.data:WriteFloat(x0, y0, r, g, b, a, 0.0, 0.0)
-  default.batch.data:WriteFloat(x1, y1, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x0, y0, r, g, b, a, 0.0, 0.0)
+  default.batch:push(x1, y1, r, g, b, a, 0.0, 0.0)
 end
 
 function graphics.draw_rectangle(x, y, width, height)

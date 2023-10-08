@@ -10,6 +10,7 @@ local config = {
     sample_rate = 44100,
     channels = 2,
     samples = 2048,
+    callback = selene.utils.GetAudioCallback()
   },
   window = {
     title = "selene " .. selene.GetVersion(),

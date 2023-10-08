@@ -26,6 +26,7 @@ find_package(OpenGL REQUIRED)
 
 include_directories(${OPENGL_INCLUDE_DIR})
 include_directories(${SDL2_INCLUDE_DIRS})
+include_directories(external/tinywav)
 
 set(LIBRARIES ${OPENGL_LIBRARIES} ${SDL2_LIBRARIES})
 
@@ -38,7 +39,7 @@ else()
     set(LIBRARIES ${LIBRARIES} dl m pthread)
 endif()
 
-file(GLOB selene_source selene.c src/*.c external/glad/src/glad.c)
+file(GLOB selene_source selene.c src/*.c external/glad/src/glad.c external/tinywav/tinywav.c)
 file(GLOB lua_source external/lua/src/*.c)
 
 add_library(lua STATIC ${lua_source})

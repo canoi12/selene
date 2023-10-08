@@ -229,8 +229,8 @@ typedef mat4x4 Mat4;
 
 // utils
 typedef struct {
-    int offset, size;
     void* data;
+    int size;
 } Data;
 
 int seleneopen_fs(lua_State* L);

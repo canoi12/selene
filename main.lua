@@ -1,7 +1,9 @@
 local graphics = require 'core.graphics'
-local Canvas = require 'core.graphics.canvas'
+local Canvas = require 'core.graphics.Canvas'
 local keyboard = require 'core.keyboard'
-local Image = require 'core.graphics.image'
+local Image = require 'core.graphics.Image'
+
+local highscore = 0
 
 function selene.load()
   canvas = Canvas:new(160, 95)
@@ -26,12 +28,10 @@ function selene.draw()
   graphics.draw(image)
   graphics.set_canvas()
 
-  graphics.draw(canvas)
+  graphics.draw(canvas, nil, 0, 32)
 
   graphics.draw_rectangle(x, y + 95, 32, 16)
-  player.data = 0
-
-  graphics.print('olar', 0, 320)
+  graphics.print('olar')
 end
 
 function selene.mouse_button_callback(pressed, which, btn)
