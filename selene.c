@@ -59,7 +59,6 @@ int luaopen_selene(lua_State* L) {
 
 static int selene_init(lua_State* L, int argc, char** argv) {
     fprintf(stderr, "Hello Selene\n");
-    printf("Hello Selene\n");
 
     int flags = SDL_INIT_SENSOR;
     flags |= SDL_INIT_AUDIO |
@@ -76,7 +75,7 @@ static int selene_init(lua_State* L, int argc, char** argv) {
 
     strcpy(_exec_path, argv[0]);
 #if defined(OS_WIN)
-    const char* test_string = "\\selene";
+    const char* test_string = "\\selene.exe";
 #else
     const char* test_string = "/selene";
 #endif
