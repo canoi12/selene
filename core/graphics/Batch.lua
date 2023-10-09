@@ -1,5 +1,5 @@
 local gl = selene.gl
-local Drawable = require 'core.graphics.drawable'
+local Drawable = require 'core.graphics.Drawable'
 local Batch = Drawable:extend('Batch')
 
 local vertex_size = 32
@@ -26,7 +26,6 @@ function Batch:push(x, y, r, g, b, a, u, v)
     gl.BufferData(gl.ARRAY_BUFFER, self.size, gl.DYNAMIC_DRAW)
     gl.BindBuffer(gl.ARRAY_BUFFER)
   end
-  print(self.offset / vertex_size)
   self.data:WriteFloat(self.offset, x, y, r, g, b, a, u, v)
   self.offset = self.offset + vertex_size
 end

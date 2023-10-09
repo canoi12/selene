@@ -1,5 +1,5 @@
 local gl = selene.gl
-local Drawable = require 'core.graphics.drawable'
+local Drawable = require 'core.graphics.Drawable'
 local Canvas = Drawable:extend('Canvas')
 
 function Canvas:constructor(width, height)

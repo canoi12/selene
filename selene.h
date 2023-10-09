@@ -153,6 +153,17 @@ __VA_ARGS__##type* name = luaL_checkudata(L, arg++, #type)
 #define INIT_GET_UDATA(type, name, ...)\
 int arg = 1; __VA_ARGS__##type* name = luaL_checkudata(L, arg++, #type)
 
+#define GET_LUDATA(type, name)\
+type* name = (type*)lua_touserdata(L, arg++)
+
+#define CHECK_LUDATA(type, name)\
+type* name = NULL;\
+if (lua_type(L, arg) != LUA_TLIGHTUSERDATA) return luaL_error(L, "Invalid argument, lightuserdata expected");\
+else name = (type*)lua_touserdata(L, arg++);
+
+#define PUSH_LUDATA(name)\
+lua_pushlightuserdata(L, name)
+
 #define GET_NUMBER(type, name)\
 type name = lua_tonumber(L, arg++)
 
@@ -218,6 +229,7 @@ typedef unsigned int Buffer;
 typedef FILE* File;
 
 // SDL2
+typedef SDL_AudioDeviceID AudioDeviceID;
 typedef SDL_Window* Window;
 typedef SDL_Joystick* Joystick;
 typedef SDL_GameController* GameController;

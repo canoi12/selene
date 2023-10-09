@@ -1,6 +1,6 @@
 local gl = selene.gl
 local filesystem = require 'core.filesystem'
-local Drawable = require 'core.graphics.drawable'
+local Drawable = require 'core.graphics.Drawable'
 local Image = Drawable:extend('Image')
 
 function Image:constructor(...)

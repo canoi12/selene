@@ -1,6 +1,6 @@
 local gl = selene.gl
-local Drawable = require 'core.graphics.drawable'
-local Shader = Drawable:extend("Shader")
+local class = require 'core.class'
+local Shader = class:extend("Shader")
 
 local default_position = [[
 vec4 position(vec2 pos, mat4 mvp, mat4 view) {

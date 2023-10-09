@@ -1,10 +1,7 @@
-#include "lauxlib.h"
 #include "selene.h"
 
 #include "stb_image.h"
 #include "stb_truetype.h"
-#define STB_VORBIS_HEADER_ONLY
-#include "stb_vorbis.h"
 
 static BEGIN_META_FUNCTION(Data, Realloc)
     CHECK_INTEGER(size);
@@ -335,8 +332,25 @@ static BEGIN_FUNCTION(utils, UTF8Codepoint)
     PUSH_INTEGER(codepoint);
 END_FUNCTION(1)
 
-static void _audio_callback(void* userdata, Uint8* stream, int len) {
+static int l_audio_engine;
 
+struct AudioSource {
+    Uint32 id;
+    Uint8 usage;
+    Uint64 size;
+    Uint8* data;
+    Uint8 loop;
+    float volume, pitch;
+};
+
+struct AudioBuffer {};
+
+static void _audio_callback(void* userdata, Uint8* stream, int len) {
+    lua_State* L = (lua_State*)userdata;
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &l_audio_engine);
+    lua_getfield(L, -1, "buffers");
+    lua_pushnil(L);
+    while (lua_next(L, -1)) {}
 }
 
 static BEGIN_FUNCTION(utils, GetAudioCallback)
@@ -363,6 +377,3 @@ BEGIN_MODULE(utils)
     LOAD_META(Data);
     LOAD_META(Mat4);
 END_MODULE(1)
-
-#undef STB_VORBIS_HEADER_ONLY
-#include "stb_vorbis.h"

@@ -1,5 +1,5 @@
 local class = require 'core.class'
-local Image = require 'core.graphics.image'
+local Image = require 'core.graphics.Image'
 local gl = selene.gl
 local filesystem = require 'core.filesystem'
 local Font = class:extend("Font")

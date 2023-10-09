@@ -1,3 +1,6 @@
+#include "SDL_audio.h"
+#include "lauxlib.h"
+#include "lua.h"
 #include "selene.h"
 
 static const Uint8* keys;
@@ -44,6 +47,72 @@ END_FUNCTION(0)
 static BEGIN_FUNCTION(sdl2, CloseAudio)
     SDL_CloseAudio();
 END_FUNCTION(0)
+
+static BEGIN_FUNCTION(sdl2, OpenAudioDevice)
+    const char* device = NULL;
+    if (lua_type(L, arg) == LUA_TSTRING)
+        device = lua_tostring(L, arg);
+    arg++;
+    GET_BOOLEAN(is_capture);
+    if (lua_type(L, arg) != LUA_TTABLE)
+        return luaL_argerror(L, arg, "Must be a table");
+    lua_getfield(L, 1, "sample_rate");
+    int freq = (int)luaL_checknumber(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, 1, "channels");
+    int channels = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, 1, "samples");
+    int samples = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, 1, "callback");
+    void* callback = NULL;
+    if (lua_type(L, -1) == LUA_TLIGHTUSERDATA)
+        callback = lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    SDL_AudioSpec desired, obtained;
+    desired.freq = freq;
+    desired.channels = channels;
+    desired.samples = samples;
+    desired.format = AUDIO_S16;
+    desired.callback = callback;
+
+    GET_BOOLEAN(allowed_changes);
+    AudioDeviceID d = SDL_OpenAudioDevice(device, is_capture, &desired, &obtained, allowed_changes);
+    if (d == 0) {
+        lua_pushnil(L);
+        return 1;
+    }
+    else {
+        NEW_UDATA(AudioDeviceID, dev);
+        *dev = d;
+    }
+    lua_newtable(L);
+    PUSH_INTEGER(obtained.channels);
+    lua_setfield(L, -2, "channels");
+    PUSH_INTEGER(obtained.freq);
+    lua_setfield(L, -2, "sample_rate");
+    PUSH_INTEGER(obtained.samples);
+    lua_setfield(L, -2, "samples");
+END_FUNCTION(1)
+
+static BEGIN_META_FUNCTION(AudioDeviceID, Pause)
+    GET_BOOLEAN(pause);
+    SDL_PauseAudioDevice(*self, pause);
+END_FUNCTION(0)
+
+static BEGIN_META_FUNCTION(AudioDeviceID, Close)
+    SDL_CloseAudioDevice(*self);
+END_FUNCTION(0)
+
+static BEGIN_META(AudioDeviceID)
+    BEGIN_REG(AudioDeviceID)
+        REG_META_FIELD(AudioDeviceID, Pause),
+        REG_META_FIELD(AudioDeviceID, Close),
+    END_REG()
+    NEW_META(AudioDeviceID);
+END_META(1)
 
 /************************
  #                      #
@@ -552,6 +621,16 @@ END_FUNCTION(1)
 
 /************************
  #                      #
+ #        Utils         #
+ #                      #
+ ************************/
+
+static BEGIN_FUNCTION(sdl2, GetError)
+    PUSH_STRING(SDL_GetError());
+END_FUNCTION(1)
+
+/************************
+ #                      #
  #        Enums         #
  #                      #
  ************************/
@@ -611,6 +690,7 @@ BEGIN_MODULE(sdl2)
         REG_FIELD(sdl2, OpenAudio),
         REG_FIELD(sdl2, PauseAudio),
         REG_FIELD(sdl2, CloseAudio),
+        REG_FIELD(sdl2, OpenAudioDevice),
         // Window
         REG_FIELD(sdl2, CreateWindow),
         REG_FIELD(sdl2, DestroyWindow),
@@ -643,6 +723,7 @@ BEGIN_MODULE(sdl2)
         REG_FIELD(sdl2, GetPerformanceFrequency),
     END_REG()
     NEW_MODULE(sdl2);
+    LOAD_META(AudioDeviceID);
     LOAD_META(Window);
     LOAD_META(GLContext);
     LOAD_META(Event);
