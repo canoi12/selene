@@ -332,37 +332,6 @@ static BEGIN_FUNCTION(utils, UTF8Codepoint)
     PUSH_INTEGER(codepoint);
 END_FUNCTION(1)
 
-static int l_audio_engine;
-
-struct AudioSource {
-    Uint32 id;
-    Uint8 usage;
-    Uint64 size;
-    Uint8* data;
-    Uint8 loop;
-    float volume, pitch;
-};
-
-struct AudioBuffer {};
-
-static void _audio_callback(void* userdata, Uint8* stream, int len) {
-    lua_State* L = (lua_State*)userdata;
-    lua_rawgetp(L, LUA_REGISTRYINDEX, &l_audio_engine);
-    lua_getfield(L, -1, "buffers");
-    lua_pushnil(L);
-    while (lua_next(L, -1)) {}
-}
-
-static BEGIN_FUNCTION(utils, GetAudioCallback)
-    lua_pushlightuserdata(L, _audio_callback);
-END_FUNCTION(1)
-
-static BEGIN_FUNCTION(utils, LoadOgg)
-END_FUNCTION(1)
-
-static BEGIN_META(AudioSource)
-END_FUNCTION(1)
-
 BEGIN_MODULE(utils)
     BEGIN_REG(utils)
         REG_FIELD(utils, NewData),
@@ -370,8 +339,6 @@ BEGIN_MODULE(utils)
         REG_FIELD(utils, LoadImageData),
         REG_FIELD(utils, LoadTTF),
         REG_FIELD(utils, UTF8Codepoint),
-        REG_FIELD(utils, GetAudioCallback),
-        REG_FIELD(utils, LoadOgg),
     END_REG()
     NEW_MODULE(utils);
     LOAD_META(Data);
