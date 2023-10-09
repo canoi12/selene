@@ -19,6 +19,15 @@ END_FUNCTION(1)
 static BEGIN_FUNCTION(audio, LoadWav)
 END_FUNCTION(1)
 
+BEGIN_MODULE(audio)
+    BEGIN_REG(audio)
+        REG_FIELD(audio, GetCallback),
+        REG_FIELD(audio, LoadOgg),
+        REG_FIELD(audio, LoadWav),
+    END_REG()
+    NEW_MODULE(audio);
+END_MODULE(1)
+
 
 #undef STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.h"
