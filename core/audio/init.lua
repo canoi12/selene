@@ -5,12 +5,13 @@ audio.buffers = {}
 audio.buffer_pool = {}
 
 function audio.init(config)
-  selene.audio.RegisterEngine(audio)
+  -- selene.audio.RegisterEngine(audio)
   local obtained = nil
   audio.dev, audio.spec = sdl.OpenAudioDevice(nil, false, config.audio)
   if not audio.dev then
     error("Failed to open audio device: ", sdl.GetError())
   end
+  audio.dev:Pause(false)
 end
 
 function audio.deinit()

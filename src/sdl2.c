@@ -56,20 +56,21 @@ static BEGIN_FUNCTION(sdl2, OpenAudioDevice)
     GET_BOOLEAN(is_capture);
     if (lua_type(L, arg) != LUA_TTABLE)
         return luaL_argerror(L, arg, "Must be a table");
-    lua_getfield(L, 1, "sample_rate");
+    lua_getfield(L, arg, "sample_rate");
     int freq = (int)luaL_checknumber(L, -1);
     lua_pop(L, 1);
-    lua_getfield(L, 1, "channels");
+    lua_getfield(L, arg, "channels");
     int channels = (int)luaL_checkinteger(L, -1);
     lua_pop(L, 1);
-    lua_getfield(L, 1, "samples");
+    lua_getfield(L, arg, "samples");
     int samples = (int)luaL_checkinteger(L, -1);
     lua_pop(L, 1);
-    lua_getfield(L, 1, "callback");
+    lua_getfield(L, arg, "callback");
     void* callback = NULL;
     if (lua_type(L, -1) == LUA_TLIGHTUSERDATA)
         callback = lua_touserdata(L, -1);
     lua_pop(L, 1);
+    arg++;
 
     SDL_AudioSpec desired, obtained;
     desired.freq = freq;
@@ -95,7 +96,7 @@ static BEGIN_FUNCTION(sdl2, OpenAudioDevice)
     lua_setfield(L, -2, "sample_rate");
     PUSH_INTEGER(obtained.samples);
     lua_setfield(L, -2, "samples");
-END_FUNCTION(1)
+END_FUNCTION(2)
 
 static BEGIN_META_FUNCTION(AudioDeviceID, Pause)
     GET_BOOLEAN(pause);
@@ -721,6 +722,8 @@ BEGIN_MODULE(sdl2)
         REG_FIELD(sdl2, Delay),
         REG_FIELD(sdl2, GetPerformanceCounter),
         REG_FIELD(sdl2, GetPerformanceFrequency),
+        // Utils
+        REG_FIELD(sdl2, GetError),
     END_REG()
     NEW_MODULE(sdl2);
     LOAD_META(AudioDeviceID);

@@ -2,6 +2,7 @@ local sdl = selene.sdl2
 local event = require 'core.event'
 local filesystem = require 'core.filesystem'
 local graphics = require 'core.graphics'
+local audio = require 'core.audio'
 local traceback = debug.traceback
 local core = {}
 
@@ -39,6 +40,7 @@ local _error_step = function()
   graphics.begin()
   if selene.update then selene.update() end
   if selene.draw then selene.draw() end
+  
   graphics.finish()
   graphics.swap()
   event.poll()
@@ -96,13 +98,16 @@ function core.init()
     xpcall(function() require('conf') end, _error)
   end
   selene.config(config)
-
-  event.init()
   graphics.init(config)
+  event.init()
 
-  if not sdl.OpenAudio(config.audio) then
-    error('Failed to init SDL2 Audio')
+  local state = xpcall(function() audio.init(config) end, _error)
+  if not state then
+    print(core.loop)
+    return nil
   end
+  
+  
 
   if filesystem.exists('main.lua') then
     xpcall(function() require('main') end, _error)
@@ -125,8 +130,8 @@ function core.init()
 end
 
 function core.deinit()
+  audio.deinit()
   graphics.deinit()
-  sdl.CloseAudio()
 end
 
 return core

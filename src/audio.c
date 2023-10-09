@@ -27,8 +27,19 @@ struct BufferPool {
     Uint32 size;
 };
 
+int sample_pos;
+float samples_per_sine = 44100 / 392;
+
 static void _audio_callback(void* userdata, Uint8* stream, int len) {
     lua_State* L = (lua_State*)userdata;
+    Sint16* buffer = (Sint16*)stream;
+    int length = len / sizeof(short);
+    for(int i = 0; i < length; ++i)
+    {
+        double time = (double)sample_pos / 44100.0;
+        buffer[i] = 64 * sin(2.0f * M_PI * 441.f * time);
+        sample_pos++;
+    }
 }
 
 static BEGIN_FUNCTION(audio, GetCallback)

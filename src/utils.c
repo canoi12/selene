@@ -6,6 +6,7 @@
 static BEGIN_META_FUNCTION(Data, Realloc)
     CHECK_INTEGER(size);
     self->data = realloc(self->data, size);
+    self->size = size;
 END_FUNCTION(0)
 
 static BEGIN_META_FUNCTION(Data, GetSize)
