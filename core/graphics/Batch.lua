@@ -8,7 +8,7 @@ function Batch:constructor(size)
   self.offset = 0
   self.size = size * vertex_size
   self.vbo = gl.NewBuffer()
-  self.data = selene.utils.NewData(self.size)
+  self.data = selene.data.NewData(self.size)
 
   gl.BindBuffer(gl.ARRAY_BUFFER, self.vbo)
   gl.BufferData(gl.ARRAY_BUFFER, self.size, gl.DYNAMIC_DRAW)

@@ -40,6 +40,7 @@ int luaopen_selene(lua_State* L) {
 
    struct { char* name; lua_CFunction fn; } libs[] = {
       {"fs", seleneopen_fs},
+      {"data", seleneopen_data},
       {"audio", seleneopen_audio},
       {"utils", seleneopen_utils},
       {"system", seleneopen_system},

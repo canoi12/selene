@@ -23,7 +23,7 @@ function Image:constructor(...)
     self.width = width
     self.height = height
     self.comps = 4
-    self.data = selene.utils.NewData(self.width * self.height * 4)
+    self.data = selene.data.NewData(self.width * self.height * 4)
   elseif type(args[1]) == "string" then
     local data, w, h, c = selene.utils.LoadImageData(filesystem.resolve(args[1]))
     texture = gl.NewTexture()

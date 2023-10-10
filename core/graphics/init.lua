@@ -82,7 +82,7 @@ function graphics.init(config)
   gl.BindVertexArray()
   gl.BindBuffer(gl.ARRAY_BUFFER)
 
-  local image_data = selene.utils.NewData(4)
+  local image_data = selene.data.NewData(4)
   image_data:Write(0, 255, 255, 255, 255)
   default.image = setmetatable({}, { __index = Image })
   default.image.target = gl.TEXTURE_2D
@@ -166,10 +166,10 @@ function graphics.set_canvas(canvas)
 end
 
 function graphics.clear(r, g, b, a)
-  r = r or 0.0
-  g = g or 0.0
-  b = b or 0.0
-  a = a or 1.0
+  r = (r or 0) / 255
+  g = (g or 0) / 255
+  b = (b or 0) / 255
+  a = (a or 255) / 255
   gl.ClearColor(r, g, b, a)
   gl.Clear(gl.COLOR_BUFFER_BIT)
 end
@@ -191,6 +191,7 @@ function graphics.begin()
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   default.canvas.width, default.canvas.height = graphics.window:GetSize()
+  graphics.set_color()
 end
 
 function graphics.finish()

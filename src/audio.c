@@ -3,7 +3,24 @@
 #define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.h"
 
+#include "tinywav/tinywav.h"
+
 static int l_audio_engine;
+
+enum {
+    UNKNOWN_FORMAT = 0,
+    WAV_FORMAT,
+    OGG_FORMAT,
+};
+
+typedef struct {
+    Uint8 audio_type;
+    Uint32 size;
+    void* data;
+    Uint32 frequency;
+    Uint32 samples;
+    Uint8 channels;
+} AudioData;
 
 typedef struct AudioSource AudioSource;
 struct AudioSource {

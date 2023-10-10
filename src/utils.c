@@ -3,102 +3,6 @@
 #include "stb_image.h"
 #include "stb_truetype.h"
 
-static BEGIN_META_FUNCTION(Data, Realloc)
-    CHECK_INTEGER(size);
-    self->data = realloc(self->data, size);
-    self->size = size;
-END_FUNCTION(0)
-
-static BEGIN_META_FUNCTION(Data, GetSize)
-    PUSH_INTEGER(self->size);
-END_FUNCTION(1)
-
-static BEGIN_META_FUNCTION(Data, Write)
-    CHECK_INTEGER(offset);
-    int args = lua_gettop(L)-2;
-    int error = (offset+args) > self->size;
-    if (error) return luaL_error(L, "Data overflow");
-
-    char* dt = ((char*)self->data) + offset;
-    for (int i = 0; i < args; i++) {
-        char value = (char)luaL_checkinteger(L, 3+i);
-        dt[i] = value;
-    }
-    PUSH_INTEGER(offset + args);
-END_FUNCTION(1)
-
-static BEGIN_META_FUNCTION(Data, WriteInt)
-    CHECK_INTEGER(offset);
-    int args = lua_gettop(L);
-    int error = (offset+(args*4)) > self->size;
-    if (error) return luaL_error(L, "Data overflow");
-    int* data = (int*)((char*)self->data + offset);
-    while (arg <= args) {
-        CHECK_INTEGER(value);
-        *data = value;
-        data++;
-    }
-    PUSH_INTEGER(offset + (args*4));
-END_FUNCTION(1)
-
-static BEGIN_META_FUNCTION(Data, WriteFloat)
-    CHECK_INTEGER(offset);
-    int args = lua_gettop(L);
-    int error = (offset+(args*4)) > self->size;
-    if (error) return luaL_error(L, "Data overflow");
-
-    float* data = (float*)((char*)self->data +offset);
-    while (arg <= args) {
-        CHECK_NUMBER(float, value);
-        *data = value;
-        data++;
-    }
-   PUSH_INTEGER(offset + (args*4));
-END_FUNCTION(1)
-
-static BEGIN_META_FUNCTION(Data, WriteString)
-    CHECK_INTEGER(offset);
-    size_t size;
-    const char* str = luaL_checklstring(L, arg++, &size);
-    int error = (offset+size) > self->size;
-    if (error) return luaL_error(L, "Data overflow");
-    char* data = (char*)self->data + offset;
-    for (char* p = (char*)str; *p != '\0'; p++) {
-        *data = *p;
-        data++;
-    }
-    offset += size;
-    PUSH_INTEGER(offset + size);
-END_FUNCTION(1)
-
-static BEGIN_META_FUNCTION(Data, gc)
-    if (self->data) {
-        free(self->data);
-        self->data = NULL;
-        self->size = 0;
-    }
-END_FUNCTION(0)
-
-static BEGIN_META(Data)
-    BEGIN_REG(Data)
-        REG_META_FIELD(Data, Realloc),
-        REG_META_FIELD(Data, GetSize),
-        REG_META_FIELD(Data, Write),
-        REG_META_FIELD(Data, WriteInt),
-        REG_META_FIELD(Data, WriteFloat),
-        REG_META_FIELD(Data, WriteString),
-        REG_META_FIELD(Data, gc),
-    END_REG()
-    NEW_META(Data);
-END_META(1)
-
-static BEGIN_FUNCTION(utils, NewData)
-    CHECK_INTEGER(size);
-    NEW_UDATA(Data, data);
-    data->size = size;
-    data->data = malloc(size);
-END_FUNCTION(1)
-
 
 // Matrix
 typedef mat4x4 Mat4;
@@ -335,13 +239,11 @@ END_FUNCTION(1)
 
 BEGIN_MODULE(utils)
     BEGIN_REG(utils)
-        REG_FIELD(utils, NewData),
         REG_FIELD(utils, NewMat4),
         REG_FIELD(utils, LoadImageData),
         REG_FIELD(utils, LoadTTF),
         REG_FIELD(utils, UTF8Codepoint),
     END_REG()
     NEW_MODULE(utils);
-    LOAD_META(Data);
     LOAD_META(Mat4);
 END_MODULE(1)

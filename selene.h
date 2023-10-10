@@ -246,6 +246,7 @@ typedef struct {
 } Data;
 
 int seleneopen_fs(lua_State* L);
+int seleneopen_data(lua_State* L);
 int seleneopen_audio(lua_State* L);
 int seleneopen_gl(lua_State* L);
 int seleneopen_sdl2(lua_State* L);

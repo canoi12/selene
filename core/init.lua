@@ -107,8 +107,6 @@ function core.init()
     return nil
   end
   
-  
-
   if filesystem.exists('main.lua') then
     xpcall(function() require('main') end, _error)
   else
