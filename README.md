@@ -28,9 +28,18 @@ C Modules:
 
 Lua Modules (core):
 - class
-- audio (Music, Sound)
-- graphics (Image, Canvas, Font, Batch, Shader)
-- engine (Point, Rect)
+- audio
+    - Music
+    - Sound
+- graphics
+    - Image
+    - Canvas
+    - Font
+    - Batch
+    - Shader
+- engine
+    - Point
+    - Rect
 - controller
 - event
 - filesystem
@@ -41,7 +50,7 @@ Lua Modules (core):
 // main.lua
 ```lua
 local graphics = require 'core.graphics'
-local Image = require 'core.graphics.Image
+local Image = require 'core.graphics.Image'
 
 function selene.load()
     image = Image:new('image.png')
