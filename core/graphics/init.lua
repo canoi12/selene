@@ -83,7 +83,7 @@ function graphics.init(config)
   gl.BindBuffer(gl.ARRAY_BUFFER)
 
   local image_data = selene.data.NewData(4)
-  image_data:Write(0, 255, 255, 255, 255)
+  image_data:WriteByte(0, 255, 255, 255, 255)
   default.image = setmetatable({}, { __index = Image })
   default.image.target = gl.TEXTURE_2D
   default.image.texture = gl.NewTexture()

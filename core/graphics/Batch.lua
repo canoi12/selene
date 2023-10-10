@@ -48,4 +48,8 @@ function Batch:count()
   return self.offset / vertex_size
 end
 
+function Batch:__gc()
+  self.data:Free()
+end
+
 return Batch

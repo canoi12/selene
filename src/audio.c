@@ -24,9 +24,7 @@ typedef struct {
 
 typedef struct AudioSource AudioSource;
 struct AudioSource {
-    Uint32 id;
-    Uint32 size;
-    void* data;
+    Data data;
     Uint32 frequency;
     Uint32 samples;
     Uint8 channels;
@@ -77,7 +75,6 @@ static BEGIN_FUNCTION(audio, NewBufferPoll)
 END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(AudioSource, gc)
-    free(self->data);
 END_FUNCTION(0)
 
 static BEGIN_META_FUNCTION(AudioSource, GetFrequency)

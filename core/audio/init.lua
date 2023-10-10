@@ -11,7 +11,7 @@ function audio.init(config)
   if not audio.dev then
     error("Failed to open audio device: ", sdl.GetError())
   end
-  audio.dev:Pause(false)
+  -- audio.dev:Pause(false)
 end
 
 function audio.deinit()

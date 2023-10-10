@@ -3,7 +3,6 @@
 #include "stb_image.h"
 #include "stb_truetype.h"
 
-
 // Matrix
 typedef mat4x4 Mat4;
 static BEGIN_META_FUNCTION(Mat4, Identity)
