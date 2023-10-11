@@ -46,9 +46,6 @@ function graphics.init(config)
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 3);
   end
 
-  print(selene.system.GetOS())
-  print(selene.system.GetArch())
-
   local window = sdl.CreateWindow(
     config.window.title,
     config.window.width, config.window.height

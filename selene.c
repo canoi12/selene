@@ -60,8 +60,6 @@ int luaopen_selene(lua_State* L) {
 }
 
 static int selene_init(lua_State* L, int argc, char** argv) {
-    fprintf(stderr, "Hello Selene\n");
-
     int flags = SDL_INIT_SENSOR;
     flags |= SDL_INIT_AUDIO |
        SDL_INIT_VIDEO |

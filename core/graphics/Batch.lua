@@ -22,7 +22,6 @@ function Batch:push(x, y, r, g, b, a, u, v)
   if (self.offset + vertex_size) >= self.size then
     self.size = self.size * 2
     self.data:Realloc(self.size)
-    print('Realloc', self.size)
     gl.BindBuffer(gl.ARRAY_BUFFER, self.vbo)
     gl.BufferData(gl.ARRAY_BUFFER, self.size, gl.DYNAMIC_DRAW)
     gl.BindBuffer(gl.ARRAY_BUFFER)

@@ -97,6 +97,11 @@ function core.init()
   if filesystem.exists('conf.lua') then
     xpcall(function() require('conf') end, _error)
   end
+  print(
+    selene.system.GetOS(),
+    selene.system.GetArch()
+  )
+
   selene.config(config)
   graphics.init(config)
   event.init()

@@ -3,7 +3,8 @@
 #define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.h"
 
-#include "tinywav/tinywav.h"
+#define DR_WAV_IMPLEMENTATION
+#include "dr_wav.h"
 
 static int l_audio_engine;
 
@@ -65,6 +66,21 @@ static BEGIN_FUNCTION(audio, LoadOgg)
 END_FUNCTION(1)
 
 static BEGIN_FUNCTION(audio, LoadWav)
+    CHECK_STRING(path);
+    drwav wav;
+    Uint32 channels, sample_rate;
+    drwav_uint64 frame_count;
+    Sint16* frames = drwav_open_file_and_read_pcm_frames_s16(path, &channels, &sample_rate, &frame_count, NULL);
+    if (!frames) {
+        return luaL_error(L, "Failed to load wav");
+    }
+
+    NEW_UDATA(AudioSource, source);
+    source->data.data = frames;
+    source->data.size = frame_count;
+    source->frequency = sample_rate;
+    source->channels = channels;
+    source->samples = 2048;
 END_FUNCTION(1)
 
 static BEGIN_FUNCTION(audio, NewBufferPoll)
@@ -89,6 +105,15 @@ static BEGIN_META_FUNCTION(AudioSource, GetChannels)
     PUSH_INTEGER(self->channels);
 END_FUNCTION(1)
 
+static BEGIN_META(AudioSource)
+    BEGIN_REG(AudioSource)
+        REG_META_FIELD(AudioSource, GetFrequency),
+        REG_META_FIELD(AudioSource, GetSamples),
+        REG_META_FIELD(AudioSource, GetChannels),
+    END_REG()
+    NEW_META(AudioSource);
+END_META(1)
+
 BEGIN_MODULE(audio)
     BEGIN_REG(audio)
         REG_FIELD(audio, GetCallback),
@@ -96,6 +121,7 @@ BEGIN_MODULE(audio)
         REG_FIELD(audio, LoadWav),
     END_REG()
     NEW_MODULE(audio);
+    LOAD_META(AudioSource);
 END_MODULE(1)
 
 
