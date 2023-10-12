@@ -289,6 +289,12 @@ static BEGIN_META_FUNCTION(Event, MouseButtonEvent)
     PUSH_INTEGER(self->button.clicks);
 END_FUNCTION(5)
 
+static BEGIN_META_FUNCTION(Event, MouseWheelEvent)
+PUSH_INTEGER(self->wheel.which);
+PUSH_INTEGER(self->wheel.x);
+PUSH_INTEGER(self->wheel.y);
+END_FUNCTION(4)
+
 static BEGIN_META_FUNCTION(Event, KeyboardEvent)
     PUSH_STRING(SDL_GetScancodeName(self->key.keysym.scancode));
     PUSH_BOOLEAN(self->key.repeat);

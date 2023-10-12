@@ -104,14 +104,11 @@ function core.init()
 
   selene.config(config)
   graphics.init(config)
-  event.init()
+  local state = xpcall(function()
+      event.init()
+      audio.init(config)
+  end, _error)
 
-  local state = xpcall(function() audio.init(config) end, _error)
-  if not state then
-    print(core.loop)
-    return nil
-  end
-  
   if filesystem.exists('main.lua') then
     xpcall(function() require('main') end, _error)
   else
