@@ -1,16 +1,21 @@
+local audio = require 'core.audio'
 local graphics = require 'core.graphics'
 local ui = require('core.ui'):new()
 local Canvas = require 'core.graphics.Canvas'
 local keyboard = require 'core.keyboard'
 local Image = require 'core.graphics.Image'
+local Sound = require 'core.audio.Sound'
 
 local highscore = 0
 
 function selene.load()
   canvas = Canvas(160, 95)
   image = Image("sprites.png")
-  teste = selene.audio.LoadWav("som.wav")
-  print(teste:GetFrequency())
+  teste = Sound("som.wav")
+  instance = audio.play(teste)
+  print(teste.source:GetFrequency())
+  print(teste.source:GetChannels())
+  print(teste.source:GetSamples())
 end
 
 x = 0
@@ -22,7 +27,6 @@ function selene.update(dt)
   elseif keyboard.is_down('d') then
     x = x + (80 * dt)
   end
-
 end
 
 function selene.draw()
@@ -35,7 +39,7 @@ function selene.draw()
   graphics.draw(canvas, nil, 0, 32)
 
   graphics.draw_rectangle(x, y + 95, 32, 16)
-  graphics.print('olar')
+  graphics.print('olar, até então tudo ok')
 
   -- graphics.set_color(75, 75, 75)
   -- graphics.fill_rectangle(128, 128, 320, 128)
@@ -49,4 +53,11 @@ function selene.draw()
   -- graphics.draw_line(129, 128+14, 129+319, 128+14)
   -- graphics.draw_line(129+319, 128+14, 129+319, 128+128+1)
   -- graphics.print('Window', 132, 126)
+end
+
+function selene.key_callback(pressed, key, rpt)
+  if pressed and key == 'space' and not rpt then
+    -- audio.play(teste)
+    audio.pool:Stop(instance)
+  end
 end

@@ -2,6 +2,7 @@
 
 #include "stb_image.h"
 #include "stb_truetype.h"
+#include "font8x8/font8x8_latin.h"
 
 // Matrix
 typedef mat4x4 Mat4;
@@ -208,25 +209,31 @@ END_FUNCTION(4)
 #define MAX_UNICODE 0x10FFFF
 static BEGIN_FUNCTION(utils, UTF8Codepoint)
     CHECK_STRING(str);
-    char* p = (char*)str;
-    int codepoint = *str;
-    if (codepoint < 0x80) {
-        PUSH_INTEGER(codepoint);
-        return 1;
+    CHECK_INTEGER(pos);
+    Uint8* p = (Uint8*)str + pos-1;
+    if (*p < 0x80) {
+        PUSH_INTEGER(*p);
+        PUSH_INTEGER(1);
+        return 2;
     }
+    int codepoint = *p;
+    int size = 1;
 
     switch (codepoint & 0xf0)
     {
         case 0xf0:
             codepoint = ((p[0] & 0x07) << 18) | ((p[1] & 0x3f) << 12) | ((p[2] & 0x3f) << 6) | ((p[3] & 0x3f));
+            size = 4;
             break;
         case 0xe0: {
             codepoint = ((p[0] & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | ((p[2] & 0x3f));
+            size = 3;
             break;
         }
         case 0xc0:
         case 0xd0: {
             codepoint = ((p[0] & 0x1f) << 6) | ((p[1] & 0x3f));
+            size = 2;
             break;
         }
         default:
@@ -234,13 +241,97 @@ static BEGIN_FUNCTION(utils, UTF8Codepoint)
     }
     if (codepoint > MAX_UNICODE) codepoint = -1;
     PUSH_INTEGER(codepoint);
-END_FUNCTION(1)
+    PUSH_INTEGER(size);
+END_FUNCTION(2)
+
+static BEGIN_FUNCTION(utils, GetDefaultFont)
+    int w = 2048;
+    int h = 8;
+    Uint8* bitmap = malloc(w * h * 4);
+    int ox = 0;
+    int stride = w * sizeof(int);
+    for (int i = 0; i < 128; i++) {
+        for (int y = 0; y < 8; y++) {
+            Uint8 l = font8x8_basic[i][y];
+            int offset = ox + (i * 8 * sizeof(int)) + (y * stride);
+            for (int x = 0; x < 8; x++) {
+                char p = (l >> x) & 0x1;
+
+                Uint8* pixel = bitmap + offset;
+                pixel[0] = 255;
+                pixel[1] = 255;
+                pixel[2] = 255;
+                pixel[3] = 255 * p;
+                offset += 4;
+            }
+        }
+    }
+    ox = 128 * 8 * sizeof(int);
+    for (int i = 0; i < 32; i++) {
+        for (int y = 0; y < 8; y++) {
+            Uint8 l = font8x8_control[i][y];
+            int offset = ox + (i * 8 * sizeof(int)) + (y * stride);
+            for (int x = 0; x < 8; x++) {
+                char p = (l >> x) & 0x1;
+
+                Uint8* pixel = bitmap + offset;
+                pixel[0] = 255;
+                pixel[1] = 255;
+                pixel[2] = 255;
+                pixel[3] = 255 * p;
+                offset += 4;
+            }
+        }
+    }
+    ox = 160 * 8 * sizeof(int);
+    for (int i = 0; i < 96; i++) {
+        for (int y = 0; y < 8; y++) {
+            Uint8 l = font8x8_ext_latin[i][y];
+            int offset = ox + (i * 8 * sizeof(int)) + (y * stride);
+            for (int x = 0; x < 8; x++) {
+                char p = (l >> x) & 0x1;
+
+                Uint8* pixel = bitmap + offset;
+                pixel[0] = 255;
+                pixel[1] = 255;
+                pixel[2] = 255;
+                pixel[3] = 255 * p;
+                offset += 4;
+            }
+        }
+    }
+    NEW_UDATA(Data, dt);
+    dt->size = w * h * 4;
+    dt->data = bitmap;
+    PUSH_INTEGER(w);
+    PUSH_INTEGER(h);
+    lua_newtable(L);
+    for (int i = 0; i < 256; i++) {
+        lua_newtable(L);
+        lua_pushinteger(L, 8);
+        lua_setfield(L, -2, "ax");
+        lua_pushinteger(L, 0);
+        lua_setfield(L, -2, "ay");
+        lua_pushinteger(L, 8);
+        lua_setfield(L, -2, "bh");
+        lua_pushinteger(L, 8);
+        lua_setfield(L, -2, "bl");
+        lua_pushinteger(L, 8);
+        lua_setfield(L, -2, "bt");
+        lua_pushinteger(L, 8);
+        lua_setfield(L, -2, "bw");
+        lua_pushinteger(L, (8 * i));
+        lua_setfield(L, -2, "tx");
+        lua_rawseti(L, -2, i);
+    }
+END_FUNCTION(4)
 
 BEGIN_MODULE(utils)
     BEGIN_REG(utils)
         REG_FIELD(utils, NewMat4),
         REG_FIELD(utils, LoadImageData),
         REG_FIELD(utils, LoadTTF),
+        REG_FIELD(utils, GetDefaultFont),
         REG_FIELD(utils, UTF8Codepoint),
     END_REG()
     NEW_MODULE(utils);

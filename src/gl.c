@@ -681,9 +681,9 @@ static const BEGIN_ENUM(gl)
     ENUM_FIELD(NEAREST, GL_),
     ENUM_FIELD(LINEAR, GL_),
     ENUM_FIELD(REPEAT, GL_),
+    ENUM_FIELD(CLAMP_TO_EDGE, GL_),
 #if !defined(__EMSCRIPTEN__)
     ENUM_FIELD(CLAMP_TO_BORDER, GL_),
-    ENUM_FIELD(CLAMP_TO_EDGE, GL_),
 #endif
     // Framebuffer targets
     ENUM_FIELD(FRAMEBUFFER, GL_),

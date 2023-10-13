@@ -14,63 +14,61 @@ vec4 pixel(vec4 color, vec2 texcoord, sampler2D tex) {
 }
 ]]
 
+local OS = selene.system.GetOS()
+local shader_base = {}
+if OS == "Emscripten" then
+  shader_base.version = "#version 100"
+  shader_base.attribute = "attribute"
+  shader_base.varying = { "varying", "varying" }
+  shader_base.precision = "#define texture texture2D\nprecision mediump float;"
+else
+  shader_base.version = "#version 140"
+  shader_base.attribute = "in"
+  shader_base.varying = { "out", "in" }
+  shader_base.precision = ""
+end
+
 function Shader:constructor(position, pixel)
   position = position or default_position
   pixel = pixel or default_pixel
-  local vert_source = {
-    [[
-#version 140
-in vec2 a_Position;
-in vec4 a_Color;
-in vec2 a_Texcoord;
+  local attribs = {'vec2 a_Position', 'vec4 a_Color', 'vec2 a_Texcoord'}
+  local varyings = {'vec4 v_Color', 'vec2 v_Texcoord'}
 
-out vec4 v_Color;
-out vec2 v_Texcoord;
+  local vert_source = shader_base.version
+  local frag_source = shader_base.version .. "\n" .. shader_base.precision
+  for i,a in ipairs(attribs) do
+    vert_source = vert_source .. "\n" .. shader_base.attribute .. " " .. a .. ';'
+  end
 
+  for i,v in ipairs(varyings) do
+    vert_source = vert_source .. "\n" .. shader_base.varying[1] .. " " .. v .. ';'
+    frag_source = frag_source .. "\n" .. shader_base.varying[2] .. " " .. v .. ';'
+  end
+
+  vert_source = vert_source .. [[
 uniform mat4 u_MVP;
 uniform mat4 u_View;
-]],
-    position,
-    [[
-
+]] .. position .. [[
 void main() {
     gl_Position = position(a_Position, u_MVP, u_View);
     v_Color = a_Color;
     v_Texcoord = a_Texcoord;
 }
 ]]
-  }
-
-  local frag_source = {
-    [[
-#version 140
-in vec4 v_Color;
-in vec2 v_Texcoord;
+frag_source = frag_source .. [[
 uniform sampler2D u_Texture;
-]],
-    pixel,
-    [[
+]] .. pixel .. [[
 void main() {
     gl_FragColor = pixel(v_Color, v_Texcoord, u_Texture);
 }
 ]]
-  }
-
-  local temp = ""
-  for i,src in ipairs(vert_source) do
-    temp = temp .. src
-  end
 
   local vert = gl.NewShader(gl.VERTEX_SHADER)
-  vert:Source(temp)
+  vert:Source(vert_source)
   vert:Compile()
 
-  temp = ""
-  for i,src in ipairs(frag_source) do
-    temp = temp .. src
-  end
   local frag = gl.NewShader(gl.FRAGMENT_SHADER)
-  frag:Source(temp)
+  frag:Source(frag_source)
   frag:Compile()
 
   local prog = gl.NewProgram()

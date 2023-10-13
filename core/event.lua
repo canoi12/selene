@@ -12,7 +12,6 @@ local handlers = {
   end,
 }
 
-
 local window_events = {
   [sdl.WINDOWEVENT_CLOSE] = "close",
   [sdl.WINDOWEVENT_SIZE_CHANGED] = "resized",
@@ -52,14 +51,14 @@ end
 handlers[sdl.KEYDOWN] = function(ev)
   local key, rpt = ev:KeyboardEvent()
   if selene.key_callback then
-    selene.key_callback(true, key, rpt)
+    selene.key_callback(true, key:lower(), rpt)
   end
 end
 
 handlers[sdl.KEYUP] = function(ev)
   local key, rpt = ev:KeyboardEvent()
   if selene.key_callback then
-    selene.key_callback(false, key, rpt)
+    selene.key_callback(false, key:lower(), rpt)
   end
 end
 

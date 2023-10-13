@@ -1,32 +1,56 @@
 local audio = {}
 local sdl = selene.sdl2
 
-audio.buffers = {}
-audio.buffer_pool = {}
+local function get_first_device()
+  local num = sdl.GetNumAudioDevice(false)
+  if num > 0 then
+    return sdl.GetAudioDeviceName(0)
+  end
+  error("No audio device found")
+end
 
 function audio.init(config)
   -- selene.audio.RegisterEngine(audio)
-  local obtained = nil
   audio.dev, audio.spec = sdl.OpenAudioDevice(nil, false, config.audio)
+  audio.instances = {}
   if not audio.dev then
-    error("Failed to open audio device: ", sdl.GetError())
+    local num = sdl.GetNumAudioDevice(false)
+    if num <= 0 then
+      error("No audio device found")
+    error("Failed to open audio device: " .. sdl.GetError())
+    end
+    local name = sdl.GetAudioDeviceName(0, false)
+    audio.dev, audio.spec = sdl.OpenAudioDevice(name, false, config.audio)
+    if not audio.dev then
+      error("Failed to open audio device: " .. sdl.GetError())
+    end
   end
-  -- audio.dev:Pause(false)
+  audio.pool = selene.audio.NewBufferPool(256)
+  audio.pool:SetCurrent()
+  audio.dev:Pause(false)
 end
 
 function audio.deinit()
-  audio.dev:Close()
+  if audio.dev then
+    audio.dev:Close()
+  end
+  audio.pool:Free()
+end
+
+function audio.set_volume(volume)
+end
+
+function audio.set_pitch(pitch)
 end
 
 function audio.load_source(path)
 end
 
-function audio.play(source)
-  table.insert(audio.sources, selene.audio.NewBuffer())
+function audio.play(obj)
+  return audio.pool:Play(obj.source)
 end
 
 function audio.pause(buffer)
-
 end
 
 function audio.stop(buffer)

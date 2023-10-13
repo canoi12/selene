@@ -48,6 +48,17 @@ static BEGIN_FUNCTION(sdl2, CloseAudio)
     SDL_CloseAudio();
 END_FUNCTION(0)
 
+static BEGIN_FUNCTION(sdl2, GetNumAudioDevices)
+    GET_BOOLEAN(is_capture);
+    PUSH_INTEGER(SDL_GetNumAudioDevices(is_capture));
+END_FUNCTION(1)
+
+static BEGIN_FUNCTION(sdl2, GetAudioDeviceName)
+    CHECK_INTEGER(index);
+    GET_BOOLEAN(is_capture);
+    PUSH_STRING(SDL_GetAudioDeviceName(index, is_capture));
+END_FUNCTION(1)
+
 static BEGIN_FUNCTION(sdl2, OpenAudioDevice)
     const char* device = NULL;
     if (lua_type(L, arg) == LUA_TSTRING)
@@ -203,6 +214,16 @@ static BEGIN_FUNCTION(sdl2, CreateWindow)
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
     int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+    int top = lua_gettop(L);
+    if (top >= arg) {
+        if (lua_type(L, arg) != LUA_TTABLE)
+            return luaL_argerror(L, arg, "Must be a table");
+        lua_pushnil(L);
+        while (lua_next(L, arg) != 0) {
+            flags |= (int)luaL_checkinteger(L, -1);
+            lua_pop(L, 1);
+        }
+    }
 
     NEW_UDATA(Window, window);
     *window = SDL_CreateWindow(
@@ -698,6 +719,8 @@ BEGIN_MODULE(sdl2)
         REG_FIELD(sdl2, PauseAudio),
         REG_FIELD(sdl2, CloseAudio),
         REG_FIELD(sdl2, OpenAudioDevice),
+        REG_FIELD(sdl2, GetNumAudioDevices),
+        REG_FIELD(sdl2, GetAudioDeviceName),
         // Window
         REG_FIELD(sdl2, CreateWindow),
         REG_FIELD(sdl2, DestroyWindow),

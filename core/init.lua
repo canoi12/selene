@@ -52,10 +52,16 @@ local _error = function(msg)
   selene.update = function() end
   selene.draw = function()
     graphics.clear()
+    local width, height = graphics.window:GetSize()
     graphics.set_color(255, 255, 255)
     graphics.print('error', 16)
-    graphics.print(msg, 16, 16)
-    graphics.print(trace, 16, 32)
+    graphics.print_wrap(msg, 16, 16, width)
+    graphics.print_wrap(trace, 16, 32, width)
+  end
+  selene.key_callback = function(pressed, key)
+    if key == 'escape' then
+      selene.SetRunning(false)
+    end
   end
   core.loop = _error_step
 end
@@ -103,18 +109,29 @@ function core.init()
   )
 
   selene.config(config)
+
   graphics.init(config)
   local state = xpcall(function()
       event.init()
       audio.init(config)
   end, _error)
+  if not state then
+    return nil
+  end
 
   if filesystem.exists('main.lua') then
     xpcall(function() require('main') end, _error)
   else
     selene.update = function() end
     selene.draw = function()
-      graphics.clear(0.3, 0.4, 0.4)
+      graphics.clear()
+      local width, height = graphics.window:GetSize()
+      graphics.print('no main.lua found', width / 2 - 54, height / 2)
+    end
+    selene.key_callback = function(pressed, key)
+      if key == 'escape' then
+        selene.SetRunning(false)
+      end
     end
   end
 

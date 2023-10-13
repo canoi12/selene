@@ -45,10 +45,28 @@ function graphics.init(config)
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3);
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 3);
   end
+  local flags = {}
+
+  if config.window.resizable then
+    table.insert(flags, sdl.WINDOW_RESIZABLE)
+  end
+
+  if config.window.borderless then
+    table.insert(flags, sdl.WINDOW_BORDERLESS)
+  end
+
+  if config.window.fullscreen then
+    table.insert(flags, sdl.WINDOW_FULLSCREEN_DESKTOP)
+  end
+
+  if config.window.always_on_top then
+    table.insert(flags, sdl.WINDOW_ALWAYS_ON_TOP)
+  end
 
   local window = sdl.CreateWindow(
     config.window.title,
-    config.window.width, config.window.height
+    config.window.width, config.window.height,
+    flags
   )
   local ctx = sdl.GL_CreateContext(window)
   sdl.GL_MakeCurrent(ctx, window)
@@ -99,7 +117,14 @@ function graphics.init(config)
   default.canvas.height = height
   default.canvas.framebuffer = nil
 
-  default.font = Font:new("core/font.ttf")
+  local data, w, h, glyphs = selene.utils.GetDefaultFont()
+  print(data, w, h, glyphs, #glyphs)
+  local c = selene.utils.UTF8Codepoint('\t', 1)
+  print(c, glyphs[c], 'kek')
+  default.font = setmetatable({}, { __index = Font })
+  default.font.image = Image(w, h, data)
+  default.font.rects = glyphs
+  default.font.size = 8
 end
 
 function graphics.deinit()
@@ -364,12 +389,61 @@ function graphics.print(text, x, y)
   local image = font.image
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
+  local i = 1
+  while i <= #text do
+    local b = text:byte(i)
+    local codepoint, bytes = selene.utils.UTF8Codepoint(text, i)
+    i = i + bytes
+    local rect = font.rects[codepoint]
+
+    if c == '\n' then
+      ox = x
+      oy = oy + image.height
+    elseif c == '\t' then
+      ox = ox + rect.bw * 2
+    else
+      local xx = ox + rect.bl
+      local yy = oy + rect.bt
+
+      local uv = {}
+      uv[1] = rect.tx / image.width
+      uv[2] = 0
+      uv[3] = uv[1] + (rect.bw / image.width)
+      uv[4] = uv[2] + (rect.bh / image.height)
+
+      default.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
+      default.batch:push(xx+rect.bw, yy, r, g, b, a, uv[3], uv[2])
+      default.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
+
+      default.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
+      default.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
+      default.batch:push(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
+    end
+
+    ox = ox + rect.ax
+    oy = oy + rect.ay
+  end
+end
+
+function graphics.print_wrap(text, x, y, width)
+  set_image(current.font.image)
+  set_draw_mode('triangles')
+  x = x or 0
+  y = y or 0
+
+  local ox = x or 0
+  local oy = y or 0
+
+  local font = current.font
+  local image = font.image
+  local r,g,b,a = table.unpack(current.draw_color)
+  local vertex_data = default.batch.data
   for i=1,#text do
     local c = text:sub(i, i)
     local codepoint = selene.utils.UTF8Codepoint(c)
     local rect = font.rects[codepoint]
 
-    if c == '\n' then
+    if c == '\n'or ox >= width then
       ox = x
       oy = oy + image.height
     elseif c == '\t' then

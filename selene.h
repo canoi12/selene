@@ -38,17 +38,16 @@
 #include "glad/glad.h"
 #endif
 
-#ifdef OS_WIN
+#if defined(OS_WIN)
 // #define SDL_MAIN_HANDLED
     #include <SDL.h>
     #include <SDL_opengl.h>
+#elif defined(__EMSCRIPTEN__)
+    #include <SDL.h>
+    #include <SDL2/SDL_opengles2.h>
 #else
     #include <SDL2/SDL.h>
-    #if !defined(__EMSCRIPTEN__)
-        #include <SDL2/SDL_opengl.h>
-    #else
-        #include <SDL2/SDL_opengles2.h>
-    #endif
+    #include <SDL2/SDL_opengl.h>
 #endif
 
 #include "linmath.h"
