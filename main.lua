@@ -5,17 +5,20 @@ local Canvas = require 'core.graphics.Canvas'
 local keyboard = require 'core.keyboard'
 local Image = require 'core.graphics.Image'
 local Sound = require 'core.audio.Sound'
+local Music = require 'core.audio.Music'
 
 local highscore = 0
 
 function selene.load()
   canvas = Canvas(160, 95)
-  image = Image("sprites.png")
-  teste = Sound("som.wav")
-  instance = audio.play(teste)
-  print(teste.source:GetFrequency())
-  print(teste.source:GetChannels())
-  print(teste.source:GetSamples())
+  -- image = Image("sprites.png")
+  -- teste = Sound("som.wav")
+  -- teste1 = Music("music.ogg")
+  -- instance = audio.play(teste)
+  -- instance = audio.play(teste1)
+  -- print(teste.source:GetFrequency())
+  -- print(teste.source:GetChannels())
+  -- print(teste.source:GetSamples())
 end
 
 x = 0
@@ -33,7 +36,7 @@ function selene.draw()
   graphics.clear(75, 125, 125)
 
   graphics.set_canvas(canvas)
-  graphics.draw(image)
+  -- graphics.draw(image)
   graphics.set_canvas()
 
   graphics.draw(canvas, nil, 0, 32)
@@ -55,9 +58,10 @@ function selene.draw()
   -- graphics.print('Window', 132, 126)
 end
 
+local pause = true
 function selene.key_callback(pressed, key, rpt)
   if pressed and key == 'space' and not rpt then
-    -- audio.play(teste)
-    audio.pool:Stop(instance)
+    audio.pool:Pause(pause)
+    pause = not pause
   end
 end

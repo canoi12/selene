@@ -1,16 +1,13 @@
 local class = require 'core.class'
 local audio = require 'core.audio'
+local filesystem = require 'core.filesystem'
 local Music = class:extend('Music')
 
 function Music:constructor(path)
-  self.pitch = 1
-  self.volume = 100
-  self.source = nil
-  self.instances = {}
+  self.source = selene.audio.LoadOgg(filesystem.resolve(path))
 end
 
 function Music:play()
-  table.insert(self.instances, audio.play(self.source, true))
 end
 
 function Music:pause()

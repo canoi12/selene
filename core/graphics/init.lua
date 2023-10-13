@@ -187,6 +187,12 @@ function graphics.set_canvas(canvas)
   end
 end
 
+function graphics.update_size(w, h)
+  gl.Viewport(0, 0, w, h)
+  current.projection:Ortho(0, w, h, 0, -1, 1)
+  current.shader:send("u_MVP", current.projection)
+end
+
 function graphics.clear(r, g, b, a)
   r = (r or 0) / 255
   g = (g or 0) / 255

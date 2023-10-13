@@ -38,6 +38,8 @@ end
 
 local _error_step = function()
   graphics.begin()
+  local w, h = graphics.window:GetSize()
+  graphics.set_size(w, h)
   if selene.update then selene.update() end
   if selene.draw then selene.draw() end
   

@@ -71,7 +71,7 @@ static void _audio_callback(void* userdata, Uint8* stream, int len) {
         }
         char* data = (char*)buf->source->data.data + offset;
         for (int j = 0; j < l; j++) {
-            stream[j] += data[j];
+            stream[j] += buf->volume * data[j];
         }
     }
     #endif
@@ -87,7 +87,7 @@ static BEGIN_FUNCTION(audio, LoadWav)
     drwav_uint64 frame_count;
     Sint16* frames = drwav_open_file_and_read_pcm_frames_s16(path, &channels, &sample_rate, &frame_count, NULL);
     if (!frames) {
-        return luaL_error(L, "Failed to load wav");
+        return luaL_error(L, "Failed to load wav: %s", path);
     }
 
     NEW_UDATA(AudioSource, source);
@@ -100,19 +100,19 @@ END_FUNCTION(1)
 
 static BEGIN_FUNCTION(audio, LoadOgg)
     CHECK_STRING(path);
-END_FUNCTION(1)
-
-static BEGIN_FUNCTION(audio, Play)
-    CHECK_UDATA(AudioSource, source);
-    if (!_buffer_pool) {
-        return luaL_error(L, "Audio buffer pool not initialized");
+    int channels, sample_rate;
+    short* output;
+    int len = stb_vorbis_decode_filename(path, &channels, &sample_rate, &output);
+    if (len <= 0) {
+        return luaL_error(L, "Failed to load ogg: %s", path);
     }
-    AudioBuffer* b = _buffer_pool->data;
-    b->volume = 100;
-    b->pitch = 100;
-    b->offset = 0;
-    b->source = source;
-    b->playing = 1;
+    
+    NEW_UDATA(AudioSource, source);
+    source->data.data = output;
+    source->data.size = len * channels;
+    source->frequency = sample_rate;
+    source->channels = channels;
+    source->samples = 4096;
 END_FUNCTION(1)
 
 // Meta Functions
@@ -137,7 +137,7 @@ static BEGIN_META_FUNCTION(BufferPool, Play)
     if (self->top <= 0)
         return luaL_error(L, "No free audio buffers");
     AudioBuffer* b = self->data + (self->available[--self->top]);
-    b->volume = 100;
+    b->volume = 1.f;
     b->loop = 0;
     b->pitch = 100;
     b->offset = 0;
@@ -161,8 +161,16 @@ static BEGIN_META_FUNCTION(BufferPool, Pause)
     int index = b - self->data;
     if (index < 0 || index >= self->size)
         return luaL_error(L, "Invalid audio buffer");
-    b->playing = pause;
+    b->playing = !pause;
 END_FUNCTION(0)
+
+static BEGIN_META_FUNCTION(BufferPool, IsPlaying)
+    GET_LUDATA(AudioBuffer, b);
+    int index = b - self->data;
+    if (index < 0 || index >= self->size)
+        return luaL_error(L, "Invalid audio buffer");
+    PUSH_BOOLEAN(b->playing);
+END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(BufferPool, SetCurrent)
     _buffer_pool = self;
@@ -194,6 +202,7 @@ static BEGIN_META(BufferPool)
         REG_META_FIELD(BufferPool, Play),
         REG_META_FIELD(BufferPool, Stop),
         REG_META_FIELD(BufferPool, Pause),
+        REG_META_FIELD(BufferPool, IsPlaying),
         REG_META_FIELD(BufferPool, SetCurrent),
         REG_META_FIELD(BufferPool, Get),
         REG_META_FIELD(BufferPool, GetSize),
@@ -236,7 +245,6 @@ END_META(1)
 BEGIN_MODULE(audio)
     BEGIN_REG(audio)
         REG_FIELD(audio, NewBufferPool),
-        REG_FIELD(audio, Play),
         REG_FIELD(audio, GetCallback),
         REG_FIELD(audio, LoadOgg),
         REG_FIELD(audio, LoadWav),
