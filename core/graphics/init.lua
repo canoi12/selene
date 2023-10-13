@@ -438,9 +438,11 @@ function graphics.print_wrap(text, x, y, width)
   local image = font.image
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
-  for i=1,#text do
-    local c = text:sub(i, i)
-    local codepoint = selene.utils.UTF8Codepoint(c)
+  local i = 1
+  while i <= #text do
+    local b = text:byte(i)
+    local codepoint, bytes = selene.utils.UTF8Codepoint(text, i)
+    i = i + bytes
     local rect = font.rects[codepoint]
 
     if c == '\n'or ox >= width then
