@@ -82,7 +82,7 @@ end
 ### core/
 
 All the Lua modules are located in a directory called `core/`, and it must be in the same location of the Selene executable.
-On startup, it will find for this module, and if not found, Selene will not boot up.
+On startup Selene will search for this file, and if not found it will not boot up.
 
 This is the bootup script:
 ```lua
