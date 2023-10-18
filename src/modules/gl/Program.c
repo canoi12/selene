@@ -41,11 +41,9 @@ static META_FUNCTION(Program, Link) {
         int len;
         glGetProgramiv(*self, GL_INFO_LOG_LENGTH, &len);
     #if defined(OS_WIN)
-        if (len+1 > s_aux_data->size) {
-            s_aux_data->size = (len+1)*2;
-            s_aux_data->data = realloc(s_aux_data->data, s_aux_data->size);
-        }
-        char* log = s_aux_data->data;
+        if (len >= 2048)
+            len = 2048;
+        char log[2049];
     #else
         char log[len+1];
     #endif

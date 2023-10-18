@@ -3,14 +3,15 @@
 Selene is a tiny game engine made with C and Lua, the idea is to implementing all engine/framework logic in Lua, and for that i expose some C library functions to Lua.
 
 C Modules:
-- audio
-    - AudioSource
-    - AudioBuffers
-- SDL2
-    - Window
-    - GLContext
-    - Joystick
-    - GameController
+- Data
+- audio (drwav, stb_vorbis)
+    - Decoder
+- filesystem
+    - File
+- font (stb_truetype, default bit font)
+- image (stb_image)
+- linmath
+    - Mat4
 - OpenGL
     - Texture
     - Framebuffer
@@ -18,13 +19,15 @@ C Modules:
     - Program
     - VertexArray
     - Buffer
-- filesystem
-    - File
-- data
-    - Data
+- SDL2
+    - AudioDeviceID
+    - AudioStream
+    - Event
+    - Gamepad (GameController)
+    - Joystick
+    - GLContext
+    - Window
 - system
-- utils (stb_image, stb_truetype, linmath)
-    - Mat4
 
 Lua Modules (core):
 - class
@@ -40,12 +43,14 @@ Lua Modules (core):
 - engine
     - Point
     - Rect
-- controller
+- gamepad
 - event
 - filesystem
 - joystick
 - keyboard
 - mouse
+
+`usage: ./selene path/to/project`
 
 // main.lua
 ```lua
@@ -53,7 +58,7 @@ local graphics = require 'core.graphics'
 local Image = require 'core.graphics.Image'
 
 function selene.load()
-    image = Image:new('image.png')
+    image = Image('image.png')
 end
 
 function selene.update(dt)

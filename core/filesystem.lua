@@ -17,9 +17,7 @@ function filesystem.init(path)
     b2 = '\\'
   end
 
-  if path:sub(#path) == b1 then
-    path[#path] = b2
-  end
+  path:gsub("%" .. b1, b2)
   if path:sub(#path) ~= b2 then
     path = path .. b2
   end

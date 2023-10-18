@@ -1,7 +1,11 @@
 #include "sdl2.h"
 
 static void _audio_stream_callback(void* userdata, Uint8* stream, int len) {
-    Uint8 temp[len];
+    #if defined(OS_WIN)
+        Uint8 temp[32000];
+    #else
+        Uint8 temp[len];
+    #endif
     SDL_memset(temp, 0, len);
     AudioStreamPool* pool = (AudioStreamPool*)userdata;
     int i = 0;
@@ -13,9 +17,9 @@ static void _audio_stream_callback(void* userdata, Uint8* stream, int len) {
             else if (result != len) {
                 SDL_memset(buffer + result, 0, len - result);
             }
-            // SDL_MixAudio(stream, buffer, len, SDL_MIX_MAXVOLUME);
+            SDL_MixAudio(stream, buffer, len, SDL_MIX_MAXVOLUME);
         }
-        // buffer = temp;
+        buffer = temp;
         i++;
     }
 }

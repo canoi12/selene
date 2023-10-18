@@ -122,12 +122,7 @@ static MODULE_FUNCTION(gl, Uniform1fv) {
     int location = (int)luaL_checkinteger(L, 1);
     int args = (int)lua_gettop(L) - 1;
 #if defined(OS_WIN)
-    int size = args * 4;
-    if (size > s_aux_data->size) {
-        s_aux_data->size = size * 2;
-        s_aux_data->data = realloc(s_aux_data->data, size*2);
-    }
-    float* values = s_aux_data->data;
+    float values[1024];
 #else
     float values[args];
 #endif
@@ -143,11 +138,7 @@ static MODULE_FUNCTION(gl, Uniform2fv) {
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 2;
 #if defined(OS_WIN)
-    if (size > s_aux_data->size) {
-        s_aux_data->size = size * 2;
-        s_aux_data->data = realloc(s_aux_data->data, size*2);
-    }
-    float* values = s_aux_data->data;
+    float values[1024];
 #else
     float values[args*2];
 #endif
@@ -173,11 +164,7 @@ static MODULE_FUNCTION(gl, Uniform3fv) {
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 3;
 #if defined(OS_WIN)
-    if (size > s_aux_data->size) {
-        s_aux_data->size = size * 2;
-        s_aux_data->data = realloc(s_aux_data->data, size*2);
-    }
-    float* values = s_aux_data->data;
+    float values[1024];
 #else
     float values[args*3];
 #endif
@@ -203,11 +190,7 @@ static MODULE_FUNCTION(gl, Uniform4fv) {
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 4;
 #if defined(OS_WIN)
-    if (size > s_aux_data->size) {
-        s_aux_data->size = size * 2;
-        s_aux_data->data = realloc(s_aux_data->data, size*2);
-    }
-    float* values = s_aux_data->data;
+    float values[1024];
 #else
     float values[args*4];
 #endif

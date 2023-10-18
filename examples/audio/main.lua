@@ -16,7 +16,7 @@ function selene.load()
     -- instance = audio.play(music)
     sound = Music('sound.wav')
     audio.play(music)
-    print(music.stream)
+    audio.play(sound)
     local dec = music.decoder
     local stream = music.stream
     print(
@@ -36,9 +36,6 @@ end
 
 local function process_audio(obj)
     local read = obj.decoder:GetChunk(obj.chunk, audio.spec.samples)
-    if read == 0 then
-        obj.decoder:Seek(0)
-    end
     if read < 0 then
         error('Decoder error')
     end
@@ -49,7 +46,7 @@ local function process_audio(obj)
 end
 
 function selene.update(dt)
-    process_audio(sound)
+    process_audio(music)
 end
 
 function selene.draw()
