@@ -105,7 +105,6 @@ const char* _boot =
 "    package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path\n"
 "end\n"
 "return function()\n"
-"    local core = {}\n"
 "    add_path(sdl.GetBasePath())\n"
 "    local core = require 'core'\n"
 "    core.init(selene.args)\n"
