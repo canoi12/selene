@@ -1,8 +1,8 @@
 local sdl = selene.sdl2
+local audio = require 'core.audio'
 local event = require 'core.event'
 local filesystem = require 'core.filesystem'
 local graphics = require 'core.graphics'
-local audio = require 'core.audio'
 local traceback = debug.traceback
 local core = {}
 
@@ -10,8 +10,7 @@ local config = {
   audio = {
     sample_rate = 44100,
     channels = 2,
-    samples = 2048,
-    callback = selene.audio.GetCallback()
+    samples = 4096
   },
   window = {
     title = "selene " .. selene.GetVersion(),
@@ -32,20 +31,21 @@ local timer = {
 function selene.config(t)
 end
 
-function selene.quit()
+function selene.quit_callback()
   return true
 end
 
-local _error_step = function()
-  graphics.begin()
-  local w, h = graphics.window:GetSize()
-  graphics.set_size(w, h)
-  if selene.update then selene.update() end
-  if selene.draw then selene.draw() end
-  
-  graphics.finish()
-  graphics.swap()
-  event.poll()
+local function _setup_error_callback()
+  selene.key_callback = function(pressed, key)
+    if key == 'escape' then
+      selene.SetRunning(false)
+    end
+  end
+  selene.window_callback = function(ev, wid, d1, d2)
+    if ev == "resized" then
+      graphics.update_size(d1, d2)
+    end
+  end
 end
 
 local _error = function(msg)
@@ -60,51 +60,25 @@ local _error = function(msg)
     graphics.print_wrap(msg, 16, 16, width)
     graphics.print_wrap(trace, 16, 32, width)
   end
-  selene.key_callback = function(pressed, key)
-    if key == 'escape' then
-      selene.SetRunning(false)
-    end
-  end
-  core.loop = _error_step
+  _setup_error_callback()
 end
 
-core.handlers = {}
-
-function selene.boot()
-  timer.delta = 0
-  if selene.load then selene.load(selene.args) end
-  return function()
-    local current = sdl.GetTicks()
-    timer.delta = (current - timer.last) / 1000
-    timer.last = current;
-    graphics.begin()
-    if selene.update then selene.update(timer.delta) end
-    if selene.draw then selene.draw() end
-    graphics.finish()
-    graphics.swap()
-    event.poll()
+function core.init(args)
+  if not sdl.Init(
+    sdl.INIT_SENSOR, sdl.INIT_AUDIO,
+    sdl.INIT_VIDEO, sdl.INIT_TIMER,
+    sdl.INIT_JOYSTICK, sdl.INIT_GAMECONTROLLER,
+    sdl.INIT_EVENTS
+  ) then
+    error("Failed to init SDL2: " .. sdl.GetError())
   end
-end
 
-function core.init()
-  local args = selene.args
-  local basepath = "."
-  if #args > 1 then
-    basepath = args[2]
-  end
-  filesystem.set_basepath(basepath)
-  local path = filesystem.get_basepath()
-  package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path
-  table.insert(
-    package.searchers,
-    function(libname)
-      local path = filesystem.get_basepath() .. libname:gsub("%.", "/") .. ".lua"
-      return filesystem.read(path)
-    end
-  )
+  filesystem.init(args[2])
+
   if filesystem.exists('conf.lua') then
     xpcall(function() require('conf') end, _error)
   end
+
   print(
     selene.system.GetOS(),
     selene.system.GetArch()
@@ -127,30 +101,42 @@ function core.init()
     selene.update = function() end
     selene.draw = function()
       graphics.clear()
+      graphics.set_font()
       local width, height = graphics.window:GetSize()
-      graphics.print('no main.lua found', width / 2 - 54, height / 2)
+      graphics.print('no main.lua found', width / 2 - 68, height / 2 - 4)
     end
-    selene.key_callback = function(pressed, key)
-      if key == 'escape' then
-        selene.SetRunning(false)
-      end
-    end
+    _setup_error_callback()
   end
 
-  local state, _step = xpcall(selene.boot, _error)
+  local state, _step = xpcall(function()
+      timer.delta = 0
+      if selene.load then selene.load(args) end
+      return function()
+        local current = sdl.GetTicks()
+        timer.delta = (current - timer.last) / 1000
+        timer.last = current;
+        graphics.begin()
+        if selene.update then selene.update(timer.delta) end
+        if selene.draw then selene.draw() end
+        graphics.finish()
+        graphics.swap()
+        event.poll()
+      end
+    end, _error)
+
   if state then
-    if type(_step) ~= 'function' then
-      _error('selene.boot must return a function')
-    else
-      local _loop = nil
-      core.loop = function() xpcall(_step, _error) end
-    end
+    core.step = function() xpcall(_step, _error) end
   end
 end
 
-function core.deinit()
+function core.step()
+  error("Empty step")
+end
+
+function core.quit()
   audio.deinit()
   graphics.deinit()
+  sdl.Quit()
 end
 
 return core

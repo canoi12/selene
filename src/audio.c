@@ -14,6 +14,11 @@ enum {
     OGG_FORMAT,
 };
 
+enum {
+    AUDIO_STATIC = 0,
+    AUDIO_STREAM
+};
+
 typedef struct {
     Uint8 audio_type;
     Uint32 size;
@@ -23,9 +28,31 @@ typedef struct {
     Uint8 channels;
 } AudioData;
 
+typedef struct {
+    char format;
+    union {
+        drwav wav;
+        stb_vorbis ogg;
+    };
+    Uint32 sample_rate;
+    Uint8 bit_depth;
+    Uint8 channels;
+} Decoder;
+
+typedef struct {
+    Data data;
+    Uint32 sample_rate;
+    Uint8 bit_depth;
+    Uint8 channels;
+} AudioData;
+
 typedef struct AudioSource AudioSource;
 struct AudioSource {
-    Data data;
+    char usage;
+    union {
+        Decoder decoder;
+        Data data;
+    };
     Uint32 frequency;
     Uint32 samples;
     Uint8 channels;
@@ -37,7 +64,11 @@ struct AudioBuffer {
     char loop;
     int offset;
     float volume, pitch;
-    AudioSource* source;
+    SDL_AudioStream* stream;
+    union {
+        Decoder* decoder;
+        AudioData* data;
+    };
 };
 
 typedef struct {
@@ -49,7 +80,7 @@ typedef struct {
 static BufferPool* _buffer_pool = NULL;
 
 static void _audio_callback(void* userdata, Uint8* stream, int len) {
-    #if 1
+    #if 0
     SDL_memset(stream, 0, len);
     for (int i = 0; i < _buffer_pool->size; i++) {
         int l = len;
@@ -58,7 +89,7 @@ static void _audio_callback(void* userdata, Uint8* stream, int len) {
             continue;
         int offset, size;
         offset = buf->offset;
-        size = buf->source->data.size;
+        SDL_AudioStreamGet(buf->stream, stream, len);
         if (offset + len >= size) {
             l = size - offset;
             buf->offset = 0;
@@ -77,6 +108,121 @@ static void _audio_callback(void* userdata, Uint8* stream, int len) {
     #endif
 }
 
+static BEGIN_FUNCTION(audio, NewDecoder)
+    CHECK_STRING(path);
+    int len = strlen(path);
+    char* p = path + len;
+    while (*p != '.') {
+        p--;
+    }
+    int format = UNKNOWN_FORMAT;
+    if (!strcmp(p, ".ogg"))
+        format = OGG_FORMAT;
+    else if (!strcmp(p, ".wav"))
+        format = WAV_FORMAT;
+    else
+        return luaL_error(L, "Unsupported audio format: %s", path);
+
+    NEW_UDATA(Decoder, dec);
+    dec->format = format;
+    switch (format) {
+        case WAV_FORMAT: {
+            int success = drwav_init_file(&(dec->wav), path, NULL);
+            if (!success)
+                return luaL_error(L, "Failed to load wav: %s", path);
+            dec->bit_depth = 16;
+            dec->sample_rate = dec->wav.sampleRate;
+            dec->channels = dec->channels;
+        }
+        break;
+        case OGG_FORMAT: {
+            stb_vorbis* ogg = stb_vorbis_open_filename(path, NULL, NULL);
+            if (!ogg)
+                return luaL_error(L, "Failed to load ogg: %s", path);
+            stb_vorbis_info info;
+            stb_vorbis_get_info(&ogg);
+            dec->bit_depth = 16;
+            dec->sample_rate = info.sample_rate;
+            dec->channels = info.channels;
+        }
+        break;
+    }
+END_FUNCTION(1)
+
+static BEGIN_FUNCTION(audio, NewData)
+    CHECK_STRING(path);
+    int len = strlen(path);
+    char* p = path + len;
+    while (*p != '.') {
+        p--;
+    }
+    int format = UNKNOWN_FORMAT;
+    if (!strcmp(p, ".ogg"))
+        format = OGG_FORMAT;
+    else if (!strcmp(p, ".wav"))
+        format = WAV_FORMAT;
+    else
+        return luaL_error(L, "Unsupported audio format: %s", path);
+
+    NEW_UDATA(AudioData, dt);
+    switch (format) {
+        case WAV_FORMAT: {
+            Uint32 channels, sample_rate;
+            drwav_uint64 frame_count;
+            Sint16* frames = drwav_open_file_and_read_pcm_frames_s16(path, &channels, &sample_rate, &frame_count, NULL);
+            if (!frames) {
+                return luaL_error(L, "Failed to load wav: %s", path);
+            }
+
+            dt->channels = channels;
+            dt->bit_depth = 16;
+            dt->sample_rate = sample_rate;
+            dt->data.data = malloc(frame_count * sizeof(Sint16));
+            dt->data.size = frame_count;
+        }
+        break;
+        case OGG_FORMAT: {
+            int channels, sample_rate;
+            short* output;
+            int frame_count = stb_vorbis_decode_filename(path, &channels, &sample_rate, &output);
+            if (frame_count <= 0)
+                return luaL_error(L, "Failed to load ogg: %s", path);
+
+            dt->channels = channels;
+            dt->bit_depth = 16;
+            dt->sample_rate = sample_rate;
+            dt->data.data = malloc(frame_count * sizeof(Sint16));
+            dt->data.size = frame_count;
+        }
+        break;
+    }
+END_FUNCTION(1)
+
+static BEGIN_FUNCTION(audio, NewSource)
+    CHECK_STRING(path);
+    const char* usage = luaL_optstring(L, arg++, "static");
+    int u = AUDIO_STATIC;
+    if (!strcmp(usage, "stream"))
+        u = AUDIO_STREAM;
+    else if (strcmp(usage, "static"))
+        return luaL_error(L, "Invalid audio usage");
+    int len = strlen(path);
+    char* p = path + len;
+    while (p != '.') {
+        p--;
+    }
+
+    int format = UNKNOWN_FORMAT;
+    if (!strcmp(p, ".ogg"))
+        format = OGG_FORMAT;
+    else if (!strcmp(p, ".wav"))
+        format = WAV_FORMAT;
+    else
+        return luaL_error(L, "Unsupported audio format: %s", path);
+
+
+END_FUNCTION(2)
+
 static BEGIN_FUNCTION(audio, GetCallback)
     PUSH_LUDATA(_audio_callback);
 END_FUNCTION(1)
@@ -85,10 +231,14 @@ static BEGIN_FUNCTION(audio, LoadWav)
     CHECK_STRING(path);
     Uint32 channels, sample_rate;
     drwav_uint64 frame_count;
+    drwav wav;
+    drwav_init_file(&wav, path, NULL);
     Sint16* frames = drwav_open_file_and_read_pcm_frames_s16(path, &channels, &sample_rate, &frame_count, NULL);
     if (!frames) {
         return luaL_error(L, "Failed to load wav: %s", path);
     }
+    Sint16 buffer[4096 * 2];
+    drwav_read_pcm_frames_s16(&wav, 4096, buffer);
 
     NEW_UDATA(AudioSource, source);
     source->data.data = frames;
@@ -114,6 +264,11 @@ static BEGIN_FUNCTION(audio, LoadOgg)
     source->channels = channels;
     source->samples = 4096;
 END_FUNCTION(1)
+
+static BEGIN_FUNCTION(audio, SetBufferPool)
+    CHECK_UDATA(BufferPool, pool);
+    _buffer_pool = pool;
+END_FUNCTION(0)
 
 // Meta Functions
 
@@ -172,10 +327,6 @@ static BEGIN_META_FUNCTION(BufferPool, IsPlaying)
     PUSH_BOOLEAN(b->playing);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(BufferPool, SetCurrent)
-    _buffer_pool = self;
-END_FUNCTION(0)
-
 static BEGIN_META_FUNCTION(BufferPool, Get)
     CHECK_INTEGER(index);
     if (index > self->size)
@@ -203,9 +354,14 @@ static BEGIN_META(BufferPool)
         REG_META_FIELD(BufferPool, Stop),
         REG_META_FIELD(BufferPool, Pause),
         REG_META_FIELD(BufferPool, IsPlaying),
-        REG_META_FIELD(BufferPool, SetCurrent),
         REG_META_FIELD(BufferPool, Get),
         REG_META_FIELD(BufferPool, GetSize),
+    // SetVolume
+    // GetVolume
+    // SetPitch
+    // GetPitch
+    // SetLoop
+    // GetLoop
         REG_META_FIELD(BufferPool, Free),
     END_REG()
     NEW_META(BufferPool);
@@ -245,6 +401,7 @@ END_META(1)
 BEGIN_MODULE(audio)
     BEGIN_REG(audio)
         REG_FIELD(audio, NewBufferPool),
+        REG_FIELD(audio, SetBufferPool),
         REG_FIELD(audio, GetCallback),
         REG_FIELD(audio, LoadOgg),
         REG_FIELD(audio, LoadWav),

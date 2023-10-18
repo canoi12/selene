@@ -6,15 +6,16 @@ message("Compiling for ${CMAKE_SYSTEM_NAME}")
 
 set(USE_FLAGS "")
 if (CMAKE_SYSTEM_NAME MATCHES "Emscripten")
-    set(USE_FLAGS "${USE_FLAGS} -s USE_SDL=2")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s FULL_ES2 --embed-file core/ --emrun")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s FULL_ES2 -sALLOW_MEMORY_GROWTH -sFORCE_FILESYSTEM --embed-file core/ --emrun")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s USE_SDL=2")
     set(CMAKE_EXECUTABLE_SUFFIX .html)
     set(EMSCRIPTEN 1)
 endif()
 
-include_directories(./ external/)
-include_directories(external/lua/src/ external/glad/include/)
+#include_directories(./ external/)
+# include_directories(src/ src/sdl2/ src/gl/ src/image/ src/audio/)
+include_directories(src/ src/modules/ src/modules/*/)
+include_directories(external/ external/lua/src/ external/glad/include/)
 
 if (WIN32 AND MSVC)
     set(SDL2_DIR external/SDL2/MSVC/cmake)
@@ -26,7 +27,6 @@ find_package(OpenGL REQUIRED)
 
 include_directories(${OPENGL_INCLUDE_DIR})
 include_directories(${SDL2_INCLUDE_DIRS})
-include_directories(external/tinywav)
 
 set(LIBRARIES ${OPENGL_LIBRARIES} ${SDL2_LIBRARIES})
 
@@ -39,7 +39,8 @@ else()
     set(LIBRARIES ${LIBRARIES} dl m pthread)
 endif()
 
-file(GLOB selene_source selene.c src/*.c external/glad/src/glad.c)
+# file(GLOB selene_source selene.c src/*.c external/glad/src/glad.c)
+file(GLOB selene_source src/selene.c src/Data.c src/modules/*/*.c external/glad/src/glad.c)
 file(GLOB lua_source external/lua/src/*.c)
 
 add_library(lua STATIC ${lua_source})

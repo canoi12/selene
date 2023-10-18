@@ -15,8 +15,8 @@ local current = {
   drawable = {},
   canvas = {},
   shader = {},
-  projection = selene.utils.NewMat4(),
-  modelview = selene.utils.NewMat4(),
+  projection = selene.linmath.Mat4.New(),
+  modelview = selene.linmath.Mat4.New(),
   draw_color = { 1.0, 1.0, 1.0, 1.0 },
   clear_color = { 1.0, 1.0, 1.0, 1.0 },
 }
@@ -45,7 +45,10 @@ function graphics.init(config)
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3);
     sdl.GL_SetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 3);
   end
-  local flags = {}
+  local flags = {
+    sdl.WINDOW_SHOWN,
+    sdl.WINDOW_OPENGL
+  }
 
   if config.window.resizable then
     table.insert(flags, sdl.WINDOW_RESIZABLE)
@@ -63,48 +66,49 @@ function graphics.init(config)
     table.insert(flags, sdl.WINDOW_ALWAYS_ON_TOP)
   end
 
-  local window = sdl.CreateWindow(
+  local window = sdl.Window.Create(
     config.window.title,
+    sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
     config.window.width, config.window.height,
     flags
   )
-  local ctx = sdl.GL_CreateContext(window)
-  sdl.GL_MakeCurrent(ctx, window)
+  local ctx = sdl.GLContext.Create(window)
+  sdl.GL_MakeCurrent(window, ctx)
 
-  gl.LoadGlad()
-  gl.PrintVersion()
+  gl.LoadGlad(sdl.GL_GetProcAddress())
+  -- gl.PrintVersion()
 
   graphics.window = window
   graphics.gl_context = ctx
 
   default.shader = Shader:new()
 
-  default.vao = gl.NewVertexArray()
+  default.vao = gl.VertexArray.New()
   default.batch = Batch:new(1000)
 
-  gl.BindVertexArray(default.vao)
-  gl.BindBuffer(gl.ARRAY_BUFFER, default.batch.vbo)
+  default.vao:Bind()
+  gl.Buffer.Bind(gl.ARRAY_BUFFER, default.batch.vbo)
 
-  gl.EnableVertexAttribArray(0)
-  gl.EnableVertexAttribArray(1)
-  gl.EnableVertexAttribArray(2)
+  gl.VertexArray.Enable(0)
+  gl.VertexArray.Enable(1)
+  gl.VertexArray.Enable(2)
 
   local program = default.shader.program
-  gl.VertexAttribPointer(program:GetAttribLocation("a_Position"), 2, gl.FLOAT, false, 32, 0)
-  gl.VertexAttribPointer(program:GetAttribLocation("a_Color"), 4, gl.FLOAT, false, 32, 8)
-  gl.VertexAttribPointer(program:GetAttribLocation("a_Texcoord"), 2, gl.FLOAT, false, 32, 24)
+  gl.VertexArray.AttribPointer(program:GetAttribLocation("a_Position"), 2, gl.FLOAT, false, 32, 0)
+  gl.VertexArray.AttribPointer(program:GetAttribLocation("a_Color"), 4, gl.FLOAT, false, 32, 8)
+  gl.VertexArray.AttribPointer(program:GetAttribLocation("a_Texcoord"), 2, gl.FLOAT, false, 32, 24)
 
-  gl.BindVertexArray()
-  gl.BindBuffer(gl.ARRAY_BUFFER)
+  gl.VertexArray.Unbind()
+  gl.Buffer.Bind(gl.ARRAY_BUFFER)
 
-  local image_data = selene.data.NewData(4)
+  local image_data = selene.Data.New(4)
   image_data:WriteByte(0, 255, 255, 255, 255)
   default.image = setmetatable({}, { __index = Image })
   default.image.target = gl.TEXTURE_2D
-  default.image.texture = gl.NewTexture()
-  gl.BindTexture(gl.TEXTURE_2D, default.image.texture)
-  gl.TexImage2D(gl.TEXTURE_2D, gl.RGBA, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, image_data)
-  gl.BindTexture(gl.TEXTURE_2D)
+  default.image.texture = gl.Texture.New()
+  gl.Texture.Bind(gl.TEXTURE_2D, default.image.texture)
+  gl.Texture.Image2D(gl.TEXTURE_2D, gl.RGBA, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, image_data)
+  gl.Texture.Bind(gl.TEXTURE_2D)
   default.image.width = 1
   default.image.height = 1
   default.image.data = image_data
@@ -117,9 +121,9 @@ function graphics.init(config)
   default.canvas.height = height
   default.canvas.framebuffer = nil
 
-  local data, w, h, glyphs = selene.utils.GetDefaultFont()
+  local data, w, h, glyphs = selene.font.GetDefault()
   print(data, w, h, glyphs, #glyphs)
-  local c = selene.utils.UTF8Codepoint('\t', 1)
+  local c = selene.UTF8Codepoint('\t', 1)
   print(c, glyphs[c], 'kek')
   default.font = setmetatable({}, { __index = Font })
   default.font.image = Image(w, h, data)
@@ -128,8 +132,8 @@ function graphics.init(config)
 end
 
 function graphics.deinit()
-  sdl.GL_DeleteContext(graphics.gl_context)
-  sdl.DestroyWindow(graphics.window)
+  graphics.gl_context:Delete()
+  graphics.window:Destroy()
 end
 
 local function set_image(image)
@@ -138,7 +142,7 @@ local function set_image(image)
     graphics.finish()
     default.batch:clear()
     current.image = image
-    gl.BindTexture(gl.TEXTURE_2D, image.texture)
+    gl.Texture.Bind(gl.TEXTURE_2D, image.texture)
   end
 end
 
@@ -168,7 +172,7 @@ function graphics.set_shader(shader)
     graphics.finish()
     default.batch:clear()
     current.shader = shader
-    gl.UseProgram(shader.program)
+    gl.Program.Use(shader.program)
     shader:send("u_MVP", current.projection)
   end
 end
@@ -179,7 +183,7 @@ function graphics.set_canvas(canvas)
     graphics.finish()
     default.batch:clear()
     gl.Viewport(0, 0, canvas.width, canvas.height)
-    gl.BindFramebuffer(gl.FRAMEBUFFER, canvas.framebuffer)
+    gl.Framebuffer.Bind(gl.FRAMEBUFFER, canvas.framebuffer)
     current.canvas = canvas
 
     current.projection:Ortho(0, canvas.width, canvas.height, 0, -1, 1)
@@ -227,9 +231,9 @@ function graphics.finish()
   local count = default.batch:count()
   local draw_mode = draw_modes[current.mode]
 
-  gl.BindVertexArray(default.vao)
+  default.vao:Bind()
   gl.DrawArrays(draw_mode, 0, count)
-  gl.BindVertexArray()
+  gl.VertexArray.Unbind()
 end
 
 function graphics.swap()
@@ -398,7 +402,7 @@ function graphics.print(text, x, y)
   local i = 1
   while i <= #text do
     local b = text:byte(i)
-    local codepoint, bytes = selene.utils.UTF8Codepoint(text, i)
+    local codepoint, bytes = selene.UTF8Codepoint(text, i)
     i = i + bytes
     local rect = font.rects[codepoint]
 
@@ -447,7 +451,7 @@ function graphics.print_wrap(text, x, y, width)
   local i = 1
   while i <= #text do
     local b = text:byte(i)
-    local codepoint, bytes = selene.utils.UTF8Codepoint(text, i)
+    local codepoint, bytes = selene.UTF8Codepoint(text, i)
     i = i + bytes
     local rect = font.rects[codepoint]
 

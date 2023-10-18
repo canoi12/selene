@@ -2,3 +2,4 @@ build/
 *.json
 external/SDL2
 .cache/
+web/

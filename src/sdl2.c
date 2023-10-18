@@ -9,45 +9,6 @@ static const Uint8* keys;
  #        Audio         #
  #                      #
  ************************/
-
-static BEGIN_FUNCTION(sdl2, OpenAudio)
-    int type = lua_type(L, 1);
-    if (type != LUA_TTABLE)
-        return luaL_argerror(L, 1, "Table expected");
-    lua_getfield(L, 1, "sample_rate");
-    int freq = (int)luaL_checknumber(L, -1);
-    lua_pop(L, 1);
-    lua_getfield(L, 1, "channels");
-    int channels = (int)luaL_checkinteger(L, -1);
-    lua_pop(L, 1);
-    lua_getfield(L, 1, "samples");
-    int samples = (int)luaL_checkinteger(L, -1);
-    lua_pop(L, 1);
-    lua_getfield(L, 1, "callback");
-    void* callback = NULL;
-    if (lua_type(L, -1) == LUA_TLIGHTUSERDATA)
-        callback = lua_touserdata(L, -1);
-    lua_pop(L, 1);
-
-    SDL_AudioSpec des;
-    des.freq = freq;
-    des.channels = channels;
-    des.samples = samples;
-    des.format = AUDIO_S16;
-    des.callback = callback;
-
-    lua_pushboolean(L, SDL_OpenAudio(&des, NULL) == 0);
-END_FUNCTION(1)
-
-static BEGIN_FUNCTION(sdl2, PauseAudio)
-    GET_BOOLEAN(pause);
-    SDL_PauseAudio(pause);
-END_FUNCTION(0)
-
-static BEGIN_FUNCTION(sdl2, CloseAudio)
-    SDL_CloseAudio();
-END_FUNCTION(0)
-
 static BEGIN_FUNCTION(sdl2, GetNumAudioDevices)
     GET_BOOLEAN(is_capture);
     PUSH_INTEGER(SDL_GetNumAudioDevices(is_capture));
@@ -321,11 +282,19 @@ static BEGIN_META_FUNCTION(Event, KeyboardEvent)
     PUSH_BOOLEAN(self->key.repeat);
 END_FUNCTION(2)
 
+static BEGIN_META_FUNCTION(Event, AudioDeviceEvent)
+    PUSH_INTEGER(self->adevice.which);
+END_FUNCTION(1)
+
+static BEGIN_META_FUNCTION(Event, TextEvent)
+END_FUNCTION(1)
+
 static BEGIN_META(Event)
     BEGIN_REG(Event)
         REG_META_FIELD(Event, Poll),
         REG_META_FIELD(Event, GetType),
         REG_META_FIELD(Event, WindowEvent),
+        REG_META_FIELD(Event, AudioDeviceEvent),
         REG_META_FIELD(Event, MouseMotionEvent),
         REG_META_FIELD(Event, MouseButtonEvent),
         REG_META_FIELD(Event, KeyboardEvent),
@@ -671,6 +640,8 @@ BEGIN_ENUM(sdl2)
     ENUM_FIELD(MOUSEMOTION, SDL_),
     ENUM_FIELD(MOUSEBUTTONDOWN, SDL_),
     ENUM_FIELD(MOUSEBUTTONUP, SDL_),
+    ENUM_FIELD(AUDIODEVICEADDED, SDL_),
+    ENUM_FIELD(AUDIODEVICEREMOVED, SDL_),
 
     // Window Events
     ENUM_FIELD(WINDOWEVENT_CLOSE, SDL_),
@@ -715,9 +686,6 @@ BEGIN_MODULE(sdl2)
     keys = SDL_GetKeyboardState(NULL);
     BEGIN_REG(sdl2)
         // Audio
-        REG_FIELD(sdl2, OpenAudio),
-        REG_FIELD(sdl2, PauseAudio),
-        REG_FIELD(sdl2, CloseAudio),
         REG_FIELD(sdl2, OpenAudioDevice),
         REG_FIELD(sdl2, GetNumAudioDevices),
         REG_FIELD(sdl2, GetAudioDeviceName),

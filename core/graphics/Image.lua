@@ -11,35 +11,35 @@ function Image:constructor(...)
   local width = 0
   local height = 0
   if type(args[1]) == "number" then
-    texture = gl.NewTexture()
+    texture = gl.Texture.New()
     width = args[1]
     height = args[2]
 
-    gl.BindTexture(self.target, texture)
-    gl.TexImage2D(gl.TEXTURE_2D, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE, args[3])
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.BindTexture(self.target)
+    gl.Texture.Bind(self.target, texture)
+    gl.Texture.Image2D(gl.TEXTURE_2D, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE, args[3])
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.Texture.Bind(self.target)
     self.width = width
     self.height = height
     self.comps = 4
-    self.data = selene.data.NewData(self.width * self.height * 4)
+    self.data = selene.Data.New(self.width * self.height * 4)
   elseif type(args[1]) == "string" then
-    local data, w, h, c = selene.utils.LoadImageData(filesystem.resolve(args[1]))
-    texture = gl.NewTexture()
+    local data, w, h, c = selene.image.LoadData(filesystem.resolve(args[1]))
+    texture = gl.Texture.New()
     width = w
     height = h
     self.comps = c
     self.data = data
-    gl.BindTexture(self.target, texture)
-    gl.TexImage2D(self.target, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE, self.data)
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.BindTexture(self.target)
+    gl.Texture.Bind(self.target, texture)
+    gl.Texture.Image2D(self.target, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE, self.data)
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.Texture.Bind(self.target)
   end
   if not texture then error("Null texture") end
   if width <= 0 or height <= 0 then error("Invalid texture size") end
@@ -48,8 +48,13 @@ end
 
 function Image:update(x, y, r, g, b, a)
   self.data:update(x, y, r, g, b, a)
-  gl.BindTexture(self.target, self.texture)
-  gl.BindTexture(self.target)
+  gl.Texture.Bind(self.target, self.texture)
+  gl.Texture.Bind(self.target)
+end
+
+function Image:__gc()
+  self.texture:Delete()
+  self.data:Free()
 end
 
 return Image

@@ -83,8 +83,22 @@ handlers[sdl.MOUSEBUTTONUP] = function(ev)
   end
 end
 
+handlers[sdl.AUDIODEVICEADDED] = function(ev)
+  local id = ev:AudioDeviceEvent()
+  if selene.audio_device_callback then
+    selene.audio_device_callback(true, id)
+  end
+end
+
+handlers[sdl.AUDIODEVICEREMOVED] = function(ev)
+  local id = ev:AudioDeviceEvent()
+  if selene.audio_device_callback then
+    selene.audio_device_callback(false, id)
+  end
+end
+
 function event.init()
-  ev = sdl.NewEvent()
+  ev = sdl.Event.Create()
 end
 
 function event.poll()

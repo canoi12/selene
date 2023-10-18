@@ -5,17 +5,17 @@ local Canvas = Drawable:extend('Canvas')
 function Canvas:constructor(width, height)
   if width <= 0 or height <= 0 then error("Invalid canvas size") end
   Drawable.constructor(self, gl.NewTexture(), width, height)
-  gl.BindTexture(gl.TEXTURE_2D, self.texture)
-  gl.TexImage2D(gl.TEXTURE_2D, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
-  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  gl.BindTexture(gl.TEXTURE_2D)
+  gl.Texture.Bind(gl.TEXTURE_2D, self.texture)
+  gl.Texture.Image2D(gl.TEXTURE_2D, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+  gl.Texture.Bind(gl.TEXTURE_2D)
 
   self.target = gl.FRAMEBUFFER
   self.framebuffer = gl.NewFramebuffer()
-  gl.BindFramebuffer(gl.FRAMEBUFFER, self.framebuffer)
-  gl.AttachTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, self.texture)
-  gl.BindFramebuffer(gl.FRAMEBUFFER)
+  gl.Framebuffer.Bind(gl.FRAMEBUFFER, self.framebuffer)
+  gl.Framebuffer.AttachTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, self.texture)
+  gl.Framebuffer.Bind(gl.FRAMEBUFFER)
 end
 
 function Canvas:get_uv(rect)
@@ -30,6 +30,11 @@ function Canvas:get_uv(rect)
   uv[3] = uv[1] + rect.w / width
   uv[4] = 1 - (uv_y + rect.h / height)
   return uv
+end
+
+function Canvas:__gc()
+  self.texture:Delete()
+  self.frambuffer:Delete()
 end
 
 return Canvas

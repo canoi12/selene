@@ -21,13 +21,35 @@ static BEGIN_META_FUNCTION(File, SeekCur)
 END_FUNCTION(0)
 
 static BEGIN_META_FUNCTION(File, Tell)
+    SDL_GetPlatform();
     PUSH_INTEGER(ftell(*self));
 END_FUNCTION(1)
 
 static BEGIN_META_FUNCTION(File, Read)
-END_FUNCTION(0)
+    if (!*self)
+        return luaL_error(L, "File is closed");
+    int offset = ftell(*self);
+    fseek(*self, 0, SEEK_END);
+    int file_size = ftell(*self);
+    fseek(*self, offset, SEEK_SET);
+
+    int args = lua_gettop(L);
+    OPT_INTEGER(size, file_size - offset);
+    if (size + offset > file_size)
+        return luaL_error(L, "Read buffer exceed file size");
+    
+    char* data = malloc(size+1);
+    fread(data, 1, size, *self);
+    data[size] = '\0';
+    fseek(*self, offset, SEEK_SET);
+    PUSH_STRING(data);
+    PUSH_INTEGER(size);
+    free(data);
+END_FUNCTION(2)
 
 static BEGIN_META_FUNCTION(File, Write)
+    CHECK_STRING(text);
+    OPT_INTEGER(size, strlen(text));
 END_FUNCTION(0)
 
 static BEGIN_META_FUNCTION(File, Append)
@@ -83,8 +105,8 @@ static BEGIN_FUNCTION(fs, read)
     size_t size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     char* data = malloc(size+1);
+    fread(data, 1, size, fp);
     data[size] = '\0';
-    fread(data, 1, size+1, fp);
     fclose(fp);
     PUSH_STRING(data);
     PUSH_INTEGER(size);

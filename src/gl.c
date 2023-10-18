@@ -170,7 +170,7 @@ static BEGIN_FUNCTION(gl, NewTexture)
     glGenTextures(1, tex);
 END_FUNCTION(1);
 
-static BEGIN_META_FUNCTION(Texture, gc)
+static BEGIN_META_FUNCTION(Texture, _gc)
     glDeleteTextures(1, self);
 END_FUNCTION(0)
 
@@ -221,7 +221,7 @@ END_FUNCTION(0)
 
 static BEGIN_META(Texture)
     BEGIN_REG(Texture)
-        REG_META_FIELD(Texture, gc),
+        REG_FIELD(Texture, __gc),
     END_REG()
     NEW_META(Texture);
 END_META(1)
@@ -237,7 +237,7 @@ static BEGIN_FUNCTION(gl, NewFramebuffer)
     glGenFramebuffers(1, buffer);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Framebuffer, gc)
+static BEGIN_META_FUNCTION(Framebuffer, _gc)
     glDeleteFramebuffers(1, self);
 END_FUNCTION(1)
 
@@ -258,7 +258,7 @@ END_FUNCTION(0)
 
 static BEGIN_META(Framebuffer)
     BEGIN_REG(Framebuffer)
-        REG_META_FIELD(Framebuffer, gc),
+        REG_FIELD(Framebuffer, __gc),
     END_REG()
     NEW_META(Framebuffer);
 END_META(1)
@@ -277,7 +277,7 @@ static BEGIN_FUNCTION(gl, NewVertexArray)
 #endif
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(VertexArray, gc)
+static BEGIN_META_FUNCTION(VertexArray, _gc)
 #if !defined(__EMSCRIPTEN__)
     glDeleteVertexArrays(1, self);
 #endif
@@ -313,7 +313,7 @@ END_FUNCTION(0)
 
 static BEGIN_META(VertexArray)
     BEGIN_REG(VertexArray)
-    REG_META_FIELD(VertexArray, gc),
+    REG_FIELD(VertexArray, __gc),
     END_REG()
     NEW_META(VertexArray);
 END_META(1)
@@ -328,7 +328,7 @@ static BEGIN_FUNCTION(gl, NewBuffer)
     glGenBuffers(1, buffer);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Buffer, gc)
+static BEGIN_META_FUNCTION(Buffer, _gc)
     glDeleteBuffers(1, self);
 END_FUNCTION(0)
 
@@ -358,7 +358,7 @@ END_FUNCTION(0)
 
 static BEGIN_META(Buffer)
     BEGIN_REG(Buffer)
-    REG_META_FIELD(Buffer, gc),
+        REG_FIELD(Buffer, __gc),
     END_REG()
     NEW_META(Buffer);
 END_META(1)
@@ -374,7 +374,7 @@ static BEGIN_FUNCTION(gl, NewShader)
     *s = glCreateShader(gl_enum);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Shader, gc)
+static BEGIN_META_FUNCTION(Shader, _gc)
     glDeleteShader(*self);
     *self = 0;
 END_FUNCTION(0)
@@ -410,7 +410,7 @@ static BEGIN_META(Shader)
     BEGIN_REG(Shader)
         REG_META_FIELD(Shader, Source),
         REG_META_FIELD(Shader, Compile),
-        REG_META_FIELD(Shader, gc),
+        REG_FIELD(Shader, __gc),
     END_REG()
     NEW_META(Shader);
 END_META(1)
@@ -474,7 +474,7 @@ static BEGIN_META_FUNCTION(Program, GetUniformLocation)
     lua_pushinteger(L, loc);
 END_FUNCTION(1)
 
-static BEGIN_META_FUNCTION(Program, gc)
+static BEGIN_META_FUNCTION(Program, _gc)
     glDeleteProgram(*self);
 END_FUNCTION(0)
 
@@ -599,7 +599,7 @@ static BEGIN_META(Program)
     REG_META_FIELD(Program, Link),
     REG_META_FIELD(Program, GetAttribLocation),
     REG_META_FIELD(Program, GetUniformLocation),
-    REG_META_FIELD(Program, gc),
+    REG_FIELD(Program, __gc),
     END_REG()
     NEW_META(Program);
 END_META(1)

@@ -63,15 +63,15 @@ void main() {
 }
 ]]
 
-  local vert = gl.NewShader(gl.VERTEX_SHADER)
+  local vert = gl.Shader.New(gl.VERTEX_SHADER)
   vert:Source(vert_source)
   vert:Compile()
 
-  local frag = gl.NewShader(gl.FRAGMENT_SHADER)
+  local frag = gl.Shader.New(gl.FRAGMENT_SHADER)
   frag:Source(frag_source)
   frag:Compile()
 
-  local prog = gl.NewProgram()
+  local prog = gl.Program.New()
   prog:AttachShader(vert, frag)
   prog:Link()
 
@@ -110,6 +110,12 @@ local funcs = {
 function Shader:send(name, ...)
   local args = {...}
   funcs[type(args[1])](self, name, ...)
+end
+
+function Shader:__gc()
+  self.program:Delete()
+  self.vert:Delete()
+  self.frag:Delete()
 end
 
 return Shader

@@ -3,9 +3,7 @@
 static BEGIN_FUNCTION(system, GetOS)
 #if defined(__EMSCRIPTEN__)
     PUSH_STRING("Emscripten");
-    return 1;
-#endif
-#if defined(OS_WIN)
+#elif defined(OS_WIN)
     PUSH_STRING("Windows");
 #elif defined(OS_OSX)
     PUSH_STRING("OSX");

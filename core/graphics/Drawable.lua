@@ -40,10 +40,10 @@ function Drawable:set_filter(filter)
     error('Invalid filter')
   end
   self.filter = filter
-  gl.BindTexture(gl.TEXTURE_2D, obj.texture)
-  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f)
-  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f)
-  gl.BindTexture(gl.TEXTURE_2D)
+  gl.Texture.Bind(gl.TEXTURE_2D, obj.texture)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f)
+  gl.Texture.Bind(gl.TEXTURE_2D)
 end
 
 local wraps = {
@@ -56,10 +56,14 @@ function Drawable:set_wrap(wrap)
   if not w then
     error('Invalid wrap')
   end
-  gl.BindTexture(gl.TEXTURE_2D, obj.texture)
-  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, w)
-  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, w)
-  gl.BindTexture(gl.TEXTURE_2D)
+  gl.Texture.Bind(gl.TEXTURE_2D, obj.texture)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, w)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, w)
+  gl.Texture.Bind(gl.TEXTURE_2D)
+end
+
+function Drawable:__gc()
+  self.texture:Delete()
 end
 
 return Drawable

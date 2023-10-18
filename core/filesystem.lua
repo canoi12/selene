@@ -1,8 +1,13 @@
+local sdl = selene.sdl2
 local filesystem = {}
 
-local basepath = "./"
+local executable_path = "./"
+local user_path = "./"
 
-function filesystem.set_basepath(path)
+local workspace_path = "./"
+
+function filesystem.init(path)
+  path = path or "./"
   local os = selene.system.GetOS()
   local b1 = '\\'
   local b2 = '/'
@@ -18,15 +23,19 @@ function filesystem.set_basepath(path)
   if path:sub(#path) ~= b2 then
     path = path .. b2
   end
-  basepath = path
+  workspace_path = path
+  package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path
+
+  executable_path = sdl.GetBasePath()
+  user_path = sdl.GetPrefPath("selene", "game")
 end
 
-function filesystem.get_basepath()
-  return basepath
+function filesystem.get_workspace()
+  return workspace_path
 end
 
 function filesystem.open(path, mode)
-  return selene.fs.open(basepath .. path)
+  return selene.fs.open(workspace_path .. path)
 end
 
 function filesystem.resolve(path)
@@ -35,31 +44,31 @@ function filesystem.resolve(path)
   else
     path = path:gsub("%\\", "/")
   end
-  return basepath .. path
+  return workspace_path .. path
 end
 
 function filesystem.exists(path)
-  return selene.fs.exists(basepath .. path)
+  return selene.fs.Exists(workspace_path .. path)
 end
 
-function filesystem.read(path)
-  return selene.fs.read(basepath .. path)
-end
+-- function filesystem.read(path)
+--   return selene.fs.read(workspace_path .. path)
+-- end
 
-function filesystem.write(path, text)
-  return selene.fs.write(basepath .. path, text)
-end
+-- function filesystem.write(path, text)
+--   return selene.fs.write(workspace_path .. path, text)
+-- end
 
 function filesystem.mkdir(path)
-  selene.fs.mkdir(basepath .. path)
+  selene.fs.CreateDir(workspace_path .. path)
 end
 
 function filesystem.rmdir(path)
-  selene.fs.rmdir(basepath .. path)
+  selene.fs.RemoveDir(workspace_path .. path)
 end
 
 function filesystem.load(path)
-  return selene.fs.load(basepath .. path)
+  return selene.fs.Load(workspace_path .. path)
 end
 
 return filesystem
