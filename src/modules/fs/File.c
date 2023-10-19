@@ -40,17 +40,12 @@ static META_FUNCTION(File, Read) {
     int type = lua_type(L, arg);
     void* data = NULL;
     size_t size;
-    switch (type) {
-        case LUA_TNUMBER: {
-            size = luaL_optinteger(L, arg++, self->size - offset);
-        }
-        break;
-        case LUA_TUSERDATA: {
-            CHECK_UDATA(Data, dt);
-            data = dt->data;
-            size = dt->size;
-        }
-        break;
+    if (type == LUA_TUSERDATA) {
+        CHECK_UDATA(Data, dt);
+        data = dt->data;
+        size = dt->size;
+    } else {
+        size = luaL_optinteger(L, arg++, self->size - offset);
     }
     if (size + offset > self->size)
         return luaL_error(L, "Read buffer exceed file size");
