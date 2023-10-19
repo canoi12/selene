@@ -401,15 +401,15 @@ function graphics.print(text, x, y)
   local vertex_data = default.batch.data
   local i = 1
   while i <= #text do
-    local b = text:byte(i)
+    local c = text:byte(i)
     local codepoint, bytes = selene.UTF8Codepoint(text, i)
     i = i + bytes
     local rect = font.rects[codepoint]
 
-    if c == '\n' then
+    if c == string.byte('\n') then
       ox = x
       oy = oy + image.height
-    elseif c == '\t' then
+    elseif c == string.byte('\t') then
       ox = ox + rect.bw * 2
     else
       local xx = ox + rect.bl
@@ -428,10 +428,10 @@ function graphics.print(text, x, y)
       default.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
       default.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
       default.batch:push(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
-    end
 
-    ox = ox + rect.ax
-    oy = oy + rect.ay
+      ox = ox + rect.ax
+      oy = oy + rect.ay
+    end
   end
 end
 
@@ -450,15 +450,15 @@ function graphics.print_wrap(text, x, y, width)
   local vertex_data = default.batch.data
   local i = 1
   while i <= #text do
-    local b = text:byte(i)
+    local c = text:byte(i)
     local codepoint, bytes = selene.UTF8Codepoint(text, i)
     i = i + bytes
     local rect = font.rects[codepoint]
 
-    if c == '\n'or ox >= width then
+    if c == string.byte('\n') or ox >= width then
       ox = x
       oy = oy + image.height
-    elseif c == '\t' then
+    elseif c == string.byte('\t') then
       ox = ox + rect.bw * 2
     else
       local xx = ox + rect.bl
@@ -477,10 +477,10 @@ function graphics.print_wrap(text, x, y, width)
       default.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
       default.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
       default.batch:push(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
-    end
 
-    ox = ox + rect.ax
-    oy = oy + rect.ay
+      ox = ox + rect.ax
+      oy = oy + rect.ay
+    end
   end
 end
 
