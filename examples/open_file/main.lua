@@ -13,5 +13,6 @@ function selene.load()
 end
 
 function selene.draw()
+    graphics.clear()
     graphics.print(str, 8, 8)
 end

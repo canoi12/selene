@@ -6,20 +6,18 @@ static void _audio_stream_callback(void* userdata, Uint8* stream, int len) {
     #else
         Uint8 temp[len];
     #endif
-    SDL_memset(temp, 0, len);
+    SDL_memset(stream, 0, len);
     AudioStreamPool* pool = (AudioStreamPool*)userdata;
     int i = 0;
-    Uint8* buffer = stream;
     while (i < pool->count) {
         if (pool->data[i] != NULL) {
-            int result = SDL_AudioStreamGet(pool->data[i], buffer, len);
+            int result = SDL_AudioStreamGet(pool->data[i], temp, len);
             if (result < 0) {}
             else if (result != len) {
-                SDL_memset(buffer + result, 0, len - result);
+                SDL_memset(temp + result, 0, len - result);
             }
-            SDL_MixAudio(stream, buffer, len, SDL_MIX_MAXVOLUME);
+            SDL_MixAudioFormat(stream, temp, AUDIO_S16SYS, len, SDL_MIX_MAXVOLUME);
         }
-        buffer = temp;
         i++;
     }
 }
@@ -58,7 +56,7 @@ static MODULE_FUNCTION(AudioDeviceID, Open) {
     desired.freq = freq;
     desired.channels = channels;
     desired.samples = samples;
-    desired.format = AUDIO_S16;
+    desired.format = AUDIO_S16SYS;
     desired.callback = _audio_stream_callback;
 
     AudioStreamPool* pool = malloc(sizeof(*pool));

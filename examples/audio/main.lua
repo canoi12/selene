@@ -15,8 +15,8 @@ function selene.load()
     -- sound = Sound("sound.wav")
     -- instance = audio.play(music)
     sound = Music('sound.wav')
-    audio.play(music)
     audio.play(sound)
+    audio.play(music)
     local dec = music.decoder
     local stream = music.stream
     print(
@@ -47,6 +47,7 @@ end
 
 function selene.update(dt)
     process_audio(music)
+    process_audio(sound)
 end
 
 function selene.draw()
@@ -56,6 +57,8 @@ end
 
 function selene.key_callback(pressed, key, is_repeat)
     if pressed and key == 'space' and not rpt then
+        sound.decoder:Seek(0)
+        print(sound)
         -- audio.play(sound)
         -- audio.pool:Pause(instance, pause)
         pause = not pause

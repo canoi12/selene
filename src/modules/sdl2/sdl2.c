@@ -291,6 +291,7 @@ BEGIN_ENUM(sdl2)
     ENUM_FIELD(INIT_EVENTS, SDL_),
     // Audio
     {"AUDIO_S16", AUDIO_S16},
+    {"AUDIO_S16SYS", AUDIO_S16SYS},
     {"AUDIO_F32", AUDIO_F32},
     // Events
     ENUM_FIELD(QUIT, SDL_),
