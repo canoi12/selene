@@ -33,7 +33,7 @@ function filesystem.get_workspace()
 end
 
 function filesystem.open(path, mode)
-  return selene.fs.open(workspace_path .. path)
+  return selene.fs.File.Open(workspace_path .. path)
 end
 
 function filesystem.resolve(path)

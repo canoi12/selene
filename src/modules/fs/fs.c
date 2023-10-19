@@ -1,11 +1,12 @@
-#include "selene.h"
-#include "lua_helper.h"
+#include "fs.h"
 
 #if !defined(OS_WIN)
 #include <dirent.h>
 #include <unistd.h>
 #endif
 #include <sys/stat.h>
+
+extern MODULE_FUNCTION(File, meta);
 
 static MODULE_FUNCTION(fs, Exists) {
     struct stat info;
@@ -99,5 +100,6 @@ BEGIN_MODULE(fs) {
         REG_FIELD(fs, Load),
     END_REG()
     luaL_newlib(LUA_STATE_NAME, _reg);
+    LOAD_META(File);
     return 1;
 }
