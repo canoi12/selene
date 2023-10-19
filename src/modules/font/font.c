@@ -72,18 +72,25 @@ static MODULE_FUNCTION(font, GetDefault) {
         lua_newtable(L);
         lua_pushinteger(L, 8);
         lua_setfield(L, -2, "ax");
+
         lua_pushinteger(L, 0);
         lua_setfield(L, -2, "ay");
-        lua_pushinteger(L, 8);
-        lua_setfield(L, -2, "bh");
-        lua_pushinteger(L, 8);
+
+        lua_pushinteger(L, 0);
         lua_setfield(L, -2, "bl");
-        lua_pushinteger(L, 8);
+
+        lua_pushinteger(L, 0);
         lua_setfield(L, -2, "bt");
+        // Size
         lua_pushinteger(L, 8);
         lua_setfield(L, -2, "bw");
+
+        lua_pushinteger(L, 8);
+        lua_setfield(L, -2, "bh");
+        // Texcoord x
         lua_pushinteger(L, (8 * i));
         lua_setfield(L, -2, "tx");
+
         lua_rawseti(L, -2, i);
     }
     return 4;
