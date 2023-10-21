@@ -9,7 +9,7 @@ extern MODULE_FUNCTION(Joystick, meta);
 extern MODULE_FUNCTION(Gamepad, meta);
 
 static MODULE_FUNCTION(sdl2, Init) {
-    int flags;
+    int flags = 0;
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
         flags |= luaL_checkinteger(L, i+1);

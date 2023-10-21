@@ -2,19 +2,6 @@
 #define SDL_H_
 
 #include "selene.h"
-
-#if defined(OS_WIN)
-// #define SDL_MAIN_HANDLED
-    #include <SDL.h>
-    #include <SDL_opengl.h>
-#elif defined(__EMSCRIPTEN__)
-    #include <SDL.h>
-    #include <SDL2/SDL_opengles2.h>
-#else
-    #include <SDL2/SDL.h>
-    #include <SDL2/SDL_opengl.h>
-#endif
-
 #include "lua_helper.h"
 
 #if defined(__cplusplus)
