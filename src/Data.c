@@ -36,7 +36,9 @@ static META_FUNCTION(Data, GetSize) {
 
 static META_FUNCTION(Data, GetPointer) {
     CHECK_META(Data);
-    PUSH_LUDATA(self->data);
+    OPT_INTEGER(offset, 0);
+    char* data = (char*)self->data + offset;
+    PUSH_LUDATA(data);
     return 1;
 }
 
