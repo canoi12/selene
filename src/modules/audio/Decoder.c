@@ -1,6 +1,4 @@
 #include "audio.h"
-
-#include "selene.h"
 #include "lua_helper.h"
 
 static MODULE_FUNCTION(Decoder, New) {
@@ -31,9 +29,11 @@ static MODULE_FUNCTION(Decoder, Load) {
             int success = drwav_init_file(&(dec->wav), path, NULL);
             if (!success)
                 return luaL_error(L, "Failed to load wav: %s\n", path);
-            dec->bit_depth = 16;
-            dec->sample_rate = dec->wav.sampleRate;
-            dec->channels = dec->wav.channels;
+            dec->info.bit_depth = dec->wav.bitsPerSample;
+            dec->info.sample_rate = dec->wav.sampleRate;
+            dec->info.channels = dec->wav.channels;
+            dec->info.size = dec->wav.dataChunkDataSize;
+            dec->info.frame_count = dec->wav.totalPCMFrameCount;
         }
         break;
         case OGG_FORMAT: {
@@ -42,15 +42,12 @@ static MODULE_FUNCTION(Decoder, Load) {
                 return luaL_error(L, "Failed to load ogg: %s\n", path);
             stb_vorbis_info info;
             info = stb_vorbis_get_info(ogg);
-            dec->bit_depth = 16;
-            dec->sample_rate = info.sample_rate;
-            dec->channels = info.channels;
+            dec->info.sample_rate = info.sample_rate;
+            dec->info.channels = info.channels;
             dec->ogg = ogg;
         }
         break;
     }
-    dec->buffer_len = 4096 * dec->channels * sizeof(int16_t);
-    dec->buffer = malloc(dec->buffer_len);
     return 1;
 }
 
@@ -65,11 +62,6 @@ static META_FUNCTION(Decoder, Close) {
             stb_vorbis_close(self->ogg);
         }
         break;
-    }
-    if (self->buffer) {
-        free(self->buffer);
-        self->buffer = NULL;
-        self->buffer_len = 0;
     }
     return 0;
 }
@@ -100,6 +92,48 @@ static META_FUNCTION(Decoder, DecodeData) {
     return 1;
 }
 
+static META_FUNCTION(Decoder, ReadS16) {
+    CHECK_META(Decoder);
+    CHECK_UDATA(Data, data);
+    OPT_INTEGER(len, data->size);
+    int frame_count;
+    switch (self->format) {
+        case WAV_FORMAT: {
+            frame_count = drwav_read_pcm_frames_s16(&(self->wav), len, data->data);
+        }
+        break;
+        case OGG_FORMAT: {
+            frame_count = stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, data->data, len);
+        }
+        break;
+        default:
+            return luaL_error(L, "Invalid audio format in decoder\n");
+    }
+    PUSH_INTEGER(frame_count);
+    return 1;
+}
+
+static META_FUNCTION(Decoder, ReadF32) {
+    CHECK_META(Decoder);
+    CHECK_UDATA(Data, data);
+    OPT_INTEGER(len, data->size);
+    int frame_count;
+    switch (self->format) {
+        case WAV_FORMAT: {
+            frame_count = drwav_read_pcm_frames_f32(&(self->wav), len, data->data);
+        }
+        break;
+        case OGG_FORMAT: {
+            frame_count = stb_vorbis_get_samples_float_interleaved(self->ogg, self->info.channels, data->data, len);
+        }
+        break;
+        default:
+            return luaL_error(L, "Invalid audio format in decoder\n");
+    }
+    PUSH_INTEGER(frame_count);
+    return 1;
+}
+
 static META_FUNCTION(Decoder, GetChunk) {
     CHECK_META(Decoder);
     CHECK_UDATA(Data, data);
@@ -111,7 +145,7 @@ static META_FUNCTION(Decoder, GetChunk) {
         }
         break;
         case OGG_FORMAT: {
-            frame_count = stb_vorbis_get_samples_short_interleaved(self->ogg, self->channels, data->data, len);
+            frame_count = stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, data->data, len);
         }
         break;
         default:
@@ -123,19 +157,25 @@ static META_FUNCTION(Decoder, GetChunk) {
 
 static META_FUNCTION(Decoder, GetSampleRate) {
     CHECK_META(Decoder);
-    PUSH_INTEGER(self->sample_rate);
+    PUSH_INTEGER(self->info.sample_rate);
     return 1;
 }
 
 static META_FUNCTION(Decoder, GetChannels) {
     CHECK_META(Decoder);
-    PUSH_INTEGER(self->channels);
+    PUSH_INTEGER(self->info.channels);
     return 1;
 }
 
 static META_FUNCTION(Decoder, GetBitDepth) {
     CHECK_META(Decoder);
-    PUSH_INTEGER(self->bit_depth);
+    PUSH_INTEGER(self->info.bit_depth);
+    return 1;
+}
+
+static META_FUNCTION(Decoder, GetFrameCount) {
+    CHECK_META(Decoder);
+    PUSH_INTEGER(self->info.frame_count);
     return 1;
 }
 

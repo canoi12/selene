@@ -1,6 +1,8 @@
 #ifndef AUDIO_H_
 #define AUDIO_H_
 
+#include "selene.h"
+
 #define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.h"
 
@@ -12,6 +14,16 @@ enum {
     OGG_FORMAT,
 };
 
+typedef struct AudioInfo AudioInfo;
+struct AudioInfo {
+    int sample_rate;
+    int channels;
+    int format;
+    int bit_depth;
+    int size;
+    int frame_count;
+};
+
 typedef struct Decoder Decoder;
 struct Decoder {
     char format;
@@ -19,14 +31,13 @@ struct Decoder {
         drwav wav;
         stb_vorbis* ogg;
     };
-    int sample_rate;
-    int channels;
-    int bit_depth;
-    // Aux to decode buffer chunks
-    void* buffer;
-    int buffer_len;
+    AudioInfo info;
 };
 
 typedef struct AudioData AudioData;
+struct AudioData {
+    Data data;
+    AudioInfo info;
+};
 
 #endif /* AUDIO_H_ */
