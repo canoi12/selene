@@ -2,7 +2,7 @@ local class = {}
 class.__class = "Class"
 
 function class:extend(name)
-  local mt = { __index = self, __call = self.new }
+  local mt = { __index = self, __name = name, __call = self.new }
   for k,v in pairs(self) do
     if k:find('__') then
       mt[k] = v
@@ -14,7 +14,7 @@ function class:extend(name)
 end
 
 function class:new(...)
-  local mt = { __index = self }
+  local mt = { __index = self, __name = self.__class }
   for k,v in pairs(self) do
     if k:find('__') then
       mt[k] = v
