@@ -51,11 +51,32 @@ static META_FUNCTION(AudioStream, Bind) {
     return 0;
 }
 
+static META_FUNCTION(AudioStream, Unbind) {
+    CHECK_META(AudioStream);
+    CHECK_UDATA(AudioDeviceID, dev);
+    PUSH_VALUE(-1);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    AudioStreamPool* pool = lua_touserdata(L, -1);
+    if (pool->top >= pool->count)
+        return luaL_error(L, "AudioStreamPool is empty\n");
+    int i = 0;
+    for (i = 0; i < pool->count; i++) {
+        if (pool->data[i] == *self)
+            break;
+    }
+    if (i < pool->count) {
+        pool->availables[(pool->top)++] = i;
+        pool->data[i] = NULL;
+    }
+    return 0;
+}
+
 static META_FUNCTION(AudioStream, Put) {
     CHECK_META(AudioStream);
     void* data;
     size_t len;
-    switch(lua_type(L, arg)) {
+    int type = lua_type(L, arg);
+    switch(type) {
         case LUA_TSTRING: {
             data = (void*)luaL_checklstring(L, arg, &len);
         }
@@ -72,7 +93,23 @@ static META_FUNCTION(AudioStream, Put) {
         }
         break;
     }
-    int res = SDL_AudioStreamPut(*self, data, len);
+    int res = SDL_AudioStreamPut(*self, data, (int)len);
+    PUSH_INTEGER(res);
+    return 1;
+}
+
+static META_FUNCTION(AudioStream, Get) {
+    CHECK_META(AudioStream);
+    CHECK_UDATA(Data, out);
+    OPT_INTEGER(size, out->size);
+    int res = SDL_AudioStreamGet(*self, out->data, size);
+    PUSH_INTEGER(res);
+    return 1;
+}
+
+static META_FUNCTION(AudioStream, Available) {
+    CHECK_META(AudioStream);
+    int res = SDL_AudioStreamAvailable(*self);
     PUSH_INTEGER(res);
     return 1;
 }
@@ -86,7 +123,10 @@ BEGIN_META(AudioStream) {
         REG_META_FIELD(AudioStream, Free),
         REG_META_FIELD(AudioStream, Flush),
         REG_META_FIELD(AudioStream, Bind),
+        REG_META_FIELD(AudioStream, Unbind),
         REG_META_FIELD(AudioStream, Put),
+        REG_META_FIELD(AudioStream, Get),
+        REG_META_FIELD(AudioStream, Available),
     END_REG()
     NEW_META(AudioStream, _reg, _index_reg);
     return 1;

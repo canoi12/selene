@@ -112,6 +112,7 @@ function core.init(args)
       timer.delta = 0
       if selene.load then selene.load(args) end
       return function()
+        audio.update()
         local current = sdl.GetTicks()
         timer.delta = (current - timer.last) / 1000
         timer.last = current;
