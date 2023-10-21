@@ -87,7 +87,8 @@ int luaopen_selene(lua_State* L) {
     return 1;
 }
 
-static void _step(lua_State* L) {
+static void _step(void* _L) {
+    lua_State* L = (lua_State*)_L;
     lua_rawgetp(L, LUA_REGISTRYINDEX, &_core_reg);
     lua_getfield(L, -1, "step");
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
