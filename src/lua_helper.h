@@ -64,6 +64,10 @@ for (int i = 0; __VA_ARGS__##_Enum[i].name != NULL; i++) {\
 INIT_ARG();\
 CHECK_UDATA(type, self)
 
+#define GET_META(type)\
+INIT_ARG();\
+GET_UDATA(type, self)
+
 #define META_FUNCTION(type, func)\
 int l_##type##__##func(lua_State* LUA_STATE_NAME)
 
@@ -87,7 +91,7 @@ type* name = (type*)lua_newuserdata(LUA_STATE_NAME, sizeof(type));\
 luaL_setmetatable(LUA_STATE_NAME, #type)
 
 #define GET_UDATA(type, name)\
-type* name = (type*)luaL_touserdata(LUA_STATE_NAME, arg++)
+type* name = (type*)lua_touserdata(LUA_STATE_NAME, arg++)
 
 #define CHECK_UDATA(type, name)\
 type* name = (type*)luaL_checkudata(LUA_STATE_NAME, arg++, #type)
