@@ -15,6 +15,7 @@ int seleneopen_gl(lua_State* L);
 int seleneopen_image(lua_State* L);
 int seleneopen_linmath(lua_State* L);
 int seleneopen_sdl2(lua_State* L);
+int seleneopen_stdc(lua_State* L);
 int seleneopen_system(lua_State* L);
 
 #if defined(__cplusplus)

@@ -82,6 +82,7 @@ int luaopen_selene(lua_State* L) {
     LOAD_MODULE(image);
     LOAD_MODULE(linmath);
     LOAD_MODULE(sdl2);
+    LOAD_MODULE(stdc);
     LOAD_MODULE(system);
 
     return 1;
