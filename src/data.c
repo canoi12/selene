@@ -1,7 +1,7 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-static MODULE_FUNCTION(Data, New) {
+MODULE_FUNCTION(Data, New) {
     INIT_ARG();
     CHECK_INTEGER(size);
     NEW_UDATA(Data, data);
@@ -10,16 +10,16 @@ static MODULE_FUNCTION(Data, New) {
     return 1;
 }
 
-static META_FUNCTION(Data, Realloc) {
-    CHECK_META(Data);
+META_FUNCTION(Data, Realloc) {
+    GET_META(Data);
     CHECK_INTEGER(size);
     self->size = size;
     self->data = realloc(self->data, size);
     return 0;
 }
 
-static META_FUNCTION(Data, Free) {
-    CHECK_META(Data);
+META_FUNCTION(Data, Free) {
+    GET_META(Data);
     if (self->data) {
         free(self->data);
         self->data = NULL;
@@ -28,28 +28,28 @@ static META_FUNCTION(Data, Free) {
     return 1;
 }
 
-static META_FUNCTION(Data, GetSize) {
-    CHECK_META(Data);
+META_FUNCTION(Data, GetSize) {
+    GET_META(Data);
     PUSH_INTEGER(self->size);
     return 1;
 }
 
-static META_FUNCTION(Data, GetPointer) {
-    CHECK_META(Data);
+META_FUNCTION(Data, GetPointer) {
+    GET_META(Data);
     OPT_INTEGER(offset, 0);
     char* data = (char*)self->data + offset;
     PUSH_LUDATA(data);
     return 1;
 }
 
-static META_FUNCTION(Data, GetString) {
-    CHECK_META(Data);
+META_FUNCTION(Data, GetString) {
+    GET_META(Data);
     lua_pushlstring(L, self->data, self->size);
     return 1;
 }
 
-static META_FUNCTION(Data, ReadBytes) {
-    CHECK_META(Data);
+META_FUNCTION(Data, ReadBytes) {
+    GET_META(Data);
     CHECK_INTEGER(offset);
     OPT_INTEGER(n, 1);
     if (offset < 0 || offset + n > self->size)
@@ -60,8 +60,8 @@ static META_FUNCTION(Data, ReadBytes) {
     return n;
 }
 
-static META_FUNCTION(Data, ReadInts) {
-    CHECK_META(Data);
+META_FUNCTION(Data, ReadInts) {
+    GET_META(Data);
     CHECK_INTEGER(offset);
     OPT_INTEGER(n, 1);
     if (offset < 0 || offset + n > self->size)
@@ -72,8 +72,8 @@ static META_FUNCTION(Data, ReadInts) {
     return n;
 }
 
-static META_FUNCTION(Data, ReadFloats) {
-    CHECK_META(Data);
+META_FUNCTION(Data, ReadFloats) {
+    GET_META(Data);
     CHECK_INTEGER(offset);
     OPT_INTEGER(n, 1);
     if (offset < 0 || offset + n > self->size)
@@ -84,8 +84,8 @@ static META_FUNCTION(Data, ReadFloats) {
     return n;
 }
 
-static META_FUNCTION(Data, WriteByte) {
-    CHECK_META(Data);
+META_FUNCTION(Data, WriteByte) {
+    GET_META(Data);
     CHECK_INTEGER(offset);
     int args = lua_gettop(L);
     int error = (offset + ((args - 2) * sizeof(char))) > self->size;
@@ -100,8 +100,8 @@ static META_FUNCTION(Data, WriteByte) {
     return 1;
 }
 
-static META_FUNCTION(Data, WriteInt) {
-    CHECK_META(Data);
+META_FUNCTION(Data, WriteInt) {
+    GET_META(Data);
     CHECK_INTEGER(offset);
     int args = lua_gettop(L);
     int error = (offset + ((args - 2) * sizeof(int))) > self->size;
@@ -116,8 +116,8 @@ static META_FUNCTION(Data, WriteInt) {
     return 1;
 }
 
-static META_FUNCTION(Data, WriteFloat) {
-    CHECK_META(Data);
+META_FUNCTION(Data, WriteFloat) {
+    GET_META(Data);
     CHECK_INTEGER(offset);
     int args = lua_gettop(L);
     int error = (offset + ((args - 2) * sizeof(float))) > self->size;
@@ -132,8 +132,8 @@ static META_FUNCTION(Data, WriteFloat) {
     return 1;
 }
 
-static META_FUNCTION(Data, WriteString) {
-    CHECK_META(Data);
+META_FUNCTION(Data, WriteString) {
+    GET_META(Data);
     CHECK_INTEGER(offset);
     size_t size;
     const char* str = luaL_checklstring(L, arg++, &size);
