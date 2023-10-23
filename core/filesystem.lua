@@ -32,6 +32,10 @@ function filesystem.get_workspace()
   return workspace_path
 end
 
+function filesystem.exists(path)
+  return selene.fs.Exists(workspace_path .. path)
+end
+
 function filesystem.open(path, mode)
   return selene.fs.File.Open(workspace_path .. path)
 end
@@ -49,13 +53,13 @@ function filesystem.exists(path)
   return selene.fs.Exists(workspace_path .. path)
 end
 
--- function filesystem.read(path)
---   return selene.fs.read(workspace_path .. path)
--- end
+function filesystem.read(path)
+  return selene.fs.Read(workspace_path .. path)
+end
 
--- function filesystem.write(path, text)
---   return selene.fs.write(workspace_path .. path, text)
--- end
+function filesystem.write(path, text)
+  return selene.fs.Write(workspace_path .. path, text)
+end
 
 function filesystem.mkdir(path)
   selene.fs.CreateDir(workspace_path .. path)
