@@ -365,7 +365,9 @@ function graphics.fill_triangle(x0, y0, x1, y1, x2, y2)
   default.batch:push(x2, y2, r, g, b, a, 0.0, 0.0)
 end
 
-function graphics.draw(obj, rect, x, y)
+function graphics.draw(obj, rect, x, y, sx, sy)
+  sx = sx or 1
+  sy = sy or 1
   set_image(obj)
   set_draw_mode('triangles')
 
@@ -377,13 +379,15 @@ function graphics.draw(obj, rect, x, y)
 
   local r,g,b,a = table.unpack(current.draw_color)
   local vertex_data = default.batch.data
+  local w = rect.w * sx
+  local h = rect.h * sy
   default.batch:push(x, y, r, g, b, a, uv[1], uv[2])
-  default.batch:push(x+rect.w, y, r, g, b, a, uv[3], uv[2])
-  default.batch:push(x+rect.w, y+rect.h, r, g, b, a, uv[3], uv[4])
+  default.batch:push(x+w, y, r, g, b, a, uv[3], uv[2])
+  default.batch:push(x+w, y+h, r, g, b, a, uv[3], uv[4])
 
   default.batch:push(x, y, r, g, b, a, uv[1], uv[2])
-  default.batch:push(x+rect.w, y+rect.h, r, g, b, a, uv[3], uv[4])
-  default.batch:push(x, y+rect.h, r, g, b, a, uv[1], uv[4])
+  default.batch:push(x+w, y+h, r, g, b, a, uv[3], uv[4])
+  default.batch:push(x, y+h, r, g, b, a, uv[1], uv[4])
 end
 
 function graphics.print(text, x, y)
