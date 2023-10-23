@@ -4,15 +4,17 @@ local Canvas = Drawable:extend('Canvas')
 
 function Canvas:constructor(width, height)
   if width <= 0 or height <= 0 then error("Invalid canvas size") end
-  Drawable.constructor(self, gl.NewTexture(), width, height)
+  Drawable.constructor(self, gl.Texture.New(), width, height)
   gl.Texture.Bind(gl.TEXTURE_2D, self.texture)
   gl.Texture.Image2D(gl.TEXTURE_2D, gl.RGBA, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
   gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
   gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.Texture.Parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   gl.Texture.Bind(gl.TEXTURE_2D)
 
   self.target = gl.FRAMEBUFFER
-  self.framebuffer = gl.NewFramebuffer()
+  self.framebuffer = gl.Framebuffer.New()
   gl.Framebuffer.Bind(gl.FRAMEBUFFER, self.framebuffer)
   gl.Framebuffer.AttachTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, self.texture)
   gl.Framebuffer.Bind(gl.FRAMEBUFFER)
