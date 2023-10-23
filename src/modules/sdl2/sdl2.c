@@ -348,6 +348,7 @@ BEGIN_ENUM(sdl2)
 END_ENUM()
 
 BEGIN_MODULE(sdl2) {
+    keys = SDL_GetKeyboardState(NULL);
     BEGIN_REG()
         REG_FIELD(sdl2, Init),
         REG_FIELD(sdl2, Quit),
