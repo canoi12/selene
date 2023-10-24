@@ -1,3 +1,4 @@
+#include "lua_helper.h"
 #include "sdl2.h"
 
 static MODULE_FUNCTION(Event, Create) {
@@ -66,7 +67,79 @@ return 2;
 static META_FUNCTION(Event, AudioDeviceEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->adevice.which);
-return 1;
+    return 1;
+}
+
+static META_FUNCTION(Event, GamepadDeviceEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->cdevice.which);
+    return 1;
+}
+
+static META_FUNCTION(Event, GamepadAxisEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->caxis.which);
+    PUSH_INTEGER(self->caxis.axis);
+    PUSH_INTEGER(self->caxis.value);
+    return 3;
+}
+
+static META_FUNCTION(Event, GamepadButtonEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->cbutton.which);
+    PUSH_INTEGER(self->cbutton.button);
+    PUSH_INTEGER(self->cbutton.state);
+    return 3;
+}
+
+static META_FUNCTION(Event, JoyDeviceEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->jdevice.which);
+    return 1;
+}
+
+static META_FUNCTION(Event, JoyAxisEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->jaxis.which);
+    PUSH_INTEGER(self->jaxis.axis);
+    PUSH_INTEGER(self->jaxis.value);
+    return 1;
+}
+
+static META_FUNCTION(Event, JoyBallEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->jball.which);
+    PUSH_INTEGER(self->jball.ball);
+    PUSH_INTEGER(self->jball.xrel);
+    PUSH_INTEGER(self->jball.yrel);
+    return 4;
+}
+
+static META_FUNCTION(Event, JoyButtonEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->jbutton.which);
+    PUSH_INTEGER(self->jbutton.button);
+    PUSH_INTEGER(self->jbutton.state);
+    return 3;
+}
+
+static META_FUNCTION(Event, JoyHatEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->jhat.which);
+    PUSH_INTEGER(self->jhat.hat);
+    PUSH_INTEGER(self->jhat.value);
+    return 3;
+}
+
+static META_FUNCTION(Event, DollarGestureEvent) {
+    CHECK_META(Event);
+    PUSH_INTEGER(self->dgesture.touchId);
+    PUSH_INTEGER(self->dgesture.gestureId);
+    PUSH_INTEGER(self->dgesture.numFingers);
+    PUSH_NUMBER(self->dgesture.error);
+    PUSH_NUMBER(self->dgesture.x);
+    PUSH_NUMBER(self->dgesture.y);
+    return 6;
 }
 
 static META_FUNCTION(Event, TextEvent) {
