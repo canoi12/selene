@@ -1,4 +1,5 @@
 #include "sdl2.h"
+#include "lauxlib.h"
 #include "lua_helper.h"
 
 extern MODULE_FUNCTION(AudioDeviceID, meta);
@@ -230,7 +231,7 @@ static MODULE_FUNCTION(sdl2, GetTicks) {
 }
 
 static MODULE_FUNCTION(sdl2, Delay) {
-    Uint32 ms = (Uint32)luaL_checkinteger(L, 1);
+    Uint32 ms = (Uint32)luaL_checknumber(L, 1);
     SDL_Delay(ms);
     return 0;
 }

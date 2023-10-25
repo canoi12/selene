@@ -108,22 +108,34 @@ function core.init(args)
     _setup_error_callback()
   end
 
+  local default_delta = 1 / 60.0
+  local const FPS = 60.0
+  local const DELAY = 1000.0 / FPS
+
   local state, _step = xpcall(function()
       timer.delta = 0
       if selene.load then selene.load(args) end
+      timer.last = sdl.GetTicks()
+      local t = 0
       return function()
         audio.update()
         local current = sdl.GetTicks()
         local delta = (current - timer.last)
         timer.delta = delta / 1000
-        timer.last = current;
+        timer.last = current
+        event.poll()
+
+        while timer.delta > 0.0 do
+          local dt = math.min(timer.delta, default_delta)
+          if selene.update then selene.update(dt) end
+          timer.delta = timer.delta - dt
+        end
+
         graphics.begin()
-        if selene.update then selene.update(timer.delta) end
         if selene.draw then selene.draw() end
         graphics.finish()
         graphics.swap()
-        event.poll()
-        sdl.Delay(delta)
+        sdl.Delay(DELAY)
       end
     end, _error)
 
