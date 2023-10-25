@@ -52,6 +52,20 @@ static MODULE_FUNCTION(sdl2, GL_SetAttribute) {
     return 0;
 }
 
+static MODULE_FUNCTION(sdl2, GL_SetSwapInterval) {
+    INIT_ARG();
+    GET_BOOLEAN(value);
+    int res = SDL_GL_SetSwapInterval(value);
+    PUSH_BOOLEAN(res == 0);
+    return 1;
+}
+
+static MODULE_FUNCTION(sdl2, GL_GetSwapInterval) {
+    int res = SDL_GL_GetSwapInterval();
+    PUSH_INTEGER(res);
+    return 1;
+}
+
 /************************
  #                      #
  #      Clipboard       #
@@ -428,6 +442,8 @@ BEGIN_MODULE(sdl2) {
         REG_FIELD(sdl2, GL_MakeCurrent),
         REG_FIELD(sdl2, GL_GetProcAddress),
         REG_FIELD(sdl2, GL_SetAttribute),
+        REG_FIELD(sdl2, GL_SetSwapInterval),
+        REG_FIELD(sdl2, GL_GetSwapInterval),
         /* Clipboard */
         REG_FIELD(sdl2, GetClipboardText),
         REG_FIELD(sdl2, SetClipboardText),

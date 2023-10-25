@@ -97,3 +97,44 @@ return function(args)
     return core
 end
 ```
+
+## Dependencies
+
+- A C compiler
+- SDL2 dev lib
+- CMake
+
+### Linux
+
+On Linux i use Make for build, so in Debian for example you can install all dependencies with:
+
+```
+sudo apt install gcc make libsdl2-dev cmake
+```
+
+and build with:
+
+```
+cmake -B build && make -C build
+```
+
+
+### Windows
+
+If you going to use the VC++ compiler and Visual Studio Tools, you will need to download the SDL2 dev lib from https://github.com/libsdl-org/SDL/releases/ (Download the SDL2-devel-x.xx.x-VC.zip version), and put the content in external/SDL2/MSVC.
+
+
+### MacOS
+
+For OSX i recommend use [homebrew](https://brew.sh/), you can install all dependencies with:
+
+```
+brew install sdl2 cmake make 
+```
+
+(The C compiler is already embedded when you install the build tools)
+
+And for build is the same as Linux:
+```
+cmake -B build && make -C build
+```

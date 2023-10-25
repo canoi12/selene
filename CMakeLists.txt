@@ -17,8 +17,11 @@ endif()
 include_directories(src/ src/modules/ src/modules/*/)
 include_directories(external/ external/lua/src/ external/glad/include/)
 
-if (WIN32 AND MSVC)
+if (MSVC)
     set(SDL2_DIR external/SDL2/MSVC/cmake)
+    set(COPY_DLL TRUE)
+elseif(MINGW)
+    set(SDL2_DIR external/SDL2/MINGW/cmake)
     set(COPY_DLL TRUE)
 endif()
 
@@ -51,13 +54,13 @@ target_link_libraries(${PROJECT_NAME} ${LIBRARIES} lua)
 
 if (COPY_DLL)
     if (MSVC)
-    file(GLOB SDL_LIB external/SDL2/MSVC/lib/x64/SDL2.dll)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_LIB} "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
-    elseif(WIN32)
-    file(GLOB SDL_LIB external/SDL2/MINGW/${TOOLCHAIN_PREFIX}/bin/SDL2.dll)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_LIB} "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+        file(GLOB SDL_LIB external/SDL2/MSVC/lib/x64/SDL2.dll)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_LIB} "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    elseif(MINGW)
+        file(GLOB SDL_LIB external/SDL2/MINGW/${TOOLCHAIN_PREFIX}/bin/SDL2.dll)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_LIB} "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
     endif()
 endif()
 

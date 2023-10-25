@@ -122,13 +122,12 @@ function graphics.init(config)
   default.canvas.framebuffer = nil
 
   local data, w, h, glyphs = selene.font.GetDefault()
-  print(data, w, h, glyphs, #glyphs)
-  local c = selene.UTF8Codepoint('\t', 1)
-  print(c, glyphs[c], 'kek')
   default.font = setmetatable({}, { __index = Font })
   default.font.image = Image(w, h, data)
   default.font.rects = glyphs
   default.font.size = 8
+
+  sdl.GL_SetSwapInterval(true)
 end
 
 function graphics.deinit()

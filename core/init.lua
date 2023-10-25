@@ -122,6 +122,7 @@ function core.init(args)
         graphics.finish()
         graphics.swap()
         event.poll()
+        sdl.Delay(timer.delta * 1000)
       end
     end, _error)
 
