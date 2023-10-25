@@ -114,7 +114,8 @@ function core.init(args)
       return function()
         audio.update()
         local current = sdl.GetTicks()
-        timer.delta = (current - timer.last) / 1000
+        local delta = (current - timer.last)
+        timer.delta = delta / 1000
         timer.last = current;
         graphics.begin()
         if selene.update then selene.update(timer.delta) end
@@ -122,7 +123,7 @@ function core.init(args)
         graphics.finish()
         graphics.swap()
         event.poll()
-        sdl.Delay(timer.delta * 1000)
+        sdl.Delay(delta)
       end
     end, _error)
 
