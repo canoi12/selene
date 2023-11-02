@@ -8,7 +8,7 @@
 
 extern MODULE_FUNCTION(File, meta);
 
-static MODULE_FUNCTION(fs, Exists) {
+static MODULE_FUNCTION(fs, exists) {
     struct stat info;
     INIT_ARG();
     CHECK_STRING(path);
@@ -19,7 +19,7 @@ static MODULE_FUNCTION(fs, Exists) {
     return 1;
 }
 
-static MODULE_FUNCTION(fs, Read) {
+static MODULE_FUNCTION(fs, read) {
     INIT_ARG();
     CHECK_STRING(path);
     #if defined(OS_WIN)
@@ -45,7 +45,7 @@ static MODULE_FUNCTION(fs, Read) {
     return 1;
 }
 
-static MODULE_FUNCTION(fs, Write) {
+static MODULE_FUNCTION(fs, write) {
     INIT_ARG();
     int len;
     CHECK_STRING(path);
@@ -65,7 +65,7 @@ static MODULE_FUNCTION(fs, Write) {
     return 1;
 }
 
-static MODULE_FUNCTION(fs, CreateDir) {
+static MODULE_FUNCTION(fs, createDir) {
     INIT_ARG();
     CHECK_STRING(path);
 #if defined(OS_WIN)
@@ -76,14 +76,14 @@ static MODULE_FUNCTION(fs, CreateDir) {
     return 0;
 }
 
-static MODULE_FUNCTION(fs, RemoveDir) {
+static MODULE_FUNCTION(fs, removeDir) {
     INIT_ARG();
     CHECK_STRING(path);
     rmdir(path);
     return 0;
 }
 
-static MODULE_FUNCTION(fs, Load) {
+static MODULE_FUNCTION(fs, load) {
     INIT_ARG();
     CHECK_STRING(path);
     luaL_loadfile(L, path);
@@ -92,12 +92,12 @@ static MODULE_FUNCTION(fs, Load) {
 
 BEGIN_MODULE(fs) {
     BEGIN_REG()
-        REG_FIELD(fs, Exists),
-        REG_FIELD(fs, Read),
-        REG_FIELD(fs, Write),
-        REG_FIELD(fs, CreateDir),
-        REG_FIELD(fs, RemoveDir),
-        REG_FIELD(fs, Load),
+        REG_FIELD(fs, exists),
+        REG_FIELD(fs, read),
+        REG_FIELD(fs, write),
+        REG_FIELD(fs, createDir),
+        REG_FIELD(fs, removeDir),
+        REG_FIELD(fs, load),
     END_REG()
     luaL_newlib(LUA_STATE_NAME, _reg);
     LOAD_META(File);

@@ -1,7 +1,7 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-MODULE_FUNCTION(Data, New) {
+MODULE_FUNCTION(Data, create) {
     INIT_ARG();
     CHECK_INTEGER(size);
     NEW_UDATA(Data, data);
@@ -10,7 +10,7 @@ MODULE_FUNCTION(Data, New) {
     return 1;
 }
 
-META_FUNCTION(Data, Realloc) {
+META_FUNCTION(Data, realloc) {
     GET_META(Data);
     CHECK_INTEGER(size);
     self->size = size;
@@ -18,7 +18,7 @@ META_FUNCTION(Data, Realloc) {
     return 0;
 }
 
-META_FUNCTION(Data, Free) {
+META_FUNCTION(Data, free) {
     GET_META(Data);
     if (self->data) {
         free(self->data);
@@ -28,13 +28,13 @@ META_FUNCTION(Data, Free) {
     return 1;
 }
 
-META_FUNCTION(Data, GetSize) {
+META_FUNCTION(Data, getSize) {
     GET_META(Data);
     PUSH_INTEGER(self->size);
     return 1;
 }
 
-META_FUNCTION(Data, GetPointer) {
+META_FUNCTION(Data, getPointer) {
     GET_META(Data);
     OPT_INTEGER(offset, 0);
     char* data = (char*)self->data + offset;
@@ -42,13 +42,13 @@ META_FUNCTION(Data, GetPointer) {
     return 1;
 }
 
-META_FUNCTION(Data, GetString) {
+META_FUNCTION(Data, getString) {
     GET_META(Data);
     lua_pushlstring(L, self->data, self->size);
     return 1;
 }
 
-META_FUNCTION(Data, ReadBytes) {
+META_FUNCTION(Data, readBytes) {
     GET_META(Data);
     CHECK_INTEGER(offset);
     OPT_INTEGER(n, 1);
@@ -60,7 +60,7 @@ META_FUNCTION(Data, ReadBytes) {
     return n;
 }
 
-META_FUNCTION(Data, ReadInts) {
+META_FUNCTION(Data, readInts) {
     GET_META(Data);
     CHECK_INTEGER(offset);
     OPT_INTEGER(n, 1);
@@ -72,7 +72,7 @@ META_FUNCTION(Data, ReadInts) {
     return n;
 }
 
-META_FUNCTION(Data, ReadFloats) {
+META_FUNCTION(Data, readFloats) {
     GET_META(Data);
     CHECK_INTEGER(offset);
     OPT_INTEGER(n, 1);
@@ -84,7 +84,7 @@ META_FUNCTION(Data, ReadFloats) {
     return n;
 }
 
-META_FUNCTION(Data, WriteByte) {
+META_FUNCTION(Data, writeBytes) {
     GET_META(Data);
     CHECK_INTEGER(offset);
     int args = lua_gettop(L);
@@ -100,7 +100,7 @@ META_FUNCTION(Data, WriteByte) {
     return 1;
 }
 
-META_FUNCTION(Data, WriteInt) {
+META_FUNCTION(Data, writeInts) {
     GET_META(Data);
     CHECK_INTEGER(offset);
     int args = lua_gettop(L);
@@ -116,7 +116,7 @@ META_FUNCTION(Data, WriteInt) {
     return 1;
 }
 
-META_FUNCTION(Data, WriteFloat) {
+META_FUNCTION(Data, writeFloats) {
     GET_META(Data);
     CHECK_INTEGER(offset);
     int args = lua_gettop(L);
@@ -132,7 +132,7 @@ META_FUNCTION(Data, WriteFloat) {
     return 1;
 }
 
-META_FUNCTION(Data, WriteString) {
+META_FUNCTION(Data, writeString) {
     GET_META(Data);
     CHECK_INTEGER(offset);
     size_t size;
@@ -151,21 +151,21 @@ META_FUNCTION(Data, WriteString) {
 
 BEGIN_META(Data) {
     BEGIN_REG()
-        REG_FIELD(Data, New),
+        REG_FIELD(Data, create),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Data, Realloc),
-        REG_META_FIELD(Data, Free),
-        REG_META_FIELD(Data, GetSize),
-        REG_META_FIELD(Data, GetPointer),
-        REG_META_FIELD(Data, GetString),
-        REG_META_FIELD(Data, ReadBytes),
-        REG_META_FIELD(Data, ReadInts),
-        REG_META_FIELD(Data, ReadFloats),
-        REG_META_FIELD(Data, WriteByte),
-        REG_META_FIELD(Data, WriteInt),
-        REG_META_FIELD(Data, WriteFloat),
-        REG_META_FIELD(Data, WriteString),
+        REG_META_FIELD(Data, realloc),
+        REG_META_FIELD(Data, free),
+        REG_META_FIELD(Data, getSize),
+        REG_META_FIELD(Data, getPointer),
+        REG_META_FIELD(Data, getString),
+        REG_META_FIELD(Data, readBytes),
+        REG_META_FIELD(Data, readInts),
+        REG_META_FIELD(Data, readFloats),
+        REG_META_FIELD(Data, writeBytes),
+        REG_META_FIELD(Data, writeInts),
+        REG_META_FIELD(Data, writeFloats),
+        REG_META_FIELD(Data, writeString),
     END_REG()
     NEW_META(Data, _reg, _index_reg);
     return 1;

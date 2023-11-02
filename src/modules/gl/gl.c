@@ -15,7 +15,7 @@ struct GLInfo {
 
 static struct GLInfo _gl_info;
 
-static MODULE_FUNCTION(gl, LoadGlad) {
+static MODULE_FUNCTION(gl, loadGlad) {
     INIT_ARG();
     CHECK_LUDATA(void, proc_fn);
 #if !defined(__EMSCRIPTEN__)
@@ -26,7 +26,7 @@ static MODULE_FUNCTION(gl, LoadGlad) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Viewport) {
+static MODULE_FUNCTION(gl, viewport) {
     int view[4];
     glGetIntegerv(GL_VIEWPORT, view);
     int args = lua_gettop(L);
@@ -37,7 +37,7 @@ static MODULE_FUNCTION(gl, Viewport) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, ClearDepth) {
+static MODULE_FUNCTION(gl, clearDepth) {
     INIT_ARG();
     OPT_NUMBER(float, depth, 1.f);
     #if !defined(__EMSCRIPTEN__)
@@ -48,7 +48,7 @@ static MODULE_FUNCTION(gl, ClearDepth) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, ClearColor) {
+static MODULE_FUNCTION(gl, clearColor) {
     float color[4] = { 0.f, 0.f, 0.f, 1.f };
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++)
@@ -57,7 +57,7 @@ static MODULE_FUNCTION(gl, ClearColor) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Clear) {
+static MODULE_FUNCTION(gl, clear) {
     GLenum flags = 0;
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
@@ -67,21 +67,21 @@ static MODULE_FUNCTION(gl, Clear) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Enable) {
+static MODULE_FUNCTION(gl, enable) {
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++)
         glEnable((GLenum)luaL_checkinteger(L, 1+i));
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Disable) {
+static MODULE_FUNCTION(gl, disable) {
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++)
         glDisable((GLenum)luaL_checkinteger(L, 1+i));
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Scissor) {
+static MODULE_FUNCTION(gl, scissor) {
     INIT_ARG();
     CHECK_INTEGER(x);
     CHECK_INTEGER(y);
@@ -91,7 +91,7 @@ static MODULE_FUNCTION(gl, Scissor) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, BlendFunc) {
+static MODULE_FUNCTION(gl, blendFunc) {
     INIT_ARG();
     OPT_INTEGER(sfn, GL_SRC_ALPHA);
     OPT_INTEGER(dfn, GL_ONE_MINUS_SRC_ALPHA);
@@ -99,7 +99,7 @@ static MODULE_FUNCTION(gl, BlendFunc) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, DrawArrays) {
+static MODULE_FUNCTION(gl, drawArrays) {
     uint16_t mode = (uint16_t)luaL_checkinteger(L, 1);
     uint32_t start = (uint32_t)luaL_checkinteger(L, 2);
     uint32_t count = (uint32_t)luaL_checkinteger(L, 3);
@@ -107,7 +107,7 @@ static MODULE_FUNCTION(gl, DrawArrays) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, DrawElements) {
+static MODULE_FUNCTION(gl, drawElements) {
     uint16_t mode = (uint16_t)luaL_checkinteger(L, 1);
     uint32_t start = (uint32_t)luaL_checkinteger(L, 2);
     uint32_t count = (uint32_t)luaL_checkinteger(L, 3);
@@ -118,7 +118,7 @@ static MODULE_FUNCTION(gl, DrawElements) {
 
 /* Uniforms */
 
-static MODULE_FUNCTION(gl, Uniform1fv) {
+static MODULE_FUNCTION(gl, uniform1fv) {
     int location = (int)luaL_checkinteger(L, 1);
     int args = (int)lua_gettop(L) - 1;
 #if defined(OS_WIN)
@@ -133,7 +133,7 @@ static MODULE_FUNCTION(gl, Uniform1fv) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Uniform2fv) {
+static MODULE_FUNCTION(gl, uniform2fv) {
     int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 2;
@@ -159,7 +159,7 @@ static MODULE_FUNCTION(gl, Uniform2fv) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Uniform3fv) {
+static MODULE_FUNCTION(gl, uniform3fv) {
     int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 3;
@@ -185,7 +185,7 @@ static MODULE_FUNCTION(gl, Uniform3fv) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, Uniform4fv) {
+static MODULE_FUNCTION(gl, uniform4fv) {
     int location = (int)luaL_checkinteger(L, 1);
     int args = lua_gettop(L) - 2;
     int size = args * 4 * 4;
@@ -211,7 +211,7 @@ static MODULE_FUNCTION(gl, Uniform4fv) {
     return 0;
 }
 
-static MODULE_FUNCTION(gl, UniformMatrix4fv) {
+static MODULE_FUNCTION(gl, uniformMatrix4fv) {
     INIT_ARG();
     CHECK_INTEGER(location);
     CHECK_INTEGER(count);
@@ -337,22 +337,22 @@ END_ENUM()
 
 BEGIN_MODULE(gl) {
     BEGIN_REG()
-        REG_FIELD(gl, LoadGlad),
-        REG_FIELD(gl, ClearDepth),
-        REG_FIELD(gl, ClearColor),
-        REG_FIELD(gl, Clear),
-        REG_FIELD(gl, Viewport),
-        REG_FIELD(gl, Enable),
-        REG_FIELD(gl, Disable),
-        REG_FIELD(gl, BlendFunc),
-        REG_FIELD(gl, DrawArrays),
-        REG_FIELD(gl, DrawElements),
+        REG_FIELD(gl, loadGlad),
+        REG_FIELD(gl, clearDepth),
+        REG_FIELD(gl, clearColor),
+        REG_FIELD(gl, clear),
+        REG_FIELD(gl, viewport),
+        REG_FIELD(gl, enable),
+        REG_FIELD(gl, disable),
+        REG_FIELD(gl, blendFunc),
+        REG_FIELD(gl, drawArrays),
+        REG_FIELD(gl, drawElements),
         /* Uniform */
-        REG_FIELD(gl, Uniform1fv),
-        REG_FIELD(gl, Uniform2fv),
-        REG_FIELD(gl, Uniform3fv),
-        REG_FIELD(gl, Uniform4fv),
-        REG_FIELD(gl, UniformMatrix4fv),
+        REG_FIELD(gl, uniform1fv),
+        REG_FIELD(gl, uniform2fv),
+        REG_FIELD(gl, uniform3fv),
+        REG_FIELD(gl, uniform4fv),
+        REG_FIELD(gl, uniformMatrix4fv),
     END_REG()
     luaL_newlib(LUA_STATE_NAME, _reg);
     LOAD_META(Texture);

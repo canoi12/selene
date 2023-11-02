@@ -1,7 +1,7 @@
 #include "lua.h"
 #include "sdl2.h"
 
-static MODULE_FUNCTION(AudioStream, Create) {
+static MODULE_FUNCTION(AudioStream, create) {
     INIT_ARG();
     CHECK_INTEGER(src_format);
     CHECK_INTEGER(src_channels);
@@ -20,25 +20,25 @@ static MODULE_FUNCTION(AudioStream, Create) {
 
 // Meta
 
-static META_FUNCTION(AudioStream, Clear) {
+static META_FUNCTION(AudioStream, clear) {
     CHECK_META(AudioStream);
     SDL_AudioStreamClear(*self);
     return 0;
 }
 
-static META_FUNCTION(AudioStream, Free) {
+static META_FUNCTION(AudioStream, free) {
     CHECK_META(AudioStream);
     SDL_FreeAudioStream(*self);
     return 0;
 }
 
-static META_FUNCTION(AudioStream, Flush) {
+static META_FUNCTION(AudioStream, flush) {
     CHECK_META(AudioStream);
     SDL_AudioStreamFlush(*self);
     return 0;
 }
 
-static META_FUNCTION(AudioStream, Bind) {
+static META_FUNCTION(AudioStream, bind) {
     CHECK_META(AudioStream);
     CHECK_UDATA(AudioDeviceID, dev);
     PUSH_VALUE(-1);
@@ -51,7 +51,7 @@ static META_FUNCTION(AudioStream, Bind) {
     return 0;
 }
 
-static META_FUNCTION(AudioStream, Unbind) {
+static META_FUNCTION(AudioStream, unbind) {
     CHECK_META(AudioStream);
     CHECK_UDATA(AudioDeviceID, dev);
     PUSH_VALUE(-1);
@@ -71,7 +71,7 @@ static META_FUNCTION(AudioStream, Unbind) {
     return 0;
 }
 
-static META_FUNCTION(AudioStream, Put) {
+static META_FUNCTION(AudioStream, put) {
     CHECK_META(AudioStream);
     void* data;
     size_t len;
@@ -98,7 +98,7 @@ static META_FUNCTION(AudioStream, Put) {
     return 1;
 }
 
-static META_FUNCTION(AudioStream, Get) {
+static META_FUNCTION(AudioStream, get) {
     CHECK_META(AudioStream);
     CHECK_UDATA(Data, out);
     OPT_INTEGER(size, out->size);
@@ -107,7 +107,7 @@ static META_FUNCTION(AudioStream, Get) {
     return 1;
 }
 
-static META_FUNCTION(AudioStream, Available) {
+static META_FUNCTION(AudioStream, available) {
     CHECK_META(AudioStream);
     int res = SDL_AudioStreamAvailable(*self);
     PUSH_INTEGER(res);
@@ -116,17 +116,17 @@ static META_FUNCTION(AudioStream, Available) {
 
 BEGIN_META(AudioStream) {
     BEGIN_REG()
-        REG_FIELD(AudioStream, Create),
+        REG_FIELD(AudioStream, create),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(AudioStream, Clear),
-        REG_META_FIELD(AudioStream, Free),
-        REG_META_FIELD(AudioStream, Flush),
-        REG_META_FIELD(AudioStream, Bind),
-        REG_META_FIELD(AudioStream, Unbind),
-        REG_META_FIELD(AudioStream, Put),
-        REG_META_FIELD(AudioStream, Get),
-        REG_META_FIELD(AudioStream, Available),
+        REG_META_FIELD(AudioStream, clear),
+        REG_META_FIELD(AudioStream, free),
+        REG_META_FIELD(AudioStream, flush),
+        REG_META_FIELD(AudioStream, bind),
+        REG_META_FIELD(AudioStream, unbind),
+        REG_META_FIELD(AudioStream, put),
+        REG_META_FIELD(AudioStream, get),
+        REG_META_FIELD(AudioStream, available),
     END_REG()
     NEW_META(AudioStream, _reg, _index_reg);
     return 1;

@@ -1,6 +1,6 @@
 #include "gl.h"
 
-static MODULE_FUNCTION(Shader, New) {
+static MODULE_FUNCTION(Shader, create) {
     INIT_ARG();
     CHECK_INTEGER(tp);
     NEW_UDATA(Shader, shader);
@@ -10,20 +10,20 @@ static MODULE_FUNCTION(Shader, New) {
 
 // Meta
 
-static META_FUNCTION(Shader, Delete) {
+static META_FUNCTION(Shader, destroy) {
     CHECK_META(Shader);
     glDeleteShader(*self);
     return 0;
 }
 
-static META_FUNCTION(Shader, Source) {
+static META_FUNCTION(Shader, source) {
     CHECK_META(Shader);
     CHECK_STRING(source);
     glShaderSource(*self, 1, &source, NULL);
     return 0;
 }
 
-static META_FUNCTION(Shader, Compile) {
+static META_FUNCTION(Shader, compile) {
     CHECK_META(Shader);
     glCompileShader(*self);
     int success = 0;
@@ -47,12 +47,12 @@ static META_FUNCTION(Shader, Compile) {
 
 BEGIN_META(Shader) {
     BEGIN_REG()
-        REG_FIELD(Shader, New),
+        REG_FIELD(Shader, create),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Shader, Delete),
-        REG_META_FIELD(Shader, Source),
-        REG_META_FIELD(Shader, Compile),
+        REG_META_FIELD(Shader, destroy),
+        REG_META_FIELD(Shader, source),
+        REG_META_FIELD(Shader, compile),
     END_REG()
     NEW_META(Shader, _reg, _index_reg);
     return 1;

@@ -1,6 +1,6 @@
 #include "sdl2.h"
 
-static MODULE_FUNCTION(GLContext, Create) {
+static MODULE_FUNCTION(GLContext, create) {
     INIT_ARG();
     CHECK_UDATA(Window, win);
     NEW_UDATA(GLContext, ctx);
@@ -8,7 +8,7 @@ static MODULE_FUNCTION(GLContext, Create) {
     return 1;
 }
 
-static META_FUNCTION(GLContext, Delete) {
+static META_FUNCTION(GLContext, destroy) {
     CHECK_META(GLContext);
     SDL_GL_DeleteContext(*self);
     return 0;
@@ -16,10 +16,10 @@ static META_FUNCTION(GLContext, Delete) {
 
 MODULE_FUNCTION(GLContext, meta) {
     BEGIN_REG()
-        REG_FIELD(GLContext, Create),
+        REG_FIELD(GLContext, create),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(GLContext, Delete),
+        REG_META_FIELD(GLContext, destroy),
     END_REG()
     NEW_META(GLContext, _reg, _index_reg);
     return 1;

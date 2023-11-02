@@ -1,13 +1,13 @@
 #include "audio.h"
 #include "lua_helper.h"
 
-static MODULE_FUNCTION(Decoder, New) {
+static MODULE_FUNCTION(Decoder, new) {
     INIT_ARG();
     CHECK_STRING(path);
     return 1;
 }
 
-static MODULE_FUNCTION(Decoder, Load) {
+static MODULE_FUNCTION(Decoder, load) {
     INIT_ARG();
     size_t len;
     CHECK_LSTRING(path, &len);
@@ -51,7 +51,7 @@ static MODULE_FUNCTION(Decoder, Load) {
     return 1;
 }
 
-static META_FUNCTION(Decoder, Close) {
+static META_FUNCTION(Decoder, close) {
     CHECK_META(Decoder);
     switch (self->format) {
         case WAV_FORMAT: {
@@ -66,11 +66,11 @@ static META_FUNCTION(Decoder, Close) {
     return 0;
 }
 
-static META_FUNCTION(Decoder, Clone) {
+static META_FUNCTION(Decoder, clone) {
     return 1;
 }
 
-static META_FUNCTION(Decoder, Seek) {
+static META_FUNCTION(Decoder, seek) {
     CHECK_META(Decoder);
     CHECK_INTEGER(index);
     switch (self->format) {
@@ -86,13 +86,13 @@ static META_FUNCTION(Decoder, Seek) {
     return 0;
 }
 
-static META_FUNCTION(Decoder, DecodeData) {
+static META_FUNCTION(Decoder, decodeData) {
     CHECK_META(Decoder);
     CHECK_UDATA(Data, data);
     return 1;
 }
 
-static META_FUNCTION(Decoder, ReadS16) {
+static META_FUNCTION(Decoder, readS16) {
     CHECK_META(Decoder);
     CHECK_UDATA(Data, data);
     OPT_INTEGER(len, data->size);
@@ -113,7 +113,7 @@ static META_FUNCTION(Decoder, ReadS16) {
     return 1;
 }
 
-static META_FUNCTION(Decoder, ReadF32) {
+static META_FUNCTION(Decoder, readF32) {
     CHECK_META(Decoder);
     CHECK_UDATA(Data, data);
     OPT_INTEGER(len, data->size);
@@ -134,7 +134,7 @@ static META_FUNCTION(Decoder, ReadF32) {
     return 1;
 }
 
-static META_FUNCTION(Decoder, GetChunk) {
+static META_FUNCTION(Decoder, getChunk) {
     CHECK_META(Decoder);
     CHECK_UDATA(Data, data);
     OPT_INTEGER(len, data->size);
@@ -155,25 +155,25 @@ static META_FUNCTION(Decoder, GetChunk) {
     return 1;
 }
 
-static META_FUNCTION(Decoder, GetSampleRate) {
+static META_FUNCTION(Decoder, getSampleRate) {
     CHECK_META(Decoder);
     PUSH_INTEGER(self->info.sample_rate);
     return 1;
 }
 
-static META_FUNCTION(Decoder, GetChannels) {
+static META_FUNCTION(Decoder, getChannels) {
     CHECK_META(Decoder);
     PUSH_INTEGER(self->info.channels);
     return 1;
 }
 
-static META_FUNCTION(Decoder, GetBitDepth) {
+static META_FUNCTION(Decoder, getBitDepth) {
     CHECK_META(Decoder);
     PUSH_INTEGER(self->info.bit_depth);
     return 1;
 }
 
-static META_FUNCTION(Decoder, GetFrameCount) {
+static META_FUNCTION(Decoder, getFrameCount) {
     CHECK_META(Decoder);
     PUSH_INTEGER(self->info.frame_count);
     return 1;
@@ -181,17 +181,17 @@ static META_FUNCTION(Decoder, GetFrameCount) {
 
 BEGIN_META(Decoder) {
     BEGIN_REG()
-        REG_FIELD(Decoder, New),
-        REG_FIELD(Decoder, Load),
+        REG_FIELD(Decoder, new),
+        REG_FIELD(Decoder, load),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Decoder, Close),
-        REG_META_FIELD(Decoder, Seek),
-        REG_META_FIELD(Decoder, DecodeData),
-        REG_META_FIELD(Decoder, GetChunk),
-        REG_META_FIELD(Decoder, GetSampleRate),
-        REG_META_FIELD(Decoder, GetChannels),
-        REG_META_FIELD(Decoder, GetBitDepth),
+        REG_META_FIELD(Decoder, close),
+        REG_META_FIELD(Decoder, seek),
+        REG_META_FIELD(Decoder, decodeData),
+        REG_META_FIELD(Decoder, getChunk),
+        REG_META_FIELD(Decoder, getSampleRate),
+        REG_META_FIELD(Decoder, getChannels),
+        REG_META_FIELD(Decoder, getBitDepth),
     END_REG()
     NEW_META(Decoder, _reg, _index_reg);
     return 1;

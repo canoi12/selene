@@ -1,12 +1,12 @@
 #include "gl.h"
 
-static MODULE_FUNCTION(Texture, New) {
+static MODULE_FUNCTION(Texture, create) {
     NEW_UDATA(Texture, tex);
     glGenTextures(1, tex);
     return 1;
 }
 
-static MODULE_FUNCTION(Texture, Bind) {
+static MODULE_FUNCTION(Texture, bind) {
     INIT_ARG();
     CHECK_INTEGER(target);
     TEST_UDATA(Texture, tex);
@@ -15,7 +15,7 @@ static MODULE_FUNCTION(Texture, Bind) {
     return 0;
 }
 
-static MODULE_FUNCTION(Texture, Image2D) {
+static MODULE_FUNCTION(Texture, image2D) {
     INIT_ARG();
     CHECK_INTEGER(target);
     CHECK_INTEGER(internal);
@@ -32,7 +32,7 @@ static MODULE_FUNCTION(Texture, Image2D) {
     return 0;
 }
 
-static MODULE_FUNCTION(Texture, SubImage2D) {
+static MODULE_FUNCTION(Texture, subImage2D) {
     INIT_ARG();
     CHECK_INTEGER(target);
     CHECK_INTEGER(xoffset);
@@ -50,7 +50,7 @@ static MODULE_FUNCTION(Texture, SubImage2D) {
     return 0;
 }
 
-static MODULE_FUNCTION(Texture, Parameteri) {
+static MODULE_FUNCTION(Texture, parameteri) {
     INIT_ARG();
     CHECK_INTEGER(target);
     CHECK_INTEGER(pname);
@@ -61,7 +61,7 @@ static MODULE_FUNCTION(Texture, Parameteri) {
 
 // Meta
 
-static META_FUNCTION(Texture, Delete) {
+static META_FUNCTION(Texture, destroy) {
     CHECK_META(Texture);
     glDeleteTextures(1, self);
     return 0;
@@ -69,14 +69,14 @@ static META_FUNCTION(Texture, Delete) {
 
 BEGIN_META(Texture) {
     BEGIN_REG()
-        REG_FIELD(Texture, New),
-        REG_FIELD(Texture, Bind),
-        REG_FIELD(Texture, Image2D),
-        REG_FIELD(Texture, SubImage2D),
-        REG_FIELD(Texture, Parameteri),
+        REG_FIELD(Texture, create),
+        REG_FIELD(Texture, bind),
+        REG_FIELD(Texture, image2D),
+        REG_FIELD(Texture, subImage2D),
+        REG_FIELD(Texture, parameteri),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Texture, Delete),
+        REG_META_FIELD(Texture, destroy),
     END_REG()
     NEW_META(Texture, _reg, _index_reg);
     return 1;

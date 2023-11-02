@@ -1,6 +1,6 @@
 #include "fs.h"
 
-static MODULE_FUNCTION(File, Open) {
+static MODULE_FUNCTION(File, open) {
     INIT_ARG();
     CHECK_STRING(path);
     NEW_UDATA(File, file);
@@ -19,20 +19,20 @@ static MODULE_FUNCTION(File, Open) {
 
 // Meta
 
-static META_FUNCTION(File, Seek) {
+static META_FUNCTION(File, seek) {
     CHECK_META(File);
     CHECK_INTEGER(n);
     fseek(self->handle, n, SEEK_SET);
     return 0;
 }
 
-static META_FUNCTION(File, Tell) {
+static META_FUNCTION(File, tell) {
     CHECK_META(File);
     PUSH_INTEGER(ftell(self->handle));
     return 1;
 }
 
-static META_FUNCTION(File, Read) {
+static META_FUNCTION(File, read) {
     CHECK_META(File);
     if (!self->handle)
         return luaL_error(L, "File is closed");
@@ -64,23 +64,23 @@ static META_FUNCTION(File, Read) {
     return 1;
 }
 
-static META_FUNCTION(File, Write) {
+static META_FUNCTION(File, write) {
     CHECK_META(File);
     return 0;
 }
 
-static META_FUNCTION(File, Append) {
+static META_FUNCTION(File, append) {
     CHECK_META(File);
     return 0;
 }
 
-static META_FUNCTION(File, GetSize) {
+static META_FUNCTION(File, getSize) {
     CHECK_META(File);
     PUSH_INTEGER(self->size);
     return 1;
 }
 
-static META_FUNCTION(File, Close) {
+static META_FUNCTION(File, close) {
     CHECK_META(File);
     fclose(self->handle);
     return 0;
@@ -88,16 +88,16 @@ static META_FUNCTION(File, Close) {
 
 BEGIN_META(File) {
     BEGIN_REG()
-        REG_FIELD(File, Open),
+        REG_FIELD(File, open),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(File, Seek),
-        REG_META_FIELD(File, Tell),
-        REG_META_FIELD(File, Read),
-        REG_META_FIELD(File, Write),
-        REG_META_FIELD(File, Append),
-        REG_META_FIELD(File, GetSize),
-        REG_META_FIELD(File, Close),
+        REG_META_FIELD(File, seek),
+        REG_META_FIELD(File, tell),
+        REG_META_FIELD(File, read),
+        REG_META_FIELD(File, write),
+        REG_META_FIELD(File, append),
+        REG_META_FIELD(File, getSize),
+        REG_META_FIELD(File, close),
     END_REG()
     NEW_META(File, _reg, _index_reg);
     return 1;

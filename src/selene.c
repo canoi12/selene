@@ -7,17 +7,17 @@ extern MODULE_FUNCTION(Data, meta);
 static int _running;
 static int _core_reg;
 
-static int l_selene_GetVersion(lua_State* L) {
+static int l_selene_getVersion(lua_State* L) {
     PUSH_STRING(SELENE_VERSION);
     return 1;
 }
 
-static int l_selene_IsRunning(lua_State* L) {
+static int l_selene_isRunning(lua_State* L) {
     PUSH_BOOLEAN(_running);
     return 1;
 }
 
-static int l_selene_SetRunning(lua_State* L) {
+static int l_selene_setRunning(lua_State* L) {
     INIT_ARG();
     CHECK_BOOLEAN(value);
     _running = value;
@@ -66,9 +66,9 @@ static MODULE_FUNCTION(selene, UTF8Codepoint) {
 
 int luaopen_selene(lua_State* L) {
     BEGIN_REG()
-        REG_FIELD(selene, GetVersion),
-        REG_FIELD(selene, IsRunning),
-        REG_FIELD(selene, SetRunning),
+        REG_FIELD(selene, getVersion),
+        REG_FIELD(selene, isRunning),
+        REG_FIELD(selene, setRunning),
         REG_FIELD(selene, UTF8Codepoint),
     END_REG()
     luaL_newlib(L, _reg);
@@ -107,10 +107,10 @@ const char* _boot =
 "    package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path\n"
 "end\n"
 "return function()\n"
-"    add_path(sdl.GetBasePath())\n"
-"    local core = require 'core'\n"
-"    core.init(selene.args)\n"
-"    return core\n"
+"    add_path(sdl.getBasePath())\n"
+"    local state = xpcall(function() require('tl').loader() end,\n"
+"    function() print('Booting without Teal') end)\n"
+"    return require('core')\n"
 "end";
 
 int main(int argc, char** argv) {

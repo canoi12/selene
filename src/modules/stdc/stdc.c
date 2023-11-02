@@ -26,7 +26,7 @@ static MODULE_FUNCTION(stdc, free) {
     return 0;
 }
 
-static MODULE_FUNCTION(stdc, write_byte) {
+static MODULE_FUNCTION(stdc, writeByte) {
     INIT_ARG();
     GET_LUDATA(void, data);
     OPT_INTEGER(offset, 0);

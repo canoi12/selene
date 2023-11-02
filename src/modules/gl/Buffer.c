@@ -1,12 +1,12 @@
 #include "gl.h"
 
-static MODULE_FUNCTION(Buffer, New) {
+static MODULE_FUNCTION(Buffer, create) {
     NEW_UDATA(Buffer, buffer);
     glGenBuffers(1, buffer);
     return 1;
 }
 
-static MODULE_FUNCTION(Buffer, Bind) {
+static MODULE_FUNCTION(Buffer, bind) {
     INIT_ARG();
     CHECK_INTEGER(target);
     TEST_UDATA(Buffer, buf);
@@ -15,7 +15,7 @@ static MODULE_FUNCTION(Buffer, Bind) {
     return 0;
 }
 
-static MODULE_FUNCTION(Buffer, Data) {
+static MODULE_FUNCTION(Buffer, data) {
     INIT_ARG();
     CHECK_INTEGER(target);
     CHECK_INTEGER(size);
@@ -26,7 +26,7 @@ static MODULE_FUNCTION(Buffer, Data) {
     return 0;
 }
 
-static MODULE_FUNCTION(Buffer, SubData) {
+static MODULE_FUNCTION(Buffer, subData) {
     INIT_ARG();
     CHECK_INTEGER(target);
     CHECK_INTEGER(start);
@@ -38,7 +38,7 @@ static MODULE_FUNCTION(Buffer, SubData) {
 
 // Meta
 
-static META_FUNCTION(Buffer, Delete) {
+static META_FUNCTION(Buffer, destroy) {
     CHECK_META(Buffer);
     glDeleteBuffers(1, self);
     return 0;
@@ -46,13 +46,13 @@ static META_FUNCTION(Buffer, Delete) {
 
 BEGIN_META(Buffer) {
     BEGIN_REG()
-        REG_FIELD(Buffer, New),
-        REG_FIELD(Buffer, Bind),
-        REG_FIELD(Buffer, Data),
-        REG_FIELD(Buffer, SubData),
+        REG_FIELD(Buffer, create),
+        REG_FIELD(Buffer, bind),
+        REG_FIELD(Buffer, data),
+        REG_FIELD(Buffer, subData),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Buffer, Delete),
+        REG_META_FIELD(Buffer, destroy),
     END_REG()
     NEW_META(Buffer, _reg, _index_reg);
     return 1;

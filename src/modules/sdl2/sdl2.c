@@ -10,7 +10,7 @@ extern MODULE_FUNCTION(Event, meta);
 extern MODULE_FUNCTION(Joystick, meta);
 extern MODULE_FUNCTION(Gamepad, meta);
 
-static MODULE_FUNCTION(sdl2, Init) {
+static MODULE_FUNCTION(sdl2, init) {
     int flags = 0;
     int args = lua_gettop(L);
     for (int i = 0; i < args; i++) {
@@ -21,7 +21,7 @@ static MODULE_FUNCTION(sdl2, Init) {
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, Quit) {
+static MODULE_FUNCTION(sdl2, quit) {
     SDL_Quit();
     return 0;
 }
@@ -32,7 +32,7 @@ static MODULE_FUNCTION(sdl2, Quit) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, GL_MakeCurrent) {
+static MODULE_FUNCTION(sdl2, glMakeCurrent) {
     INIT_ARG();
     CHECK_UDATA(Window, win);
     CHECK_UDATA(GLContext, ctx);
@@ -40,12 +40,12 @@ static MODULE_FUNCTION(sdl2, GL_MakeCurrent) {
     return 0;
 }
 
-static MODULE_FUNCTION(sdl2, GL_GetProcAddress) {
+static MODULE_FUNCTION(sdl2, glGetProcAddress) {
     PUSH_LUDATA(SDL_GL_GetProcAddress);
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GL_SetAttribute) {
+static MODULE_FUNCTION(sdl2, glSetAttribute) {
     INIT_ARG();
     CHECK_INTEGER(attr);
     CHECK_INTEGER(value);
@@ -53,7 +53,7 @@ static MODULE_FUNCTION(sdl2, GL_SetAttribute) {
     return 0;
 }
 
-static MODULE_FUNCTION(sdl2, GL_SetSwapInterval) {
+static MODULE_FUNCTION(sdl2, glSetSwapInterval) {
     INIT_ARG();
     GET_BOOLEAN(value);
     int res = SDL_GL_SetSwapInterval(value);
@@ -61,7 +61,7 @@ static MODULE_FUNCTION(sdl2, GL_SetSwapInterval) {
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GL_GetSwapInterval) {
+static MODULE_FUNCTION(sdl2, glGetSwapInterval) {
     int res = SDL_GL_GetSwapInterval();
     PUSH_INTEGER(res);
     return 1;
@@ -73,19 +73,19 @@ static MODULE_FUNCTION(sdl2, GL_GetSwapInterval) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, GetClipboardText) {
+static MODULE_FUNCTION(sdl2, getClipboardText) {
     char* text = SDL_GetClipboardText();
     PUSH_STRING(text);
     SDL_free(text);
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, HasClipboardText) {
+static MODULE_FUNCTION(sdl2, hasClipboardText) {
     PUSH_BOOLEAN(SDL_HasClipboardText());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, SetClipboardText) {
+static MODULE_FUNCTION(sdl2, setClipboardText) {
     INIT_ARG();
     CHECK_STRING(text);
     SDL_SetClipboardText(text);
@@ -98,14 +98,14 @@ static MODULE_FUNCTION(sdl2, SetClipboardText) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, GetBasePath) {
+static MODULE_FUNCTION(sdl2, getBasePath) {
     char* path = SDL_GetBasePath();
     PUSH_STRING(path);
     SDL_free(path);
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetPrefPath) {
+static MODULE_FUNCTION(sdl2, getPrefPath) {
     INIT_ARG();
     CHECK_STRING(org);
     CHECK_STRING(app);
@@ -121,7 +121,7 @@ static MODULE_FUNCTION(sdl2, GetPrefPath) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, LoadObject) {
+static MODULE_FUNCTION(sdl2, loadObject) {
     INIT_ARG();
     CHECK_STRING(sofile);
     void* obj = SDL_LoadObject(sofile);
@@ -129,14 +129,14 @@ static MODULE_FUNCTION(sdl2, LoadObject) {
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, UnloadObject) {
+static MODULE_FUNCTION(sdl2, unloadObject) {
     INIT_ARG();
     CHECK_LUDATA(void, handle);
     SDL_UnloadObject(handle);
     return 0;
 }
 
-static MODULE_FUNCTION(sdl2, LoadFunction) {
+static MODULE_FUNCTION(sdl2, loadFunction) {
     INIT_ARG();
     GET_LUDATA(void, handle);
     CHECK_STRING(name);
@@ -152,38 +152,38 @@ static MODULE_FUNCTION(sdl2, LoadFunction) {
  ************************/
 
 const Uint8* keys;
-static MODULE_FUNCTION(sdl2, CheckKeyState) {
+static MODULE_FUNCTION(sdl2, checkKeyState) {
     INIT_ARG();
     CHECK_INTEGER(key);
     PUSH_BOOLEAN(keys[key]);
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetKeyboardState) {
+static MODULE_FUNCTION(sdl2, getKeyboardState) {
     PUSH_LUDATA(SDL_GetKeyboardState(NULL));
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, HasScreenKeyboardSupport) {
+static MODULE_FUNCTION(sdl2, hasScreenKeyboardSupport) {
     PUSH_BOOLEAN(SDL_HasScreenKeyboardSupport());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, IsScreenKeyboardShown) {
+static MODULE_FUNCTION(sdl2, isScreenKeyboardShown) {
     INIT_ARG();
     CHECK_UDATA(Window, win);
     PUSH_BOOLEAN(SDL_IsScreenKeyboardShown(*win));
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetScancodeFromName) {
+static MODULE_FUNCTION(sdl2, getScancodeFromName) {
     INIT_ARG();
     CHECK_STRING(name);
     PUSH_INTEGER(SDL_GetScancodeFromName(name));
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetScancodeName) {
+static MODULE_FUNCTION(sdl2, getScancodeName) {
     INIT_ARG();
     CHECK_INTEGER(scancode);
     PUSH_STRING(SDL_GetScancodeName(scancode));
@@ -196,7 +196,7 @@ static MODULE_FUNCTION(sdl2, GetScancodeName) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, GetMousePosition) {
+static MODULE_FUNCTION(sdl2, getMousePosition) {
     int x, y;
     SDL_GetMouseState(&x, &y);
     PUSH_NUMBER(x);
@@ -204,7 +204,7 @@ static MODULE_FUNCTION(sdl2, GetMousePosition) {
     return 2;
 }
 
-static MODULE_FUNCTION(sdl2, GetRelativeMousePosition) {
+static MODULE_FUNCTION(sdl2, getRelativeMousePosition) {
     int x, y;
     SDL_GetRelativeMouseState(&x, &y);
     PUSH_NUMBER(x);
@@ -212,7 +212,7 @@ static MODULE_FUNCTION(sdl2, GetRelativeMousePosition) {
     return 2;
 }
 
-static MODULE_FUNCTION(sdl2, IsMouseDown) {
+static MODULE_FUNCTION(sdl2, isMouseDown) {
     INIT_ARG();
     CHECK_INTEGER(button);
     PUSH_BOOLEAN(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(button));
@@ -225,24 +225,28 @@ static MODULE_FUNCTION(sdl2, IsMouseDown) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, GetTicks) {
+static MODULE_FUNCTION(sdl2, getTicks) {
     PUSH_INTEGER(SDL_GetTicks());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, Delay) {
+static MODULE_FUNCTION(sdl2, delay) {
     Uint32 ms = (Uint32)luaL_checknumber(L, 1);
     SDL_Delay(ms);
     return 0;
 }
 
-static MODULE_FUNCTION(sdl2, GetPerformanceCounter) {
+static MODULE_FUNCTION(sdl2, getPerformanceCounter) {
     PUSH_INTEGER(SDL_GetPerformanceCounter());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetPerformanceFrequency) {
+static MODULE_FUNCTION(sdl2, getPerformanceFrequency) {
     PUSH_INTEGER(SDL_GetPerformanceFrequency());
+    return 1;
+}
+
+static MODULE_FUNCTION(sdl2, setTime) {
     return 1;
 }
 
@@ -252,12 +256,12 @@ static MODULE_FUNCTION(sdl2, GetPerformanceFrequency) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, GetError) {
+static MODULE_FUNCTION(sdl2, getError) {
     PUSH_STRING(SDL_GetError());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, SetError) {
+static MODULE_FUNCTION(sdl2, setError) {
     INIT_ARG();
     CHECK_STRING(msg);
     SDL_SetError(msg);
@@ -270,22 +274,22 @@ static MODULE_FUNCTION(sdl2, SetError) {
  #                      #
  ************************/
 
-static MODULE_FUNCTION(sdl2, GetPlatform) {
+static MODULE_FUNCTION(sdl2, getPlatform) {
     PUSH_STRING(SDL_GetPlatform());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetCPUCacheLineSize) {
+static MODULE_FUNCTION(sdl2, getCPUCacheLineSize) {
     PUSH_INTEGER(SDL_GetCPUCacheLineSize());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetCPUCount) {
+static MODULE_FUNCTION(sdl2, getCPUCount) {
     PUSH_INTEGER(SDL_GetCPUCount());
     return 1;
 }
 
-static MODULE_FUNCTION(sdl2, GetSystemRAM) {
+static MODULE_FUNCTION(sdl2, getSystemRAM) {
     PUSH_INTEGER(SDL_GetSystemRAM());
     return 1;
 }
@@ -437,48 +441,48 @@ END_ENUM()
 BEGIN_MODULE(sdl2) {
     keys = SDL_GetKeyboardState(NULL);
     BEGIN_REG()
-        REG_FIELD(sdl2, Init),
-        REG_FIELD(sdl2, Quit),
+        REG_FIELD(sdl2, init),
+        REG_FIELD(sdl2, quit),
         /* GL */
-        REG_FIELD(sdl2, GL_MakeCurrent),
-        REG_FIELD(sdl2, GL_GetProcAddress),
-        REG_FIELD(sdl2, GL_SetAttribute),
-        REG_FIELD(sdl2, GL_SetSwapInterval),
-        REG_FIELD(sdl2, GL_GetSwapInterval),
+        REG_FIELD(sdl2, glMakeCurrent),
+        REG_FIELD(sdl2, glGetProcAddress),
+        REG_FIELD(sdl2, glSetAttribute),
+        REG_FIELD(sdl2, glSetSwapInterval),
+        REG_FIELD(sdl2, glGetSwapInterval),
         /* Clipboard */
-        REG_FIELD(sdl2, GetClipboardText),
-        REG_FIELD(sdl2, SetClipboardText),
-        REG_FIELD(sdl2, HasClipboardText),
+        REG_FIELD(sdl2, getClipboardText),
+        REG_FIELD(sdl2, setClipboardText),
+        REG_FIELD(sdl2, hasClipboardText),
         /* Filesystem  */
-        REG_FIELD(sdl2, GetBasePath),
-        REG_FIELD(sdl2, GetPrefPath),
+        REG_FIELD(sdl2, getBasePath),
+        REG_FIELD(sdl2, getPrefPath),
         /* Shared  */
-        REG_FIELD(sdl2, LoadObject),
-        REG_FIELD(sdl2, UnloadObject),
-        REG_FIELD(sdl2, LoadFunction),
+        REG_FIELD(sdl2, loadObject),
+        REG_FIELD(sdl2, unloadObject),
+        REG_FIELD(sdl2, loadFunction),
         /* Keyboard */
-        REG_FIELD(sdl2, GetKeyboardState),
-        REG_FIELD(sdl2, GetScancodeFromName),
-        REG_FIELD(sdl2, HasScreenKeyboardSupport),
-        REG_FIELD(sdl2, IsScreenKeyboardShown),
-        REG_FIELD(sdl2, CheckKeyState),
+        REG_FIELD(sdl2, getKeyboardState),
+        REG_FIELD(sdl2, getScancodeFromName),
+        REG_FIELD(sdl2, hasScreenKeyboardSupport),
+        REG_FIELD(sdl2, isScreenKeyboardShown),
+        REG_FIELD(sdl2, checkKeyState),
         /* Mouse */
-        REG_FIELD(sdl2, GetMousePosition),
-        REG_FIELD(sdl2, GetRelativeMousePosition),
-        REG_FIELD(sdl2, IsMouseDown),
+        REG_FIELD(sdl2, getMousePosition),
+        REG_FIELD(sdl2, getRelativeMousePosition),
+        REG_FIELD(sdl2, isMouseDown),
         /* Timer */
-        REG_FIELD(sdl2, GetTicks),
-        REG_FIELD(sdl2, Delay),
-        REG_FIELD(sdl2, GetPerformanceCounter),
-        REG_FIELD(sdl2, GetPerformanceFrequency),
+        REG_FIELD(sdl2, getTicks),
+        REG_FIELD(sdl2, delay),
+        REG_FIELD(sdl2, getPerformanceCounter),
+        REG_FIELD(sdl2, getPerformanceFrequency),
         /* System */
-        REG_FIELD(sdl2, GetPlatform),
-        REG_FIELD(sdl2, GetCPUCount),
-        REG_FIELD(sdl2, GetCPUCacheLineSize),
-        REG_FIELD(sdl2, GetSystemRAM),
+        REG_FIELD(sdl2, getPlatform),
+        REG_FIELD(sdl2, getCPUCount),
+        REG_FIELD(sdl2, getCPUCacheLineSize),
+        REG_FIELD(sdl2, getSystemRAM),
         /* Error */
-        REG_FIELD(sdl2, GetError),
-        REG_FIELD(sdl2, SetError),
+        REG_FIELD(sdl2, getError),
+        REG_FIELD(sdl2, setError),
     END_REG()
     luaL_newlib(LUA_STATE_NAME, _reg);
     LOAD_META(AudioDeviceID);

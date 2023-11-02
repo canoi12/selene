@@ -1,24 +1,24 @@
 #include "lua_helper.h"
 #include "sdl2.h"
 
-static MODULE_FUNCTION(Event, Create) {
+static MODULE_FUNCTION(Event, create) {
     NEW_UDATA(Event, ev);
     return 1;
 }
 
-static META_FUNCTION(Event, Poll) {
+static META_FUNCTION(Event, poll) {
     CHECK_META(Event);
     PUSH_BOOLEAN(SDL_PollEvent(self));
     return 1;
 }
 
-static META_FUNCTION(Event, GetType) {
+static META_FUNCTION(Event, getType) {
     CHECK_META(Event);
     PUSH_INTEGER(self->type);
     return 1;
 }
 
-static META_FUNCTION(Event, WindowEvent) {
+static META_FUNCTION(Event, windowEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->window.event);
     PUSH_INTEGER(self->window.windowID);
@@ -27,7 +27,7 @@ static META_FUNCTION(Event, WindowEvent) {
     return 4;
 }
 
-static META_FUNCTION(Event, MouseMotionEvent) {
+static META_FUNCTION(Event, mouseMotionEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->motion.which);
     PUSH_INTEGER(self->motion.state);
@@ -39,7 +39,7 @@ static META_FUNCTION(Event, MouseMotionEvent) {
 }
 
 
-static META_FUNCTION(Event, MouseButtonEvent) {
+static META_FUNCTION(Event, mouseButtonEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->button.which);
     PUSH_INTEGER(self->button.button);
@@ -49,7 +49,7 @@ static META_FUNCTION(Event, MouseButtonEvent) {
     return 5;
 }
 
-static META_FUNCTION(Event, MouseWheelEvent) {
+static META_FUNCTION(Event, mouseWheelEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->wheel.which);
     PUSH_INTEGER(self->wheel.x);
@@ -57,26 +57,26 @@ static META_FUNCTION(Event, MouseWheelEvent) {
     return 4;
 }
 
-static META_FUNCTION(Event, KeyboardEvent) {
+static META_FUNCTION(Event, keyboardEvent) {
     CHECK_META(Event);
     PUSH_STRING(SDL_GetScancodeName(self->key.keysym.scancode));
     PUSH_BOOLEAN(self->key.repeat);
 return 2;
 }
 
-static META_FUNCTION(Event, AudioDeviceEvent) {
+static META_FUNCTION(Event, audioDeviceEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->adevice.which);
     return 1;
 }
 
-static META_FUNCTION(Event, GamepadDeviceEvent) {
+static META_FUNCTION(Event, gamepadDeviceEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->cdevice.which);
     return 1;
 }
 
-static META_FUNCTION(Event, GamepadAxisEvent) {
+static META_FUNCTION(Event, gamepadAxisEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->caxis.which);
     PUSH_INTEGER(self->caxis.axis);
@@ -84,7 +84,7 @@ static META_FUNCTION(Event, GamepadAxisEvent) {
     return 3;
 }
 
-static META_FUNCTION(Event, GamepadButtonEvent) {
+static META_FUNCTION(Event, gamepadButtonEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->cbutton.which);
     PUSH_INTEGER(self->cbutton.button);
@@ -92,13 +92,13 @@ static META_FUNCTION(Event, GamepadButtonEvent) {
     return 3;
 }
 
-static META_FUNCTION(Event, JoyDeviceEvent) {
+static META_FUNCTION(Event, joyDeviceEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->jdevice.which);
     return 1;
 }
 
-static META_FUNCTION(Event, JoyAxisEvent) {
+static META_FUNCTION(Event, joyAxisEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->jaxis.which);
     PUSH_INTEGER(self->jaxis.axis);
@@ -106,7 +106,7 @@ static META_FUNCTION(Event, JoyAxisEvent) {
     return 1;
 }
 
-static META_FUNCTION(Event, JoyBallEvent) {
+static META_FUNCTION(Event, joyBallEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->jball.which);
     PUSH_INTEGER(self->jball.ball);
@@ -115,7 +115,7 @@ static META_FUNCTION(Event, JoyBallEvent) {
     return 4;
 }
 
-static META_FUNCTION(Event, JoyButtonEvent) {
+static META_FUNCTION(Event, joyButtonEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->jbutton.which);
     PUSH_INTEGER(self->jbutton.button);
@@ -123,7 +123,7 @@ static META_FUNCTION(Event, JoyButtonEvent) {
     return 3;
 }
 
-static META_FUNCTION(Event, JoyHatEvent) {
+static META_FUNCTION(Event, joyHatEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->jhat.which);
     PUSH_INTEGER(self->jhat.hat);
@@ -131,7 +131,7 @@ static META_FUNCTION(Event, JoyHatEvent) {
     return 3;
 }
 
-static META_FUNCTION(Event, DollarGestureEvent) {
+static META_FUNCTION(Event, dollarGestureEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->dgesture.touchId);
     PUSH_INTEGER(self->dgesture.gestureId);
@@ -142,24 +142,24 @@ static META_FUNCTION(Event, DollarGestureEvent) {
     return 6;
 }
 
-static META_FUNCTION(Event, TextEvent) {
+static META_FUNCTION(Event, textEvent) {
     CHECK_META(Event);
     return 1;
 }
 
 BEGIN_META(Event) {
     BEGIN_REG()
-        REG_FIELD(Event, Create),
+        REG_FIELD(Event, create),
     END_REG()
 
     BEGIN_REG(_index)
-        REG_META_FIELD(Event, Poll),
-        REG_META_FIELD(Event, GetType),
-        REG_META_FIELD(Event, WindowEvent),
-        REG_META_FIELD(Event, AudioDeviceEvent),
-        REG_META_FIELD(Event, MouseMotionEvent),
-        REG_META_FIELD(Event, MouseButtonEvent),
-        REG_META_FIELD(Event, KeyboardEvent),
+        REG_META_FIELD(Event, poll),
+        REG_META_FIELD(Event, getType),
+        REG_META_FIELD(Event, windowEvent),
+        REG_META_FIELD(Event, audioDeviceEvent),
+        REG_META_FIELD(Event, mouseMotionEvent),
+        REG_META_FIELD(Event, mouseButtonEvent),
+        REG_META_FIELD(Event, keyboardEvent),
     END_REG()
     NEW_META(Event, _reg, _index_reg);
     return 1;

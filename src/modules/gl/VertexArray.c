@@ -1,6 +1,6 @@
 #include "gl.h"
 
-static MODULE_FUNCTION(VertexArray, New) {
+static MODULE_FUNCTION(VertexArray, create) {
     NEW_UDATA(VertexArray, vao);
 #if !defined(__EMSCRIPTEN__)
     glGenVertexArrays(1, vao);
@@ -8,28 +8,28 @@ static MODULE_FUNCTION(VertexArray, New) {
     return 1;
 }
 
-static MODULE_FUNCTION(VertexArray, Unbind) {
+static MODULE_FUNCTION(VertexArray, unbind) {
 #if !defined(__EMSCRIPTEN__)
     glBindVertexArray(0);
 #endif
     return 0;
 }
 
-static MODULE_FUNCTION(VertexArray, Enable) {
+static MODULE_FUNCTION(VertexArray, enable) {
     INIT_ARG();
     CHECK_INTEGER(attrib);
     glEnableVertexAttribArray(attrib);
     return 0;
 }
 
-static MODULE_FUNCTION(VertexArray, Disable) {
+static MODULE_FUNCTION(VertexArray, disable) {
     INIT_ARG();
     CHECK_INTEGER(attrib);
     glDisableVertexAttribArray(attrib);
     return 0;
 }
 
-static MODULE_FUNCTION(VertexArray, AttribPointer) {
+static MODULE_FUNCTION(VertexArray, attribPointer) {
     INIT_ARG();
     CHECK_INTEGER(attrib);
     CHECK_INTEGER(size);
@@ -43,7 +43,7 @@ static MODULE_FUNCTION(VertexArray, AttribPointer) {
 
 // Meta
 
-static META_FUNCTION(VertexArray, Bind) {
+static META_FUNCTION(VertexArray, bind) {
     INIT_ARG();
     TEST_UDATA(VertexArray, vao);
 #if !defined(__EMSCRIPTEN__)
@@ -53,7 +53,7 @@ static META_FUNCTION(VertexArray, Bind) {
     return 0;
 }
 
-static META_FUNCTION(VertexArray, Delete) {
+static META_FUNCTION(VertexArray, destroy) {
     CHECK_META(VertexArray);
 #if !defined(__EMSCRIPTEN__)
     glDeleteVertexArrays(1, self);
@@ -63,15 +63,15 @@ static META_FUNCTION(VertexArray, Delete) {
 
 BEGIN_META(VertexArray) {
     BEGIN_REG()
-        REG_FIELD(VertexArray, New),
-        REG_FIELD(VertexArray, Unbind),
-        REG_FIELD(VertexArray, Enable),
-        REG_FIELD(VertexArray, Disable),
-        REG_FIELD(VertexArray, AttribPointer),
+        REG_FIELD(VertexArray, create),
+        REG_FIELD(VertexArray, unbind),
+        REG_FIELD(VertexArray, enable),
+        REG_FIELD(VertexArray, disable),
+        REG_FIELD(VertexArray, attribPointer),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(VertexArray, Bind),
-        REG_META_FIELD(VertexArray, Delete),
+        REG_META_FIELD(VertexArray, bind),
+        REG_META_FIELD(VertexArray, destroy),
     END_REG()
     NEW_META(VertexArray, _reg, _index_reg);
     return 1;

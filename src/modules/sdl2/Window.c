@@ -1,6 +1,6 @@
 #include "sdl2.h"
 
-static MODULE_FUNCTION(Window, Create) {
+static MODULE_FUNCTION(Window, create) {
     INIT_ARG();
     CHECK_STRING(title);
     CHECK_INTEGER(x);
@@ -29,7 +29,7 @@ static MODULE_FUNCTION(Window, Create) {
     return 1;
 }
 
-static META_FUNCTION(Window, GetSize) {
+static META_FUNCTION(Window, getSize) {
     INIT_ARG();
     CHECK_UDATA(Window, window);
     int width, height;
@@ -39,51 +39,51 @@ static META_FUNCTION(Window, GetSize) {
     return 2;
 }
 
-static META_FUNCTION(Window, SetSize) {
+static META_FUNCTION(Window, setSize) {
     return 0;
 }
 
-static META_FUNCTION(Window, GetPosition) {
+static META_FUNCTION(Window, getPosition) {
     return 2;
 }
 
-static META_FUNCTION(Window, SetPosition) {
+static META_FUNCTION(Window, setPosition) {
     return 0;
 }
 
-static META_FUNCTION(Window, Swap) {
+static META_FUNCTION(Window, swap) {
     CHECK_META(Window);
     SDL_GL_SwapWindow(*self);
     return 0;
 }
 
-static META_FUNCTION(Window, SetBordered) {
+static META_FUNCTION(Window, setBordered) {
     return 0;
 }
 
-static META_FUNCTION(Window, Maximize) {
+static META_FUNCTION(Window, maximize) {
     CHECK_META(Window);
     SDL_MaximizeWindow(*self);
     return 0;
 }
 
-static META_FUNCTION(Window, Minimize) {
+static META_FUNCTION(Window, minimize) {
     CHECK_META(Window);
     SDL_MinimizeWindow(*self);
     return 0;
 }
 
-static META_FUNCTION(Window, Restore) {
+static META_FUNCTION(Window, restore) {
     CHECK_META(Window);
     SDL_RestoreWindow(*self);
     return 0;
 }
 
-static META_FUNCTION(Window, ShowSimpleMessageBox) {
+static META_FUNCTION(Window,showSimpleMessageBox) {
     return 0;
 }
 
-static META_FUNCTION(Window, Destroy) {
+static META_FUNCTION(Window, destroy) {
     CHECK_META(Window);
     SDL_DestroyWindow(*self);
     return 0;
@@ -91,20 +91,20 @@ static META_FUNCTION(Window, Destroy) {
 
 BEGIN_META(Window) {
     BEGIN_REG()
-        REG_FIELD(Window, Create),
+        REG_FIELD(Window, create),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Window, GetSize),
-        REG_META_FIELD(Window, SetSize),
-        REG_META_FIELD(Window, GetPosition),
-        REG_META_FIELD(Window, SetPosition),
-        REG_META_FIELD(Window, Swap),
-        REG_META_FIELD(Window, SetBordered),
-        REG_META_FIELD(Window, Maximize),
-        REG_META_FIELD(Window, Minimize),
-        REG_META_FIELD(Window, Restore),
-        REG_META_FIELD(Window, ShowSimpleMessageBox),
-        REG_META_FIELD(Window, Destroy),
+        REG_META_FIELD(Window, getSize),
+        REG_META_FIELD(Window, setSize),
+        REG_META_FIELD(Window, getPosition),
+        REG_META_FIELD(Window, setPosition),
+        REG_META_FIELD(Window, swap),
+        REG_META_FIELD(Window, setBordered),
+        REG_META_FIELD(Window, maximize),
+        REG_META_FIELD(Window, minimize),
+        REG_META_FIELD(Window, restore),
+        REG_META_FIELD(Window, showSimpleMessageBox),
+        REG_META_FIELD(Window, destroy),
     END_REG()
     NEW_META(Window, _reg, _index_reg);
     return 1;

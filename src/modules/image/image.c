@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-static MODULE_FUNCTION(image, LoadData) {
+static MODULE_FUNCTION(image, loadData) {
     INIT_ARG();
     CHECK_STRING(path);
     OPT_INTEGER(req, STBI_rgb_alpha);
@@ -21,7 +21,7 @@ static MODULE_FUNCTION(image, LoadData) {
 
 BEGIN_MODULE(image) {
     BEGIN_REG()
-        REG_FIELD(image, LoadData),
+        REG_FIELD(image, loadData),
     END_REG()
     luaL_newlib(L, _reg);
     return 1;

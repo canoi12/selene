@@ -1,7 +1,7 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-static MODULE_FUNCTION(system, GetOS) {
+static MODULE_FUNCTION(system, getOS) {
     #if defined(__EMSCRIPTEN__)
         PUSH_STRING("Emscripten");
     #elif defined(OS_WIN)
@@ -18,7 +18,7 @@ static MODULE_FUNCTION(system, GetOS) {
     return 1;
 }
 
-static MODULE_FUNCTION(system, GetArch) {
+static MODULE_FUNCTION(system, getArch) {
     #if defined(ARCH_X86)
         PUSH_STRING("x86");
     #elif defined(ARCH_X64)
@@ -31,8 +31,8 @@ static MODULE_FUNCTION(system, GetArch) {
 
 BEGIN_MODULE(system) {
     BEGIN_REG()
-        REG_FIELD(system, GetOS),
-        REG_FIELD(system, GetArch),
+        REG_FIELD(system, getOS),
+        REG_FIELD(system, getArch),
     END_REG()
     luaL_newlib(L, _reg);
     return 1;

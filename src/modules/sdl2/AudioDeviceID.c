@@ -22,7 +22,7 @@ static void _audio_stream_callback(void* userdata, Uint8* stream, int len) {
     }
 }
 
-static MODULE_FUNCTION(AudioDeviceID, Open) {
+static MODULE_FUNCTION(AudioDeviceID, open) {
     INIT_ARG();
     const char* device = NULL;
     if (lua_type(L, arg) == LUA_TSTRING)
@@ -99,14 +99,14 @@ static MODULE_FUNCTION(AudioDeviceID, Open) {
     return 2;
 }
 
-static MODULE_FUNCTION(AudioDeviceID, GetCount) {
+static MODULE_FUNCTION(AudioDeviceID, getCount) {
     INIT_ARG();
     GET_BOOLEAN(is_capture);
     PUSH_INTEGER(SDL_GetNumAudioDevices(is_capture));
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDeviceID, GetName) {
+static MODULE_FUNCTION(AudioDeviceID, getName) {
     INIT_ARG();
     CHECK_INTEGER(index);
     GET_BOOLEAN(is_capture);
@@ -116,14 +116,14 @@ static MODULE_FUNCTION(AudioDeviceID, GetName) {
 
 // META
 
-static META_FUNCTION(AudioDeviceID, Pause) {
+static META_FUNCTION(AudioDeviceID, pause) {
     CHECK_META(AudioDeviceID);
     GET_BOOLEAN(pause);
     SDL_PauseAudioDevice(*self, pause);
     return 0;
 }
 
-static META_FUNCTION(AudioDeviceID, Close) {
+static META_FUNCTION(AudioDeviceID, close) {
     CHECK_META(AudioDeviceID);
     PUSH_VALUE(-1);
     lua_rawget(L, LUA_REGISTRYINDEX);
@@ -138,14 +138,14 @@ static META_FUNCTION(AudioDeviceID, Close) {
 
 BEGIN_META(AudioDeviceID) {
     BEGIN_REG()
-        REG_FIELD(AudioDeviceID, Open),
-        REG_FIELD(AudioDeviceID, GetCount),
-        REG_FIELD(AudioDeviceID, GetName),
+        REG_FIELD(AudioDeviceID, open),
+        REG_FIELD(AudioDeviceID, getCount),
+        REG_FIELD(AudioDeviceID, getName),
     END_REG()
 
     BEGIN_REG(_index)
-        REG_META_FIELD(AudioDeviceID, Pause),
-        REG_META_FIELD(AudioDeviceID, Close),
+        REG_META_FIELD(AudioDeviceID, pause),
+        REG_META_FIELD(AudioDeviceID, close),
     END_REG()
     NEW_META(AudioDeviceID, _reg, _index_reg);
     return 1;

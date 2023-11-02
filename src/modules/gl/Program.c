@@ -1,12 +1,12 @@
 #include "gl.h"
 
-static MODULE_FUNCTION(Program, New) {
+static MODULE_FUNCTION(Program, create) {
     NEW_UDATA(Program, p);
     *p = glCreateProgram();
     return 1;
 }
 
-static MODULE_FUNCTION(Program, Use) {
+static MODULE_FUNCTION(Program, use) {
     INIT_ARG();
     TEST_UDATA(Program, p);
     if (p) glUseProgram(*p);
@@ -16,13 +16,13 @@ static MODULE_FUNCTION(Program, Use) {
 
 // Meta
 
-static META_FUNCTION(Program, Delete) {
+static META_FUNCTION(Program, destroy) {
     CHECK_META(Program);
     glDeleteProgram(*self);
     return 0;
 }
 
-static META_FUNCTION(Program, AttachShader) {
+static META_FUNCTION(Program, attachShader) {
     CHECK_META(Program);
     int args = lua_gettop(LUA_STATE_NAME);
     while (arg <= args) {
@@ -32,7 +32,7 @@ static META_FUNCTION(Program, AttachShader) {
     return 0;
 }
 
-static META_FUNCTION(Program, Link) {
+static META_FUNCTION(Program, link) {
     CHECK_META(Program);
     glLinkProgram(*self);
     int success = 0;
@@ -54,14 +54,14 @@ static META_FUNCTION(Program, Link) {
     return 0;
 }
 
-static META_FUNCTION(Program, GetAttribLocation) {
+static META_FUNCTION(Program, getAttribLocation) {
     CHECK_META(Program);
     CHECK_STRING(name);
     PUSH_INTEGER(glGetAttribLocation(*self, name));
     return 1;
 }
 
-static META_FUNCTION(Program, GetUniformLocation) {
+static META_FUNCTION(Program, getUniformLocation) {
     CHECK_META(Program);
     CHECK_STRING(name);
     PUSH_INTEGER(glGetUniformLocation(*self, name));
@@ -70,15 +70,15 @@ static META_FUNCTION(Program, GetUniformLocation) {
 
 BEGIN_META(Program) {
     BEGIN_REG()
-        REG_FIELD(Program, New),
-        REG_FIELD(Program, Use),
+        REG_FIELD(Program, create),
+        REG_FIELD(Program, use),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Program, Delete),
-        REG_META_FIELD(Program, AttachShader),
-        REG_META_FIELD(Program, Link),
-        REG_META_FIELD(Program, GetAttribLocation),
-        REG_META_FIELD(Program, GetUniformLocation),
+        REG_META_FIELD(Program, destroy),
+        REG_META_FIELD(Program, attachShader),
+        REG_META_FIELD(Program, link),
+        REG_META_FIELD(Program, getAttribLocation),
+        REG_META_FIELD(Program, getUniformLocation),
     END_REG()
     NEW_META(Program, _reg, _index_reg);
     return 1;

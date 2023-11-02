@@ -6,7 +6,7 @@
 
 #include "font8x8/font8x8_latin.h"
 
-static MODULE_FUNCTION(font, GetDefault) {
+static MODULE_FUNCTION(font, getDefault) {
     int w = 2048;
     int h = 8;
     uint8_t* bitmap = malloc(w * h * 4);
@@ -96,7 +96,7 @@ static MODULE_FUNCTION(font, GetDefault) {
     return 4;
 }
 
-static MODULE_FUNCTION(font, LoadTTF) {
+static MODULE_FUNCTION(font, loadTTF) {
     INIT_ARG();
     CHECK_STRING(path);
     OPT_INTEGER(font_size, 16);
@@ -226,7 +226,8 @@ static MODULE_FUNCTION(font, LoadTTF) {
 
 BEGIN_MODULE(font) {
     BEGIN_REG()
-        REG_FIELD(font, GetDefault),
+        REG_FIELD(font, getDefault),
+        REG_FIELD(font, loadTTF),
     END_REG()
     luaL_newlib(L, _reg);
     return 1;

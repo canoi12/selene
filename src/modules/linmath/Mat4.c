@@ -3,17 +3,17 @@
 
 typedef mat4x4 Mat4;
 
-static MODULE_FUNCTION(Mat4, New) {
+static MODULE_FUNCTION(Mat4, create) {
     NEW_UDATA(Mat4, m);
     mat4x4_identity(*m);
     return 1;
 }
 
-static META_FUNCTION(Mat4, Identity) {
+static META_FUNCTION(Mat4, identity) {
     return 0;
 }
 
-static META_FUNCTION(Mat4, Translate) {
+static META_FUNCTION(Mat4, translate) {
     CHECK_META(Mat4);
     CHECK_NUMBER(float, x);
     CHECK_NUMBER(float, y);
@@ -22,7 +22,7 @@ static META_FUNCTION(Mat4, Translate) {
     return 0;
 }
 
-static META_FUNCTION(Mat4, Scale) {
+static META_FUNCTION(Mat4, scale) {
     CHECK_META(Mat4);
     CHECK_NUMBER(float, x);
     CHECK_NUMBER(float, y);
@@ -31,14 +31,14 @@ static META_FUNCTION(Mat4, Scale) {
     return 0;
 }
 
-static META_FUNCTION(Mat4, Rotate) {
+static META_FUNCTION(Mat4, rotate) {
     CHECK_META(Mat4);
     CHECK_NUMBER(float, angle);
     mat4x4_rotate_Z(*self, *self, angle);
     return 0;
 }
 
-static META_FUNCTION(Mat4, Ortho) {
+static META_FUNCTION(Mat4, ortho) {
     CHECK_META(Mat4);
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
@@ -50,7 +50,7 @@ static META_FUNCTION(Mat4, Ortho) {
     return 0;
 }
 
-static META_FUNCTION(Mat4, Frustum) {
+static META_FUNCTION(Mat4, frustum) {
     CHECK_META(Mat4);
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
@@ -64,15 +64,15 @@ static META_FUNCTION(Mat4, Frustum) {
 
 BEGIN_META(Mat4) {
     BEGIN_REG()
-        REG_FIELD(Mat4, New),
+        REG_FIELD(Mat4, create),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Mat4, Identity),
-        REG_META_FIELD(Mat4, Translate),
-        REG_META_FIELD(Mat4, Scale),
-        REG_META_FIELD(Mat4, Rotate),
-        REG_META_FIELD(Mat4, Ortho),
-        REG_META_FIELD(Mat4, Frustum),
+        REG_META_FIELD(Mat4, identity),
+        REG_META_FIELD(Mat4, translate),
+        REG_META_FIELD(Mat4, scale),
+        REG_META_FIELD(Mat4, rotate),
+        REG_META_FIELD(Mat4, ortho),
+        REG_META_FIELD(Mat4, frustum),
     END_REG()
     NEW_META(Mat4, _reg, _index_reg);
     return 1;

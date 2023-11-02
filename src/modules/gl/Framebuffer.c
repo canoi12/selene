@@ -1,12 +1,12 @@
 #include "gl.h"
 
-static MODULE_FUNCTION(Framebuffer, New) {
+static MODULE_FUNCTION(Framebuffer, create) {
     NEW_UDATA(Framebuffer, fbo);
     glGenFramebuffers(1, fbo);
     return 1;
 }
 
-static MODULE_FUNCTION(Framebuffer, Bind) {
+static MODULE_FUNCTION(Framebuffer, bind) {
     INIT_ARG();
     CHECK_INTEGER(target);
     TEST_UDATA(Framebuffer, fbo);
@@ -15,7 +15,7 @@ static MODULE_FUNCTION(Framebuffer, Bind) {
     return 0;
 }
 
-static MODULE_FUNCTION(Framebuffer, AttachTexture2D) {
+static MODULE_FUNCTION(Framebuffer, attachTexture2D) {
     INIT_ARG();
     CHECK_INTEGER(target);
     CHECK_INTEGER(attachment);
@@ -27,7 +27,7 @@ static MODULE_FUNCTION(Framebuffer, AttachTexture2D) {
 
 // Meta
 
-static META_FUNCTION(Framebuffer, Delete) {
+static META_FUNCTION(Framebuffer, destroy) {
     CHECK_META(Framebuffer);
     glDeleteFramebuffers(1, self);
     return 0;
@@ -35,12 +35,12 @@ static META_FUNCTION(Framebuffer, Delete) {
 
 BEGIN_META(Framebuffer) {
     BEGIN_REG()
-        REG_FIELD(Framebuffer, New),
-        REG_FIELD(Framebuffer, Bind),
-        REG_FIELD(Framebuffer, AttachTexture2D),
+        REG_FIELD(Framebuffer, create),
+        REG_FIELD(Framebuffer, bind),
+        REG_FIELD(Framebuffer, attachTexture2D),
     END_REG()
     BEGIN_REG(_index)
-        REG_META_FIELD(Framebuffer, Delete),
+        REG_META_FIELD(Framebuffer, destroy),
     END_REG()
     NEW_META(Framebuffer, _reg, _index_reg);
     return 1;
