@@ -1,5 +1,6 @@
 local sdl = selene.sdl2
 local traceback = debug.traceback
+local audio = require('core.audio')
 local Config = require('core.Config')
 local Event = require('core.Event')
 local Render = require('core.Render')
@@ -15,6 +16,7 @@ local record App
 
     window: Window
     render: Render
+    audioSystem: audio.AudioSystem
 
     create: function(Config) : App
     createError: function(string) : App
@@ -46,6 +48,8 @@ function App.create(config: Config) : App
 
     app.window = Window.create(config)
     app.render = Render.create(app.window)
+    app.audioSystem = audio.create(config)
+    audio.setCurrent(app.audioSystem)
 
     return setmetatable(app, {
         __index = App

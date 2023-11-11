@@ -89,7 +89,7 @@ static MODULE_FUNCTION(AudioDeviceID, open) {
     PUSH_INTEGER(obtained.channels);
     SET_FIELD(-2, "channels");
     PUSH_INTEGER(obtained.freq);
-    SET_FIELD(-2, "sample_rate");
+    SET_FIELD(-2, "sampleRate");
     PUSH_INTEGER(obtained.samples);
     SET_FIELD(-2, "samples");
     PUSH_INTEGER(obtained.format);

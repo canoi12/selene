@@ -294,9 +294,16 @@ local record linmath
 end
 
 local record sdl2
+    record AudioSpec
+        channels: integer
+        sampleRate: integer
+        samples: integer
+        format: integer
+        size: integer
+    end
     record AudioDeviceID
         userdata
-        open: function(dev_name: string, is_capture: boolean, table) : AudioDeviceID, table
+        open: function(dev_name: string, is_capture: boolean, spec: AudioSpec) : AudioDeviceID, AudioSpec
         getCount: function(is_capture: boolean) : integer
         getName: function(dev_id: integer, is_capture: boolean) : string
         
@@ -312,7 +319,7 @@ local record sdl2
 
         bind: function(AudioStream, device: AudioDeviceID)
         unbind: function(AudioStream, device: AudioDeviceID)
-        put: function(AudioStream, data: string | Data, size: integer) : integer
+        put: function(AudioStream, data: string | Data | any, size: integer) : integer
         get: function(AudioStream, out: Data, size: integer | nil) : integer
         available: function(AudioStream) : integer
     end

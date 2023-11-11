@@ -1,4 +1,0 @@
-local SoundInstance = {}
-
-
-return SoundInstance
