@@ -1,0 +1,4 @@
+local SoundInstance = {}
+
+
+return SoundInstance

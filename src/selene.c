@@ -108,8 +108,8 @@ const char* _boot =
 "end\n"
 "return function()\n"
 "    add_path(sdl.getBasePath())\n"
-"    local state = xpcall(function() require('tl').loader() end,\n"
-"    function() print('Booting without Teal') end)\n"
+// "    local state = xpcall(function() require('tl').loader() end,\n"
+// "    function() print('Booting without Teal') end)\n"
 "    return require('core')\n"
 "end";
 
