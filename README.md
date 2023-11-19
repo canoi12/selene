@@ -36,47 +36,69 @@ Selene is a tiny game engine made with C and Lua, the idea is to implementing al
 - audio
     - Music
     - Sound
+    - SoundInstance
+    - AudioSystem
 - graphics
     - Image
     - Canvas
     - Font
     - Batch
     - Shader
-- engine
-    - Point
-    - Rect
-- gamepad
-- event
-- filesystem
-- joystick
-- keyboard
-- mouse
+    - Renderer
+- input
+    - Gamepad
+    - Joystick
+    - Keyboard
+    - Mouse
+    - InputSystem
+- App
+- Event
+- Filesystem
+- Point
+- Rect
+- Settings
+- Window
 
 ## Running projects
 
 Just execute selene passing your project path as argument, if none is provided the current directory will be used.
 
-The directory must contain a `main.lua` file
+The directory must contain a `main.lua` file and a `.selene/` folder
 
 `usage: ./selene [path/to/project]`
 
+The idea is that by using:
+
+```lua
+local App = require('App')
+return App.default()
+```
+
+The project will use the selene default engine.
+
+But you can write your own loop by using
 
 ### main.lua
 ```lua
-local graphics = require 'core.graphics'
-local Image = require 'core.graphics.Image'
+local App = require('App')
+local Color = require('graphics.Color')
+local Settings = require('Settings')
 
-function selene.load()
-    image = Image('image.png')
+local s = Settings.create("game", 640, 380)
+local app = App.create(s)
+
+function app:update(dt)
 end
 
-function selene.update(dt)
-end
+function app:draw(render)
+    render:begin()
+    render:clearColor(Color.black)
+    render:clear()
 
-function selene.draw()
-    graphics.fill_rectangle(0, 0, 32, 128)
-    graphics.draw(image, nil, 32, 64)
+    render:fillRectangle(32, 32, 64, 128)
+    render:finish()
 end
+return app
 ```
 
 ### core/
@@ -91,10 +113,8 @@ local function add_path(path)
     package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path
 end
 return function(args)
-    add_path(sdl.GetBasepath())
-    local core = require 'core'
-    core.init(selene.args)
-    return core
+    add_path(sdl.getBasePath())
+    return require('core')
 end
 ```
 
