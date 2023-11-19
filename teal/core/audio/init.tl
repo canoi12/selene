@@ -2,35 +2,37 @@ local sdl = selene.sdl2
 local Config = require('core.Config')
 local Sound = require('core.audio.Sound')
 local Music = require('core.audio.Music')
+global record AudioSystem
+
+    device: sdl.AudioDeviceID
+    spec: sdl.AudioSpec
+    music: Music | nil
+    sounds: {Sound}
+    auxData: selene.Data
+    pool: {sdl.AudioStream}
+
+    loadMusic: function(AudioSystem, string) : Music
+    loadSound: function(AudioSystem, string) : Sound
+
+    destroy: function(AudioSystem)
+end
+
 local record audio
-    record AudioSystem
-
-        device: sdl.AudioDeviceID
-        spec: sdl.AudioSpec
-        music: Music | nil
-        sounds: {Sound}
-        auxData: selene.Data
-        pool: {sdl.AudioStream}
-
-        destroy: function(AudioSystem)
-    end
-
     current: AudioSystem | nil
 
     create: function(Config) : AudioSystem
-
     setCurrent: function(AudioSystem)
 end
 
-local audio_mt : metatable<audio.AudioSystem> = {}
-audio_mt.__index = audio.AudioSystem
+local audio_mt : metatable<AudioSystem> = {}
+audio_mt.__index = AudioSystem
 
-function audio.create(cfg: Config) : audio.AudioSystem
+function audio.create(cfg: Config) : AudioSystem
     local num = sdl.AudioDeviceID.getCount(false)
     if num <= 0 then
         error('No audio device found')
     end
-    local sys : audio.AudioSystem = {}
+    local sys : AudioSystem = {}
     local dev, spec = sdl.AudioDeviceID.open(nil, false, cfg.audio as sdl.AudioSpec)
     if not dev then
         local name = sdl.AudioDeviceID.getName(0, false)
@@ -58,11 +60,13 @@ function audio.create(cfg: Config) : audio.AudioSystem
     return setmetatable(sys, audio_mt)
 end
 
-function audio.setCurrent(curr: audio.AudioSystem)
+function audio.setCurrent(curr: AudioSystem)
     audio.current = curr
 end
 
-function audio.AudioSystem:destroy()
+
+
+function AudioSystem:destroy()
     if self.device then
         self.device:pause(true)
         self.device:close()
@@ -72,7 +76,7 @@ function audio.AudioSystem:destroy()
     end
 end
 
-function audio.AudioSystem:update()
+function AudioSystem:update()
     local music = self.music as Music
     if self.music and music.playing then
         local read = music.decoder:getChunk(self.auxData, self.spec.samples)
@@ -98,10 +102,6 @@ function audio.AudioSystem:update()
 
     local soundsToRemove : {Sound} = {}
     for i,sound in ipairs(self.sounds) do
-        if sound.playing then
-            local stream = sound.stream
-
-        end
     end
 end
 

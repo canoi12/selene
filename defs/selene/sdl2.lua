@@ -48,4 +48,14 @@ function AudioStream.create(inSpec, outSpec) end
 --- @class selene.sdl2
 local sdl2 = {}
 
+--- Get path from selene executable
+--- @return string
+function sdl2.getBasePath() end
+
+--- Get safe use path to write
+--- @param org string
+--- @param name string
+--- @return string
+function sdl2.getPrefPath(org, name) end
+
 return sdl2

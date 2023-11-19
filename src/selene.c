@@ -1,6 +1,5 @@
 #include "modules.h"
-
-#define SELENE_VERSION "0.1.0"
+#include "selene.h"
 
 extern MODULE_FUNCTION(Data, meta);
 
@@ -110,7 +109,7 @@ const char* _boot =
 "    add_path(sdl.getBasePath())\n"
 // "    local state = xpcall(function() require('tl').loader() end,\n"
 // "    function() print('Booting without Teal') end)\n"
-"    return require('core')\n"
+"    return require('"CORE_DIR"')\n"
 "end";
 
 int main(int argc, char** argv) {

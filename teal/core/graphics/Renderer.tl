@@ -1,6 +1,6 @@
---- @type selene.gl
 local gl = selene.gl
 local sdl = selene.sdl2
+local graphics = require('core.graphics.init')
 local Mat4 = require 'core.math.Mat4'
 local Color = require 'core.graphics.Color'
 local Window = require 'core.Window'
@@ -15,47 +15,101 @@ local Effect = require 'core.graphics.Effect'
 local Font = require 'core.graphics.Font'
 local Image = require 'core.graphics.Image'
 
---- @class RenderState
---- @field vao gl.VertexArray
---- @field drawMode string
---- @field drawColor Color
---- @field clearColor Color
---- @field canvas Canvas | nil
---- @field font Font
---- @field texture selene.gl.Texture
---- @field framebuffer selene.gl.Framebuffer
---- @field program selene.gl.Program
---- @field projection Mat4
---- @field modelview Mat4
-local RenderState = {}
+global enum DrawMode
+    "points"
+    "lines"
+    "triangles"
+end
 
---- @class Renderer
---- @field state RenderState
---- @field glContext sdl.GLContext
---- @field vao gl.VertexArray
---- @field batch Batch
---- @field whiteImage Image
---- @field defaultCanvas Canvas
---- @field defaultEffect Effect
---- @field defaultFont Font
---- @field window Window
-local Renderer = {}
+local record DrawState
+    vao: gl.VertexArray
+    drawMode: graphics.DrawMode
+    drawColor: Color
+    clearColor: Color
+end
 
----Creates a new Renderer
----@param win Window
----@return Renderer
-function Renderer.create(win)
-    local render = {}
+local record RendererState
+    vao: gl.VertexArray
+
+    drawMode: graphics.DrawMode
+    drawColor: Color
+    clearColor: Color
+
+    canvas: Canvas | nil
+    
+    font: Font
+
+    texture: gl.Texture
+    framebuffer: gl.Framebuffer
+    program: gl.Program
+
+    projection: Mat4
+    modelview: Mat4
+end
+
+local record Renderer
+    state: RendererState
+
+    glContext: sdl.GLContext
+
+    vao: gl.VertexArray
+    batch: Batch
+
+    whiteImage: Image
+    defaultCanvas: Canvas
+    defaultEffect: Effect
+    defaultFont: Font
+
+    window : Window
+
+    create: function(Window) : Renderer
+    destroy: function(Renderer)
+
+    begin: function(Renderer)
+    finish: function(Renderer)
+
+    clearColor: function(Renderer, Color)
+    clear: function(Renderer)
+
+    setClearColor: function(Renderer, Color)
+    setDrawColor: function(Renderer, Color)
+
+    setEffect: function(Renderer, Effect | nil)
+    setCanvas: function(Renderer, Canvas | nil)
+    setFont: function(Renderer, Font | nil)
+
+    setScissor: function(Renderer)
+
+    drawPoint: function(Renderer, number, number)
+    drawLine: function(Renderer, number, number, number, number)
+    -- Rect
+    drawRectangle: function(Renderer, number, number, number, number)
+    fillRectangle: function(Renderer, number, number, number, number)
+    -- Circle
+    drawCircle: function(Renderer, number, number, number, number | nil)
+    fillCircle: function(Renderer, number, number, number, number | nil)
+    -- Triangle
+    drawTriangle: function(Renderer, {number}, {number}, {number})
+    fillTriangle: function(Renderer, {number}, {number}, {number})
+
+    -- Quad
+    drawQuad: function(Renderer, {number}, {number}, {number}, {number})
+    fillQuad: function(Renderer, {number}, {number}, {number}, {number})
+    
+    copy: function(Renderer, any, Rect, Rect)
+    print: function(Renderer, string, number, number)
+end
+
+function Renderer.create(win: Window) : Renderer
+    local render : Renderer = {}
     render.glContext = sdl.GLContext.create(win.handle)
     sdl.glMakeCurrent(win.handle, render.glContext)
     gl.loadGlad(sdl.glGetProcAddress())
 
     render.window = win
-    --- @type RenderState
     render.state = {}
 
     render.state.drawMode = "triangles"
-    render.state.drawColor = Color.white
     local vao = gl.VertexArray.create()
     local batch = Batch.create(1000)
 
@@ -80,11 +134,11 @@ function Renderer.create(win)
 
     local imageData = selene.Data.create(4)
     imageData:writeBytes(0, 255, 255, 255, 255)
-    local white = Image.create(1, 1, 4, imageData)
+    local white : Image = Image.create(1, 1, 4, imageData)
     imageData:free()
 
     local width, height = win:getSize()
-    local canvas = setmetatable({}, { __index = Canvas })
+    local canvas : Canvas = setmetatable({}, { __index = Canvas })
     canvas.width = width
     canvas.height = height
 
@@ -95,10 +149,8 @@ function Renderer.create(win)
     render.defaultEffect = effect
     render.defaultFont = font
 
-    render.state.projection = Mat4.create()
-    render.state.projection:ortho(0, width, height, 0, -1, 1)
-
     sdl.glSetSwapInterval(true)
+
     return setmetatable(render, {
         __index = Renderer
     })
@@ -108,21 +160,20 @@ function Renderer:destroy()
     self.glContext:destroy()
 end
 
-function Renderer:clearColor(color)
-    local cc = {0, 0, 0, 1}
+function Renderer:clearColor(color: Color)
+    local cc : {number} = {0, 0, 0, 1}
     for i,c in ipairs(color) do
         cc[i] = c / 255
     end
     gl.clearColor(table.unpack(cc))
 end
 
-local drawModes = {
+local drawModes : {DrawMode:integer} = {
     points = gl.POINTS,
     lines = gl.LINES,
     triangles = gl.TRIANGLES
 }
-
-local function setFramebuffer(r, t)
+local function setFramebuffer(r: Renderer, t: gl.Texture | nil)
     if t ~= r.state.texture then
         r:finish()
         r.batch:clear()
@@ -131,9 +182,7 @@ local function setFramebuffer(r, t)
     end
 end
 
---- @param r Renderer
---- @param t selene.gl.Texture | nil
-local function setImage(r, t)
+local function setImage(r: Renderer, t: gl.Texture | nil)
     t = t or r.whiteImage.handle
     if t ~= r.state.texture then
         r:finish()
@@ -143,7 +192,7 @@ local function setImage(r, t)
     end
 end
 
-local function setDrawMode(r, mode)
+local function setDrawMode(r: Renderer, mode: DrawMode)
     if mode ~= r.state.drawMode then
         r:finish()
         r.batch:clear()
@@ -151,7 +200,7 @@ local function setDrawMode(r, mode)
     end
 end
 
-function Renderer:setEffect(effect)
+function Renderer:setEffect(effect: Effect | nil)
     effect = effect or self.defaultEffect
     if effect.program ~= self.state.program then
         self:finish()
@@ -162,7 +211,7 @@ function Renderer:setEffect(effect)
     end
 end
 
-function Renderer:setCanvas(canvas)
+function Renderer:setCanvas(canvas: Canvas | nil)
     canvas = canvas or self.defaultCanvas
     if canvas.handle ~= self.state.framebuffer then
         self:finish()
@@ -177,16 +226,11 @@ function Renderer:setCanvas(canvas)
     end
 end
 
-function Renderer:setFont(font)
-    font = font or self.defaultFont
-    self.state.font = font
-  end
-
-function Renderer:setDrawColor(c)
+function Renderer:setDrawColor(c: Color)
     self.state.drawColor = c
 end
 
-function Renderer:setClearColor(c)
+function Renderer:setClearColor(c: Color)
     self.state.clearColor = c
     gl.clearColor(c:toFloat())
 end
@@ -196,7 +240,9 @@ function Renderer:clear()
 end
 
 function Renderer:begin()
-    self.batch:clear()
+    if not self.batch:flush() then return end
+    local count = self.batch:count()
+    local drawMode = drawModes[self.state.drawMode]
 
     self:setEffect()
     self:setFont()
@@ -205,7 +251,7 @@ function Renderer:begin()
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
     self.defaultCanvas.width, self.defaultCanvas.height = self.window:getSize()
-    self:setDrawColor(Color.white)
+    self:setDrawColor()
 end
 
 function Renderer:finish()
@@ -214,18 +260,18 @@ function Renderer:finish()
     if not self.batch:flush() then return end
     local count = self.batch:count()
     self.vao:bind()
-    gl.drawArrays(mode, 0, count)
+    gl.drawArrays(mode)
     gl.VertexArray.unbind()
 end
 
-function Renderer:drawPoint(x, y)
+function Renderer:drawPoint(x : number, y : number)
     setImage(self)
     setDrawMode(self, 'points')
     local r,g,b,a = self.state.drawColor:toFloat()
     self.batch:push(x, y, r, g, b, a, 0, 0)
 end
 
-function Renderer:drawLine(x0, y0, x1, y1)
+function Renderer:drawLine(x0 : number, y0 : number, x1 : number, y1 : number)
     setImage(self)
     setDrawMode(self, 'lines')
     local r,g,b,a = self.state.drawColor:toFloat()
@@ -233,7 +279,7 @@ function Renderer:drawLine(x0, y0, x1, y1)
     self.batch:push(x1, y1, r, g, b, a, 0.0, 0.0)
 end
 
-function Renderer:drawRectangle(x, y, width, height)
+function Renderer:drawRectangle(x : number, y : number, width : number, height : number)
     setImage(self)
     setDrawMode(self, 'lines')
     local r,g,b,a = self.state.drawColor:toFloat()
@@ -250,7 +296,7 @@ function Renderer:drawRectangle(x, y, width, height)
     self.batch:push(x, y, r, g, b, a, 0.0, 0.0)
 end
 
-function Renderer:fillRectangle(x, y, width, height)
+function Renderer:fillRectangle(x: number, y: number, width: number, height: number)
     setImage(self)
     setDrawMode(self, 'triangles')
     local r,g,b,a = self.state.drawColor:toFloat()
@@ -263,7 +309,7 @@ function Renderer:fillRectangle(x, y, width, height)
     self.batch:push(x, y+height, r, g, b, a, 0, 0)
 end
 
-function Renderer:drawCircle(x, y, radius, side)
+function Renderer:drawCircle(x: number, y: number, radius: number, sides: number | nil)
     setImage(self)
     setDrawMode(self, 'lines')
     sides = sides or 32.0
@@ -284,7 +330,7 @@ function Renderer:drawCircle(x, y, radius, side)
     end
 end
 
-function Renderer:fillCircle(x, y, radius, sides)
+function Renderer:fillCircle(x: number, y: number, radius: number, sides: number | nil)
     setImage(self)
     setDrawMode(self, 'triangles')
     sides = sides or 32.0
@@ -306,7 +352,7 @@ function Renderer:fillCircle(x, y, radius, sides)
     end
 end
 
-function Renderer:drawTriangle(p0, p1, p2)
+function Renderer:drawTriangle(p0: {number}, p1: {number}, p2: {number})
     setImage(self)
     setDrawMode(self, 'lines')
     local r,g,b,a = self.state.drawColor:toFloat()
@@ -320,7 +366,7 @@ function Renderer:drawTriangle(p0, p1, p2)
     self.batch:push(p0[1], p0[2], r, g, b, a, 0.0, 0.0)
 end
 
-function Renderer:fillTriangle(p0, p1, p2)
+function Renderer:fillTriangle(p0: {number}, p1: {number}, p2: {number})
     setImage(self)
     setDrawMode(self, 'triangles')
     local r,g,b,a = self.state.drawColor:toFloat()
@@ -329,29 +375,29 @@ function Renderer:fillTriangle(p0, p1, p2)
     self.batch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
 end
 
-function Renderer:copy(drawable, src, dest)
+function Renderer:copy(drawable: any, src: Rect, dest: Rect)
     setImage(self)
     setDrawMode(self, "triangles")
-    local o = drawable
-
+    local o = drawable as Drawable
+    
     local r,g,b,a = self.state.drawColor:toFloat()
-    local s = src or Rect.create(0, 0, o:getWidth(), o:getHeight())
-    local d = dest or {x = 0, y = 0, w = s.w, h = s.h}
+    local s: Rect = src or Rect.create(0, 0, o:getWidth(), o:getHeight())
+    local d: Rect = dest or {x = 0, y = 0, w = s.w, h = s.h}
     local uv = o:getUV(s)
     -- local uv = {0, 0, 1, 1}
-
+    
     self.batch:push(d.x, d.y, r, g, b, a, uv[1], uv[2])
     self.batch:push(d.x+d.w, d.y, r, g, b, a, uv[3], uv[2])
     self.batch:push(d.x+d.w, d.y+d.h, r, g, b, a, uv[3], uv[4])
-
+    
     self.batch:push(d.x, d.y, r, g, b, a, uv[1], uv[2])
     self.batch:push(d.x+d.w, d.y+d.h, r, g, b, a, uv[3], uv[4])
     self.batch:push(d.x, d.y+d.h, r, g, b, a, uv[1], uv[4])
 end
 
-function Renderer:print(text, x, y)
+function Renderer:print(text: string, x: number, y: number)
     setDrawMode(self, "triangles")
-
+    
     local ox = x or 0
     local oy = y or 0
 
