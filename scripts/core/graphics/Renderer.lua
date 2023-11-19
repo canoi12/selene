@@ -25,8 +25,8 @@ local Image = require 'core.graphics.Image'
 --- @field texture selene.gl.Texture
 --- @field framebuffer selene.gl.Framebuffer
 --- @field program selene.gl.Program
---- @field projection Mat4
---- @field modelview Mat4
+--- @field projection selene.linmath.Mat4
+--- @field modelview selene.linmath.Mat4
 local RenderState = {}
 
 --- @class Renderer
