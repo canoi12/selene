@@ -1,55 +1,83 @@
-local _tl_compat; if (tonumber((_VERSION or ''):match('[%d.]*$')) or 0) < 5.3 then local p, m = pcall(require, 'compat53.module'); if p then _tl_compat = m end end; local debug = _tl_compat and _tl_compat.debug or debug; local math = _tl_compat and _tl_compat.math or math; local sdl = selene.sdl2
+--- @type selene.sdl2
+local sdl = selene.sdl2
 local traceback = debug.traceback
-local Config = require('core.Config')
+local AudioSystem = require('audio.AudioSystem')
+local Color = require('graphics.Color')
 local Event = require('core.Event')
-local Render = require('core.Render')
+local Render = require('core.graphics.Renderer')
 local Window = require('core.Window')
 local Filesystem = require('core.Filesystem')
+local Settings = require('core.Settings')
 
+--- @class App
+--- @field audio AudioSystem
+--- @field settings Settings
+--- @field render Renderer
+--- @field window Window
+--- @field event Event
 local App = {}
+local app_mt = {}
+app_mt.__index = App
 
+--- @return App
+function App.default()
+    local app = {}
+    local args = selene.args
 
+    app.event = Event.create()
+    app.execFs = Filesystem.create(sdl.getBasePath())
+    if not args[2] then
+        app.projectFs = app.execFs
+    else
+        app.projectFs = Filesystem.create(args[2])
+    end
+    --- @type Settings
+    local config = app.projectFs:load('.selene/settings.lua')()
+    local org = config.org or "selene"
+    app.userFs = Filesystem.create(sdl.getPrefPath(org, config.name))
 
+    app.audio = AudioSystem.create(config)
+    app.window = Window.create(config)
+    app.render = Render.create(app.window)
+    app.settings = config
 
+    local col = Color.rgb(75, 125, 125)
+    app.update = function(self, dt) end
+    app.draw = function(self, render)
+        render:begin()
+        render:clearColor(col)
+        render:clear()
+        render:finish()
+    end
+    -- app.audioSystem = audio.create(config)
+    -- audio.setCurrent(app.audioSystem)
+    return setmetatable(app, app_mt)
+end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- @param config Settings
+--- @return App
 function App.create(config)
-   local app = {}
-   local args = selene.args
+    local app = {}
+    local args = selene.args
 
-   app.config = config
+    app.event = Event.create()
+    app.execFs = Filesystem.create(sdl.getBasePath())
+    if not args[2] then
+        app.projectFs = app.execFs
+    else
+        app.projectFs = Filesystem.create(args[2])
+    end
+    local org = config.org or "selene"
+    app.userFs = Filesystem.create(sdl.getPrefPath(org, config.name))
 
-   app.event = Event.create()
-   app.execFs = Filesystem.create(sdl.getBasePath())
-   if not args[2] then
-      app.projectFs = app.execFs
-   else
-      app.projectFs = Filesystem.create(args[2])
-   end
-   app.userFs = Filesystem.create(sdl.getPrefPath(config.info.org, config.info.name))
+    app.window = Window.create(config)
+    app.render = Render.create(app.window)
+    app.settings = config
 
-   app.window = Window.create(config)
-   app.render = Render.create(app.window)
-
-   return setmetatable(app, {
-      __index = App,
-   })
+    app.audio = AudioSystem.create(config)
+    -- app.audioSystem = audio.create(config)
+    -- audio.setCurrent(app.audioSystem)
+    return setmetatable(app, app_mt)
 end
 
 local default_delta = 1 / 60.0
@@ -57,67 +85,68 @@ local FPS = 60.0
 local DELAY = 1000.0 / FPS
 
 function App:processCallback()
-   local type_ = self.event:getType()
-   if type_ == "quit" then
-      selene.setRunning(false)
-   elseif type_ == "window event" then
-      local wid = self.event.handle:windowEvent()
-      if wid == sdl.WINDOWEVENT_CLOSE then
-         selene.setRunning(false)
-      end
-   end
+    local type_ = self.event:getType()
+    if type_ == "quit" then
+        selene.setRunning(false)
+    elseif type_ == "window event" then
+        local wid = self.event.handle:windowEvent()
+        if wid == sdl.WINDOWEVENT_CLOSE then
+            selene.setRunning(false)
+        end
+    end
 end
 
 local last = sdl.getTicks()
 function App:step()
-   local current = sdl.getTicks()
-   local delta = (current - last)
-   local deltaTime = delta / 1000
-   last = current
+    local current = sdl.getTicks()
+    local delta = (current - last)
+    local deltaTime = delta / 1000
+    last = current
 
-   local e = self.event
-   while e:poll() do self:processCallback() end
+    local e = self.event
+    while e:poll() do self:processCallback() end
 
-   while deltaTime > 0.0 do
-      local dt = math.min(delta, default_delta)
-      if self.update then self:update(dt) end
-      deltaTime = deltaTime - dt
-   end
+    while deltaTime > 0.0 do
+        local dt = math.min(delta, default_delta)
+        if self.update then self:update(dt) end
+        deltaTime = deltaTime - dt
+    end
 
-   if self.draw then self:draw(self.render) end
-   self.window:swap()
-   sdl.delay(DELAY)
-   return true
+    if self.draw then self:draw(self.render) end
+    self.window:swap()
+    sdl.delay(DELAY)
+    return true
 end
 
 function App.createError(msg)
-   local app = {}
-   local args = selene.args
-   local trace = traceback('', 1)
-   print(msg, trace)
-   app.config = Config.default()
-   app.event = Event.create()
+    local app = {}
+    local args = selene.args
+    local trace = traceback('', 1)
+    print(msg, trace)
+    app.settings = Settings.default()
+    app.event = Event.create()
 
-   app.execFs = Filesystem.create(sdl.getBasePath())
-   if not args[2] then
-      app.projectFs = app.execFs
-   else
-      app.projectFs = Filesystem.create(args[2])
-   end
-   app.userFs = Filesystem.create(sdl.getPrefPath('selene', 'app'))
+    app.execFs = Filesystem.create(sdl.getBasePath())
+    if not args[2] then
+        app.projectFs = app.execFs
+    else
+        app.projectFs = Filesystem.create(args[2])
+    end
+    app.userFs = Filesystem.create(sdl.getPrefPath('selene', 'app'))
 
-   app.window = Window.create(app.config)
-   app.render = Render.create(app.window)
-   app.update = function(s) end
-   app.draw = function(s) end
-   return setmetatable(app, {
-      __index = App,
-   })
+    app.window = Window.create(app.config)
+    app.render = Render.create(app.window)
+    app.update = function() end
+    app.draw = function() end
+    return setmetatable(app, {
+        __index = App
+    })
 end
 
 function App:destroy()
-   self.render:destroy()
-   self.window:destroy()
+    self.audio:destroy()
+    self.render:destroy()
+    self.window:destroy()
 end
 
 return App

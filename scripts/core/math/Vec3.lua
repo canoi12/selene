@@ -1,20 +1,5 @@
 local Vec3 = {}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 local function __add(a, b)
    return Vec3.create(a[1] + b[1], a[2] + b[2], a[3] + b[3])
 end
