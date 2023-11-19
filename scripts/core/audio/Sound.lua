@@ -38,4 +38,9 @@ function Sound.create(sys, decoder)
     return setmetatable(sound, sound_mt)
 end
 
+function Sound.load(sys, path)
+    local decoder = selene.audio.Decoder.load(path)
+    return Sound.create(sys, decoder)
+end
+
 return Sound

@@ -51,6 +51,10 @@ function Filesystem:read(path)
     return selene.fs.read(self:resolve(path))
 end
 
+function Filesystem:readText(path)
+    return selene.fs.readText(self:resolve(path))
+end
+
 function Filesystem:write(path, text)
     return selene.fs.write(self:resolve(path), text)
 end

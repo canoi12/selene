@@ -1,2 +1,4 @@
 local App = require('App')
-return App.default()
+--- @type App
+local app = App.default()
+return app

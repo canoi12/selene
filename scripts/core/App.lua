@@ -5,7 +5,7 @@ local AudioSystem = require('audio.AudioSystem')
 local Color = require('graphics.Color')
 local Event = require('core.Event')
 local Render = require('core.graphics.Renderer')
-local Window = require('core.Window')
+local Window = require('Window')
 local Filesystem = require('core.Filesystem')
 local Settings = require('core.Settings')
 
@@ -15,12 +15,13 @@ local Settings = require('core.Settings')
 --- @field render Renderer
 --- @field window Window
 --- @field event Event
+--- @field assetManager AssetManager | nil
 local App = {}
 local app_mt = {}
 app_mt.__index = App
 
 --- @return App
-function App.default()
+function App.defaultEngine()
     local app = {}
     local args = selene.args
 
@@ -31,8 +32,11 @@ function App.default()
     else
         app.projectFs = Filesystem.create(args[2])
     end
-    --- @type Settings
-    local config = app.projectFs:load('.selene/settings.lua')()
+    local config = {}
+    local state, engine = pcall(function() return require('engine') end)
+    if state then
+        config = engine.init(app)
+    end
     local org = config.org or "selene"
     app.userFs = Filesystem.create(sdl.getPrefPath(org, config.name))
 
@@ -41,16 +45,6 @@ function App.default()
     app.render = Render.create(app.window)
     app.settings = config
 
-    local col = Color.rgb(75, 125, 125)
-    app.update = function(self, dt) end
-    app.draw = function(self, render)
-        render:begin()
-        render:clearColor(col)
-        render:clear()
-        render:finish()
-    end
-    -- app.audioSystem = audio.create(config)
-    -- audio.setCurrent(app.audioSystem)
     return setmetatable(app, app_mt)
 end
 
@@ -98,6 +92,7 @@ end
 
 local last = sdl.getTicks()
 function App:step()
+    self.audio:update()
     local current = sdl.getTicks()
     local delta = (current - last)
     local deltaTime = delta / 1000

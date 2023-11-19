@@ -9,6 +9,8 @@ function system.getOS() end
 
 --- @class selene
 --- @field args table
+--- @field sdl2 selene.sdl2
+--- @field gl selene.gl
 selene = {}
 
 --- Get current selene version

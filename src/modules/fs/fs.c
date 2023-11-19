@@ -45,6 +45,33 @@ static MODULE_FUNCTION(fs, read) {
     return 1;
 }
 
+static MODULE_FUNCTION(fs, readText) {
+    INIT_ARG();
+    CHECK_STRING(path);
+    #if defined(OS_WIN)
+        FILE* fp;
+        fopen_s(&fp, path, "rb");
+    #else
+        FILE* fp = fopen(path, "rb");
+    #endif
+
+    if (!fp)
+        return luaL_error(L, "Failed to read file: %s\n", path);
+
+    fseek(fp, 0, SEEK_END);
+    size_t size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    char* data = malloc(size+1);
+    fread(data, 1, size, fp);
+    data[size] = '\0';
+    fclose(fp);
+
+    lua_pushstring(L, data);
+    free(data);
+
+    return 1;
+}
+
 static MODULE_FUNCTION(fs, write) {
     INIT_ARG();
     int len;

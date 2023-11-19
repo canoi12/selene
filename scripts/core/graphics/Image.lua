@@ -38,20 +38,9 @@ end
 function Image.load(path)
     local img = {}
     local data, w, h, c = selene.image.loadData(path)
-    local texture = gl.Texture.create()
-    img.handle = texture
-    img.width = w
-    img.height = h
-    img.channels = c
-    gl.Texture.bind(gl.TEXTURE_2D, texture)
-    gl.Texture.image2D(gl.TEXTURE_2D, gl.RGBA, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data)
-    gl.Texture.parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.Texture.parameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    gl.Texture.parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.Texture.parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.Texture.bind(gl.TEXTURE_2D)
+    local img = Image.create(w, h, c, data)
     data:free()
-    return setmetatable(img, image_mt)
+    return img
 end
 
 function Image:getTexture()

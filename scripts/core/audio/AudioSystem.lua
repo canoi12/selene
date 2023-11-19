@@ -4,11 +4,14 @@ local sdl = selene.sdl2
 --- @field music nil
 --- @field sounds table
 --- @field device selene.sdl2.AudioDeviceID
+--- @field pool table
 local AudioSystem = {}
 
 local system_mt = {}
 system_mt.__index = AudioSystem
 
+--- Creates a new audio system
+--- @return AudioSystem
 function AudioSystem.create(settings)
     local num = sdl.AudioDeviceID.getCount(false)
     if num <= 0 then
@@ -38,6 +41,7 @@ function AudioSystem.create(settings)
     return setmetatable(audio, system_mt)
 end
 
+--- Destroy audio system
 function AudioSystem:destroy()
     if self.device then
         self.device:pause(false)
@@ -65,7 +69,7 @@ function AudioSystem:update()
     end
 
     local sounds_to_remove = {}
-    for i,sound in ipairs(audio.sounds) do
+    for i,sound in ipairs(self.sounds) do
         if sound.playing then
             local stream = sound.stream
             local size = sound.size

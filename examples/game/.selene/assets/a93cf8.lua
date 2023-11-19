@@ -1,15 +1,13 @@
 return {
-    assetType = "image",
-    name = "sprites",
+    __type = "image",
+    __name = "sprites",
     path = "assets/images/sprites.png",
-
     filters = {
-        "nearest",
-        "nearest"
+        min = "nearest",
+        mag = "nearest"
     },
-
     wrap = {
-        "clamp",
-        "clamp"
+        s = "clamp",
+        t = "clamp"
     }
 }
