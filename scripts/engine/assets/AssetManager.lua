@@ -1,6 +1,6 @@
 local Image = require('graphics.Image')
-local Music = require('graphics.Music')
-local Sound = require('graphics.Sound')
+local Music = require('audio.Music')
+local Sound = require('audio.Sound')
 local Filesystem = require('Filesystem')
 --- @class AssetManager
 --- @field assets table

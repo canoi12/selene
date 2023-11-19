@@ -1,4 +1,4 @@
 local App = require('App')
 --- @type App
-local app = App.default()
+local app = App.defaultEngine()
 return app

@@ -3,6 +3,7 @@ local App = require('App')
 local Settings = require('Settings')
 local Color = require('graphics.Color')
 
+local Mouse = require('input.Mouse')
 local Keyboard = require('input.Keyboard')
 
 local settings = Settings.create("Knightvania", 640, 380)
@@ -10,6 +11,9 @@ local app = App.create(settings)
 
 local x = 0
 function app:update(dt)
+    if Mouse.isDown(1) then
+        print('carrrrrrrrrrrrralho')
+    end
     if Keyboard.isDown('space') then
         x = x + (80 * dt)
     elseif Keyboard.isDown('backspace') then

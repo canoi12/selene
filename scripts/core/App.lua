@@ -35,7 +35,9 @@ function App.defaultEngine()
     local config = {}
     local state, engine = pcall(function() return require('engine') end)
     if state then
-        config = engine.init(app)
+        config = engine.setup(app)
+    else
+        error(engine)
     end
     local org = config.org or "selene"
     app.userFs = Filesystem.create(sdl.getPrefPath(org, config.name))

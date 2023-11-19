@@ -2,4 +2,5 @@ build/
 *.json
 external/SDL2
 .cache/
+.vscode/
 web/
