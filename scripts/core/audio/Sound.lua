@@ -7,6 +7,9 @@ local Sound = {}
 
 local sound_mt = {}
 sound_mt.__index = Sound
+sound_mt.__gc = function (s)
+    s.data:free()
+end
 
 function Sound.create(sys, decoder)
     local sound = {}
@@ -35,6 +38,8 @@ function Sound.create(sys, decoder)
        error('AudioStream read error: ' .. selene.sdl2.getError()) 
     end
     stream:free()
+
+    sound.data = data
     return setmetatable(sound, sound_mt)
 end
 

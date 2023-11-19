@@ -1,4 +1,6 @@
-local json = require('3rd.json')
+local Image = require('graphics.Image')
+local Music = require('graphics.Music')
+local Sound = require('graphics.Sound')
 local Filesystem = require('Filesystem')
 --- @class AssetManager
 --- @field assets table
@@ -9,11 +11,42 @@ local AssetManager = {}
 local manager_mt = {}
 manager_mt.__index = AssetManager
 
+--- Default image loader
+--- @param manager AssetManager
+--- @param asset ImageAsset
+--- @return Image
+local function imageLoader(manager, asset)
+  local rpath = manager.fs:resolve(asset.path)
+  return Image.load(rpath)
+end
+
+--- Default music loader
+--- @param manager AssetManager
+--- @param asset MusicAsset
+--- @return Music
+local function musicLoader(manager, asset)
+  local rpath = manager.fs:resolve(asset.path)
+  return Music.load(rpath)
+end
+
+--- Default sound loader
+--- @param manager AssetManager
+--- @param asset SoundAsset
+--- @return Sound
+local function soundLoader(manager, asset)
+  local rpath = manager.fs:resolve(asset.path)
+  return Sound.load(rpath)
+end
+
 function AssetManager.create(path)
   local am = {}
 
   am.assets = {}
-  am.loaders = {}
+  am.loaders = {
+    image = imageLoader,
+    music = musicLoader,
+    sound = soundLoader,
+  }
   am.fs = Filesystem.create(path .. '.selene/assets/')
 
   local assets = am.fs:load('init.lua')()
@@ -31,26 +64,14 @@ function AssetManager.create(path)
   return setmetatable(am, manager_mt)
 end
 
---- Default image loader
---- @param manager AssetManager
---- @param path string
---- @return ImageAsset
-local function imageLoader(manager, path)
-  local str = manager.fs:readText(path)
-  --- @type ImageAsset
-  local data = json.decode(str)
-  return data
-end
-
-function AssetManager.default()
-  local am = {}
-
-  am.assets = {}
-  am.loaders = {
-    image = imageLoader
-  }
-
-  return setmetatable(am, manager_mt)
+--- Load assets
+--- @param type_ string
+--- @param name string
+--- @return Image | Music | Sound | nil
+function AssetManager:load(type_, name)
+  if not self.loaders[type_] then return nil end
+  local loader = self.loaders[type_]
+  return loader(self, self.assets[type_][name])
 end
 
 function AssetManager:destroy()

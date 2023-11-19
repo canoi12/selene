@@ -34,7 +34,7 @@ end
 
 function Music.load(sys, path)
     local decoder = selene.audio.Decoder.load(path)
-    return Music.create(sys, path)
+    return Music.create(sys, decoder)
 end
 
 return Music

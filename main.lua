@@ -1,12 +1,18 @@
 --- @type App
 local App = require('App')
-local Config = require('Settings')
-local Color = require('core.graphics.Color')
+local Settings = require('Settings')
+local Color = require('graphics.Color')
 
 local Keyboard = require('input.Keyboard')
 
-local config = Config.create("Knightvania", 640, 380)
-local app = App.create(config)
+local settings = Settings.create("Knightvania", 640, 380)
+local app = App.create(settings)
+
+local Music = require('audio.Music')
+
+local mus = Music.load(app.audio, 'music.ogg')
+
+app.audio:playMusic(mus)
 
 local x = 0
 function app:update(dt)

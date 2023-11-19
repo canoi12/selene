@@ -1,8 +1,31 @@
-local audio = require 'core.audio'
-local graphics = require 'core.graphics'
-local Sound = require 'core.audio.Sound'
 local Music = require 'core.audio.Music'
 local Sound = require 'core.audio.Sound'
+
+local App = require('App')
+local Settings = require('Settings')
+
+local app = App.create(Settings.create("audio example", 640, 380))
+
+local music = Music.load(app.audio, app.projectFs:resolve('music.ogg'))
+local sound = Sound.load(app.audio, app.projectFs:resolve('sound.wav'))
+
+print(sound.data)
+
+-- app.audio:playMusic(music)
+
+app.audio:playSound(sound)
+
+function app:draw(r)
+    r:begin()
+    r:clear()
+    r:print('playing musics...')
+    r:finish()
+end
+
+return app
+
+--[[
+
 
 function selene.load()
     selene.Data.__gc = function(d)
@@ -62,3 +85,4 @@ function selene.key_callback(pressed, key, is_repeat)
         pause = not pause
       end
 end
+]]
