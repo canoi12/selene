@@ -1,5 +1,4 @@
-local _tl_compat; if (tonumber((_VERSION or ''):match('[%d.]*$')) or 0) < 5.3 then local p, m = pcall(require, 'compat53.module'); if p then _tl_compat = m end end; local os = _tl_compat and _tl_compat.os or os; local string = _tl_compat and _tl_compat.string or string; local sdl = selene.sdl2
-local Filesystem = {}
+local _tl_compat; if (tonumber((_VERSION or ''):match('[%d.]*$')) or 0) < 5.3 then local p, m = pcall(require, 'compat53.module'); if p then _tl_compat = m end end; local string = _tl_compat and _tl_compat.string or string; local Filesystem = {}
 
 
 
@@ -17,12 +16,10 @@ local Filesystem = {}
 
 function Filesystem.create(path)
    local fs = {}
-
-   local os = selene.system.getOS()
    local b1 = '\\'
    local b2 = '/'
 
-   if os == "Windows" then
+   if selene.system.getOS() == "Windows" then
       b1 = '/'
       b2 = '\\'
    end

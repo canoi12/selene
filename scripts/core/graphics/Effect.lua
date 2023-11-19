@@ -44,7 +44,6 @@ else
 end
 
 local effect_mt = {
-   __index = Effect,
    __gc = function(effect)
       effect.program:destroy()
       effect.vertShader:destroy()
@@ -129,7 +128,7 @@ local funcs = {
    end,
    ["userdata"] = function(prog, name, ...)
       local mat = { ... }
-      local location = prog.program:getUniformLocation(name)
+      local location = prog:getUniformLocation(name)
       gl.uniformMatrix4fv(location, 1, false, mat[1])
    end,
 }

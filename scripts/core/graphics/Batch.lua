@@ -75,17 +75,16 @@ function Batch:clear()
    self.offset = 0
 end
 
-function Batch:count()
-   return self.offset / vertexSize
-end
-
 function Batch:flush()
    local offset = self.offset
-   if offset <= 0 then return false end
+   if offset <= 0 then return end
    gl.Buffer.bind(gl.ARRAY_BUFFER, self.buffer)
    gl.Buffer.subData(gl.ARRAY_BUFFER, 0, offset, self.data)
    gl.Buffer.bind(gl.ARRAY_BUFFER)
-   return true
+end
+
+function Batch:count()
+   return self.offset / vertexSize
 end
 
 return Batch

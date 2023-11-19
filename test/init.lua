@@ -1,23 +1,19 @@
 local sdl = selene.sdl2
 local traceback = debug.traceback
 
-local function add_path(path: string)
-    package.path = path .. '?.lua' ..
-        path .. '?/init.lua' ..
+local function add_path(path)
+    package.path = path .. '?.lua;' ..
+        path .. '?/init.lua;' ..
         package.path
 end
 
-local App = require('core.App')
+add_path(sdl.getBasePath() .. 'core/')
 
-local record Core
-    app: App
-    
-    init: function(args: {string}) : App
-    step: function(Core) : boolean
-    quit: function(Core)
-end
+--- @class App
+local App = require('App')
 
-local core : Core = {}
+--- @class Core
+local core = {}
 
 if not sdl.init(
     sdl.INIT_SENSOR, sdl.INIT_AUDIO,
@@ -29,7 +25,7 @@ if not sdl.init(
 end
 
 local args = selene.args
-local projectPath : string = "./"
+local projectPath = "./"
 if args[2] then
     projectPath = args[2]
     package.path = projectPath .. '?.lua;' ..
@@ -37,13 +33,13 @@ if args[2] then
         package.path
 end
 
-local app: App
+local app = {}
 
-local state, ret = pcall(function() : App return require('main') end)
+local state, ret = pcall(function() return require('main') end)
 if state then
     app = ret
 else
-    app = App.createError(ret as string)
+    app = App.createError(ret)
 end
 
 return  {

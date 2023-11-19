@@ -11,6 +11,9 @@ local Rect = {}
 
 
 
+local rect_mt = {}
+rect_mt.__index = Rect
+
 function Rect.create(x, y, w, h)
    local r = {}
 
@@ -19,7 +22,7 @@ function Rect.create(x, y, w, h)
    r.w = w
    r.h = h
 
-   return setmetatable(r, { __index = Rect })
+   return setmetatable(r, rect_mt)
 end
 
 function Rect:getValues()

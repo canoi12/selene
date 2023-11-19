@@ -22,10 +22,13 @@ if not sdl.init(
 end
 
 local args = selene.args
-local projectPath = args[2] or "./"
-package.path = projectPath .. '?.lua;' ..
-projectPath .. '?/init.lua;' ..
-package.path
+local projectPath = "./"
+if args[2] then
+   projectPath = args[2]
+   package.path = projectPath .. '?.lua;' ..
+   projectPath .. '?/init.lua;' ..
+   package.path
+end
 
 local app
 

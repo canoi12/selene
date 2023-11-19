@@ -1,7 +1,7 @@
-local App = require('core.App')
-local Config = require('core.Config')
+--- @type App
+local App = require('App')
+local Config = require('Settings')
 local Color = require('core.graphics.Color')
-local Render = require('core.Render')
 
 local config = Config.create("Knightvania", 640, 380)
 local app = App.create(config)

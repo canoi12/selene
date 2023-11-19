@@ -3,14 +3,36 @@
 
 static MODULE_FUNCTION(AudioStream, create) {
     INIT_ARG();
-    CHECK_INTEGER(src_format);
-    CHECK_INTEGER(src_channels);
-    CHECK_INTEGER(src_rate);
-    CHECK_INTEGER(dest_format);
-    CHECK_INTEGER(dest_channels);
-    CHECK_INTEGER(dest_rate);
 
-    SDL_AudioStream* s = SDL_NewAudioStream(src_format, src_channels, src_rate, dest_format, dest_channels, dest_rate);
+    SDL_AudioSpec inSpec, outSpec;
+
+    if (lua_type(L, arg) != LUA_TTABLE)
+        return luaL_argerror(L, arg, "Must be a table");
+    lua_getfield(L, arg, "format");
+    inSpec.format = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, arg, "channels");
+    inSpec.channels = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, arg, "sampleRate");
+    inSpec.freq = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+
+    arg++;
+
+    if (lua_type(L, arg) != LUA_TTABLE)
+        return luaL_argerror(L, arg, "Must be a table");
+    lua_getfield(L, arg, "format");
+    outSpec.format = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, arg, "channels");
+    outSpec.channels = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+    lua_getfield(L, arg, "sampleRate");
+    outSpec.freq = (int)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+
+    SDL_AudioStream* s = SDL_NewAudioStream(inSpec.format, inSpec.channels, inSpec.freq, outSpec.format, outSpec.channels, outSpec.freq);
     if (!s)
         return luaL_error(L, "Failed to create audio stream: %s\n", SDL_GetError()); 
     NEW_UDATA(AudioStream, stream);

@@ -11,6 +11,9 @@ local _tl_compat; if (tonumber((_VERSION or ''):match('[%d.]*$')) or 0) < 5.3 th
 
 
 
+local color_mt = {}
+color_mt.__index = Color
+
 
 function Color.rgb(r, g, b)
    local c = {}
@@ -18,7 +21,7 @@ function Color.rgb(r, g, b)
    c[2] = g
    c[3] = b
    c[4] = 255
-   return setmetatable(c, { __index = Color })
+   return setmetatable(c, color_mt)
 end
 
 function Color.rgba(r, g, b, a)
@@ -27,7 +30,7 @@ function Color.rgba(r, g, b, a)
    c[2] = g
    c[3] = b
    c[4] = a
-   return setmetatable(c, { __index = Color })
+   return setmetatable(c, color_mt)
 end
 
 function Color:toFloat()

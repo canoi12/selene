@@ -32,7 +32,7 @@ static MODULE_FUNCTION(AudioDeviceID, open) {
     if (lua_type(L, arg) != LUA_TTABLE)
         return luaL_argerror(L, arg, "Must be a table");
 
-    lua_getfield(L, arg, "sample_rate");
+    lua_getfield(L, arg, "sampleRate");
     int freq = (int)luaL_checknumber(L, -1);
     lua_pop(L, 1);
     lua_getfield(L, arg, "channels");
@@ -47,7 +47,7 @@ static MODULE_FUNCTION(AudioDeviceID, open) {
     if (lua_type(L, -1) == LUA_TLIGHTUSERDATA)
         callback = lua_touserdata(L, -1);
     #endif
-    lua_getfield(L, arg, "pool_size");
+    lua_getfield(L, arg, "poolSize");
     int pool_size = (int)luaL_optinteger(L, -1, 256);
     lua_pop(L, 1);
     arg++;

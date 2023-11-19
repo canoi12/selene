@@ -25,6 +25,11 @@ local Image = {}
 
 
 
+local image_mt = {}
+image_mt.__index = Image
+image_mt.__gc = function(s)
+   s.handle:destroy()
+end
 
 function Image.create(width, height, channels, data)
    local img = {}
@@ -64,6 +69,10 @@ function Image.load(path)
    gl.Texture.bind(gl.TEXTURE_2D)
    data:free()
    return setmetatable(img, { __index = Image, __gc = function(i) i.handle:destroy() end })
+end
+
+function Image:getTexture()
+   return self.handle
 end
 
 function Image:getUV(rect)

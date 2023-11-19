@@ -16,6 +16,7 @@ local Canvas = {}
 
 
 
+
 function Canvas.create(width, height)
    local canvas = {}
 
@@ -49,6 +50,10 @@ end
 
 function Canvas.default()
 
+end
+
+function Canvas:getTexture()
+   return self.texture
 end
 
 function Canvas:getUV(rect)

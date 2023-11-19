@@ -1,4 +1,5 @@
-local App = require 'core.App'
+local App = require('App')
+return App.default()
 local Config = require 'core.Config'
 local Color = require('core.graphics.Color')
 local Render = require('core.Render')
