@@ -368,7 +368,7 @@ function Renderer:print(text, x, y)
         if c == string.byte('\n') then
             ox = x
             oy = oy + font.height
-        elseif c == string.byte('t') then
+        elseif c == string.byte('\t') then
             ox = ox + (rect.bw * 2)
         else
             local xx = ox + rect.bl
