@@ -32,7 +32,6 @@ Selene is a tiny game engine made with C and Lua, the idea is to implementing al
 - system
 
 `Lua Modules (core):`
-- class
 - audio
     - Music
     - Sound
@@ -43,7 +42,7 @@ Selene is a tiny game engine made with C and Lua, the idea is to implementing al
     - Canvas
     - Font
     - Batch
-    - Shader
+    - Effect
     - Renderer
 - input
     - Gamepad
