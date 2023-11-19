@@ -8,12 +8,6 @@ local Keyboard = require('input.Keyboard')
 local settings = Settings.create("Knightvania", 640, 380)
 local app = App.create(settings)
 
-local Music = require('audio.Music')
-
-local mus = Music.load(app.audio, 'music.ogg')
-
-app.audio:playMusic(mus)
-
 local x = 0
 function app:update(dt)
     if Keyboard.isDown('space') then
