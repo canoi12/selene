@@ -9,6 +9,8 @@ static MODULE_FUNCTION(image, loadData) {
     OPT_INTEGER(req, STBI_rgb_alpha);
     int w, h, c;
     stbi_uc* pixels = stbi_load(path, &w, &h, &c, req);
+    if (!pixels) 
+        return luaL_error(L, "Failed to load image: %s", path);
     NEW_UDATA(Data, d);
     d->size = w * h * req;
     d->data = pixels;

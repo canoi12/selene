@@ -66,7 +66,7 @@ endif()
 
 file(GLOB SCRIPTS_DIR scripts/)
 add_custom_command(
-    TARGET ${PROJECT_NAME} PRE_BUILD
+    TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/scripts $<TARGET_FILE_DIR:${PROJECT_NAME}>/
     # ${CMAKE_SOURCE_DIR}/test $<TARGET_FILE_DIR:${PROJECT_NAME}>/core

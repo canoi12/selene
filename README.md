@@ -62,7 +62,7 @@ Selene is a tiny game engine made with C and Lua, the idea is to implementing al
 
 Just execute selene passing your project path as argument, if none is provided the current directory will be used.
 
-The directory must contain a `main.lua` file and a `.selene/` folder
+The directory must contain a `main.lua` file and a `.selene/` folder, and the `.selene/` must contains a `settings.lua` file, and later will be used to store metadata stuff for the editor and engine
 
 `usage: ./selene [path/to/project]`
 
@@ -73,7 +73,7 @@ local App = require('App')
 return App.default()
 ```
 
-The project will use the selene default engine.
+The project will use the selene default engine, so it will use the (future) AssetManager, RoomManager, UI.
 
 But you can write your own loop by using
 

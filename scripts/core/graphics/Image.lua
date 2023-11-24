@@ -19,6 +19,7 @@ function Image.create(width, height, channels, data)
     local texture = gl.Texture.create()
     channels = channels or 4
     assert(channels > 0 and channels < 5)
+    print(width, height)
     img.handle = texture
     img.width = width
     img.height = height
@@ -60,6 +61,14 @@ function Image:getUV(rect)
     uv[3] = uv[1] + rect.w / width
     uv[4] = uv_y + rect.h / height
     return uv
+end
+
+function Image:getWidth()
+    return self.width
+end
+
+function Image:getHeight()
+    return self.height
 end
 
 return Image

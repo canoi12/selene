@@ -49,7 +49,11 @@ function AssetManager.create(path)
   }
   am.fs = Filesystem.create(path .. '.selene/assets/')
 
-  local assets = am.fs:load('init.lua')()
+  local assets = {}
+  local f = am.fs:load('init.lua')
+  if type(f) == "function" then
+    asset = f()
+  end
   for i,v in ipairs(assets) do
     local data = am.fs:load(v)()
     if not am.assets[data.__type] then

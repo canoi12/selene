@@ -107,9 +107,137 @@ local Joystick = {}
 --- @class selene.sdl2.Window
 local Window = {}
 
+--- @param title string
+--- @param x integer
+--- @param y integer
+--- @param width integer
+--- @param height integer
+--- @param flags table
+--- @return selene.sdl2.Window
+function Window.create(title, x, y, width, height, flags) end
+
 ---------------- SDL2
 
 --- @class selene.sdl2
+--- @field INIT_EVERYTHING integer
+--- @field INIT_SENSOR integer
+--- @field INIT_AUDIO integer
+--- @field INIT_VIDEO integer
+--- @field INIT_JOYSTICK integer
+--- @field INIT_GAMECONTROLLER integer
+--- @field INIT_TIMER integer
+--- @field INIT_EVENTS integer
+-- Audio
+--- @field AUDIO_S16 integer
+--- @field AUDIO_S16SYS integer
+--- @field AUDIO_F32 integer
+-- Application events
+--- @field QUIT integer
+--- @field APP_TERMINATING integer
+--- @field APP_LOWMEMORY integer
+--- @field APP_WILLENTERBACKGROUND integer
+--- @field APP_DIDENTERBACKGROUND integer
+--- @field APP_WILLENTERFOREGROUND integer
+--- @field APP_DIDENTERFOREGROUND integer
+--- @field LOCALECHANGED integer
+-- Display events
+--- @field DISPLAYEVENT integer
+-- Window events
+--- @field WINDOWEVENT integer
+-- Keyboard events
+--- @field KEYDOWN integer
+--- @field KEYUP integer
+--- @field TEXTEDITING integer
+--- @field TEXTINPUT integer
+--- @field KEYMAPCHANGED integer
+--- @field TEXTEDITING_EXT integer
+-- Mouse events
+--- @field MOUSEMOTION integer
+--- @field MOUSEBUTTONDOWN integer
+--- @field MOUSEBUTTONUP integer
+--- @field MOUSEWHEEL integer
+-- Joystick events
+--- @field JOYAXISMOTION integer
+--- @field JOYBALLMOTION integer
+--- @field JOYHATMOTION integer
+--- @field JOYBUTTONDOWN integer
+--- @field JOYBUTTONUP integer
+--- @field JOYDEVICEADDED integer
+--- @field JOYDEVICEREMOVED integer
+--- @field JOYBATTERYUPDATED integer
+-- Game controller events
+--- @field CONTROLLERAXISMOTION integer
+--- @field CONTROLLERBUTTONDOWN integer
+--- @field CONTROLLERBUTTONUP integer
+--- @field CONTROLLERDEVICEADDED integer
+--- @field CONTROLLERDEVICEREMOVED integer
+--- @field CONTROLLERDEVICEREMAPPED integer
+--- @field CONTROLLERTOUCHPADDOWN integer
+--- @field CONTROLLERTOUCHPADMOTION integer
+--- @field CONTROLLERTOUCHPADUP integer
+--- @field CONTROLLERSENSORUPDATE integer
+-- Touch events
+--- @field FINGERDOWN integer
+--- @field FINGERUP integer
+--- @field FINGERMOTION integer
+-- Gesture events
+--- @field DOLLARGESTURE integer
+--- @field DOLLARRECORD integer
+--- @field MULTIGESTURE integer
+-- Clipboard events
+--- @field CLIPBOARDUPDATE integer
+-- Drag and drop events
+--- @field DROPFILE integer
+--- @field DROPTEXT integer
+--- @field DROPBEGIN integer
+--- @field DROPCOMPLETE integer
+-- Audio hotplug events
+--- @field AUDIODEVICEADDED integer
+--- @field AUDIODEVICEREMOVED integer
+-- Sensor events
+--- @field SENSORUPDATE integer
+-- Render events
+--- @field RENDER_TARGETS_RESET integer
+--- @field RENDER_DEVICE_RESET integer
+-- Window Events
+--- @field WINDOWEVENT_CLOSE integer
+--- @field WINDOWEVENT_SIZE_CHANGED integer
+--- @field WINDOWEVENT_RESIZED integer
+--- @field WINDOWEVENT_MOVED integer
+--- @field WINDOWEVENT_MINIMIZED integer
+--- @field WINDOWEVENT_MAXIMIZED integer
+--- @field WINDOWEVENT_RESTORED integer
+--- @field WINDOWEVENT_SHOWN integer
+--- @field WINDOWEVENT_HIDDEN integer
+--- @field WINDOWEVENT_ENTER integer
+--- @field WINDOWEVENT_LEAVE integer
+--- @field WINDOWEVENT_FOCUS_GAINED integer
+--- @field WINDOWEVENT_FOCUS_LOST integer
+--- @field WINDOWEVENT_TAKE_FOCUS integer
+--- @field WINDOWEVENT_HIT_TEST integer
+-- Window Flags
+--- @field WINDOW_SHOWN integer
+--- @field WINDOW_OPENGL integer
+--- @field WINDOW_RESIZABLE integer
+--- @field WINDOW_FULLSCREEN integer
+--- @field WINDOW_FULLSCREEN_DESKTOP integer
+--- @field WINDOW_BORDERLESS integer
+--- @field WINDOW_ALWAYS_ON_TOP integer
+--- @field WINDOWPOS_CENTERED integer
+-- Message Box
+--- @field MESSAGEBOX_ERROR integer
+--- @field MESSAGEBOX_WARNING integer
+--- @field MESSAGEBOX_INFORMATION integer
+-- GL
+--- @field GL_DOUBLEBUFFER integer
+--- @field GL_DEPTH_SIZE integer
+--- @field GL_STENCIL_SIZE integer
+--- @field GL_CONTEXT_PROFILE_MASK integer
+--- @field GL_CONTEXT_MAJOR_VERSION integer
+--- @field GL_CONTEXT_MINOR_VERSION integer
+--- @field GL_CONTEXT_PROFILE_CORE integer
+--- @field GL_CONTEXT_PROFILE_COMPATIBILITY integer
+--- @field GL_CONTEXT_PROFILE_ES integer
 local sdl2 = {}
 
 --- Init SDL2
@@ -120,10 +248,30 @@ function sdl2.init(...) end
 --- Quit SDL2
 function sdl2.quit() end
 
+-- OpenGL
+
 --- Set window current OpenGL context
 --- @param window selene.sdl2.Window
 --- @param context selene.sdl2.GLContext
 function sdl2.glMakeCurrent(window, context) end
+--- @return lightuserdata
+function sdl2.glGetProcAddress() end
+--- @param attr integer
+--- @param value integer
+function sdl2.glSetAttribute(attr, value) end
+--- @param value boolean
+function sdl2.glSetSwapInterval(value) end
+--- @return boolean
+function sdl2.getGetSwapInterval() end
+
+-- Clipboard
+
+function sdl2.getClipboardText() end
+function sdl2.hasClipboardText() end
+--- @param text string
+function sdl2.setClipboardText(text) end
+
+-- Filesystem
 
 --- Get path from selene executable
 --- @return string
@@ -134,5 +282,58 @@ function sdl2.getBasePath() end
 --- @param name string
 --- @return string
 function sdl2.getPrefPath(org, name) end
+
+-- Shared object
+--- Load a shared object
+--- @param name string
+--- @return lightuserdata
+function sdl2.loadObject(name) end
+--- Unload previous loaded object
+--- @param data lightuserdata
+function sdl2.unloadObject(data) end
+function sdl2.loadFunction(pointer, string) end
+
+-- Keyboard
+function sdl2.checkKeyState(key) end
+function sdl2.getKeyboardState() end
+function sdl2.hasScreenKeyboardSupport() end
+function sdl2.isScreenKeyboardShown(win) end
+function sdl2.getScancodeFromName(name) end
+function sdl2.getScancodeName(key) end
+
+-- Mouse
+--- @return number, number
+function sdl2.getMousePosition() end
+--- @return number, number
+function sdl2.getRelativeMousePosition() end
+--- @param btn integer
+--- @return boolean
+function sdl2.isMouseDown(btn) end
+
+-- Timer
+--- @return integer
+function sdl2.getTicks() end
+--- @param n number
+function sdl2.delay(n) end
+--- @return integer
+function sdl2.getPerformanceCounter() end
+--- @return integer
+function sdl2.getPerformanceFrequency() end
+
+-- Error
+--- @return string
+function sdl2.getError() end
+--- @param text string
+function sdl2.setError(text) end
+
+-- System
+--- @return string
+function sdl2.getPlatform() end
+--- @return integer
+function sdl2.getCPUCacheLineSize() end
+--- @return integer
+function sdl2.getCPUCount() end
+--- @return integer
+function sdl2.getSystemRAM() end
 
 return sdl2

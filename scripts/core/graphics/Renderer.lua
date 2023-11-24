@@ -172,7 +172,7 @@ function Renderer:setCanvas(canvas)
         self.state.framebuffer = canvas.handle
         
         self.state.projection:ortho(0, canvas.width, canvas.height, 0, -1, 1)
-        local loc = gl.Program.getUniformLocation(self.state.program, "u_MVP")
+        local loc = self.state.program:getUniformLocation("u_MVP")
         gl.uniformMatrix4fv(loc, 1, false, self.state.projection)
     end
 end
@@ -216,6 +216,13 @@ function Renderer:finish()
     self.vao:bind()
     gl.drawArrays(mode, 0, count)
     gl.VertexArray.unbind()
+end
+
+function Renderer:onResize(w, h)
+    gl.viewport(0, 0, w, h)
+    self.state.projection:ortho(0, w, h, 0, -1, 1)
+    local loc = self.state.program:getUniformLocation("u_MVP")
+    gl.uniformMatrix4fv(loc, 1, false, self.state.projection)
 end
 
 function Renderer:drawPoint(x, y)
@@ -329,8 +336,11 @@ function Renderer:fillTriangle(p0, p1, p2)
     self.batch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
 end
 
+--- @param drawable Drawable
+---@param src Rect | nil
+---@param dest Rect | nil
 function Renderer:copy(drawable, src, dest)
-    setImage(self)
+    setImage(self, drawable:getTexture())
     setDrawMode(self, "triangles")
     local o = drawable
 

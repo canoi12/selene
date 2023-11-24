@@ -15,7 +15,9 @@ local Settings = require('core.Settings')
 --- @field render Renderer
 --- @field window Window
 --- @field event Event
+--- @field ui ui.Context | nil
 --- @field assetManager AssetManager | nil
+--- @field onEvent function | nil
 local App = {}
 local app_mt = {}
 app_mt.__index = App
@@ -76,20 +78,38 @@ function App.create(config)
     return setmetatable(app, app_mt)
 end
 
+--- @param paletteName ui.DefaultPalette | ui.Palette
+function App:initUI(paletteName)
+    local ui = require('engine.ui')
+    local palettes = require('engine.ui.palettes')
+    local Style = require('engine.ui.Style')
+    local palette = {}
+    if type(paletteName) == "string" then
+        palette = palettes[paletteName]
+    elseif type(paletteName) == "table" then
+        palette = paletteName
+    end
+    self.ui = ui.create(Style.create(palette))
+end
+
 local default_delta = 1 / 60.0
 local FPS = 60.0
 local DELAY = 1000.0 / FPS
 
-function App:processCallback()
+--- @param e Event
+function App:processCallback(e)
     local type_ = self.event:getType()
     if type_ == "quit" then
         selene.setRunning(false)
     elseif type_ == "window event" then
-        local wid = self.event.handle:windowEvent()
-        if wid == sdl.WINDOWEVENT_CLOSE then
+        local wev, wid, d1, d2 = self.event.handle:windowEvent()
+        if wev == sdl.WINDOWEVENT_CLOSE then
             selene.setRunning(false)
+        elseif wev == sdl.WINDOWEVENT_RESIZED then
+            self.render:onResize(d1, d2)
         end
     end
+    if self.onEvent then self:onEvent(e) end
 end
 
 local last = sdl.getTicks()
@@ -101,7 +121,7 @@ function App:step()
     last = current
 
     local e = self.event
-    while e:poll() do self:processCallback() end
+    while e:poll() do self:processCallback(e) end
 
     while deltaTime > 0.0 do
         local dt = math.min(delta, default_delta)

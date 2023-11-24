@@ -33,4 +33,13 @@ function Rect:getValues()
     return self.x, self.y, self.w, self.h
 end
 
+--- Checks if point is inside rect
+--- @param x number
+--- @param y number
+---@return boolean
+function Rect:intersect(x, y)
+    return x >= self.x and x <= (self.x + self.w) and
+        y >= self.y and y <= (self.y + self.h)
+end
+
 return Rect
