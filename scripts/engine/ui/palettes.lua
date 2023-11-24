@@ -1,4 +1,4 @@
-local Color = require('Color')
+local Color = require('graphics.Color')
 --- @alias ui.DefaultPalette
 ---| 'pastel-pop16'
 --- @type {ui.DefaultPalette:ui.Palette}
