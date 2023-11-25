@@ -221,8 +221,10 @@ end
 function Renderer:onResize(w, h)
     gl.viewport(0, 0, w, h)
     self.state.projection:ortho(0, w, h, 0, -1, 1)
-    local loc = self.state.program:getUniformLocation("u_MVP")
-    gl.uniformMatrix4fv(loc, 1, false, self.state.projection)
+    if self.state.program then
+        local loc = self.state.program:getUniformLocation("u_MVP")
+        gl.uniformMatrix4fv(loc, 1, false, self.state.projection)
+    end
 end
 
 function Renderer:drawPoint(x, y)
