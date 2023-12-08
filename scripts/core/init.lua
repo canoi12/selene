@@ -9,7 +9,7 @@ end
 
 add_path(sdl.getBasePath() .. 'core/')
 
---- @class App
+--- @type App
 local App = require('App')
 
 --- @class Core

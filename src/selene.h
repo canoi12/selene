@@ -5,6 +5,8 @@
 #include "common.h"
 
 #define CORE_DIR "core"
+#define STEP_FUNC "step"
+#define QUIT_FUNC "quit"
 
 typedef struct Data Data;
 struct Data {

@@ -1,14 +1,6 @@
---- @type App
 local App = require('App')
 local app = App.defaultEngine()
-local Rect = require('Rect')
-local Window = require('editor.Window')
-
 app:initUI('pastel-pop16')
-
-table.insert(app.editor.workspace.windows, Window.create('Window', Rect.create(64, 128, 320, 96)))
-table.insert(app.editor.workspace.windows, Window.create('Test', Rect.create(64, 128, 320, 96)))
-table.insert(app.editor.workspace.windows, Window.create('Image Viewer', Rect.create(64, 128, 320, 96)))
 return app
 
 --[[
@@ -84,7 +76,7 @@ function app:draw(r)
         else
             Frame.draw(r, rect)
         end
-        
+
         local c1 = Color.black
         local c2 = Color.white
         if mx >= (xx -3) and mx <= (xx+size+4) and
@@ -152,4 +144,3 @@ end
 
 return app
 ]]
-

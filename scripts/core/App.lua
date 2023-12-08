@@ -18,6 +18,9 @@ local Settings = require('core.Settings')
 --- @field ui ui.Context | nil
 --- @field assetManager AssetManager | nil
 --- @field onEvent function | nil
+--- @field projectFs Filesystem
+--- @field update function | nil
+--- @field draw function | nil
 local App = {}
 local app_mt = {}
 app_mt.__index = App
@@ -35,11 +38,18 @@ function App.defaultEngine()
         app.projectFs = Filesystem.create(args[2])
     end
     local config = {}
+    config = Settings.default()
+    --[[
     local state, engine = pcall(function() return require('engine') end)
     if state then
         config = engine.setup(app)
     else
         error(engine)
+    end
+    --]]
+    app.draw = function(_, r)
+        r:clearColor(Color.black)
+        r:clear()
     end
     local org = config.org or "selene"
     app.userFs = Filesystem.create(sdl.getPrefPath(org, config.name))
@@ -109,6 +119,7 @@ function App:processCallback(e)
             self.render:onResize(d1, d2)
         end
     end
+    if self.ui then self.ui:onEvent(e) end
     if self.onEvent then self:onEvent(e) end
 end
 
@@ -129,7 +140,10 @@ function App:step()
         deltaTime = deltaTime - dt
     end
 
+    self.render:begin()
     if self.draw then self:draw(self.render) end
+    if self.ui then self.ui:render(self.render) end
+    self.render:finish()
     self.window:swap()
     sdl.delay(DELAY)
     return true

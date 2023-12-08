@@ -9,7 +9,7 @@ local FrameStyle = {}
 --- @field titleBar ui.FrameStyle
 local WindowStyle = {}
 
---- @alias ui.ButtonStyle {normal:ui.FrameStyle, hovered:ui.FrameStyle, pressed: ui.FrameStyle, released: ui.FrameStyle}
+--- @alias ui.ButtonStyle {normal:ui.FrameStyle, hover:ui.FrameStyle, press: ui.FrameStyle, release: ui.FrameStyle}
 
 --- @alias ui.TextStyle {fg:Color,shadow:Color}
 
@@ -40,18 +40,14 @@ function Style.create(palette)
                 bg = palette[4],
                 borders = {palette[2], palette[5]}
             },
-            hovered = {
+            hover = {
                 bg = palette[3],
                 borders = {palette[2], palette[5]}
             },
-            pressed = {
+            press = {
                 bg = palette[6],
                 borders = {palette[5], palette[2]}
-            },
-            released = {
-                bg = palette[4],
-                borders = {palette[2], palette[5]}
-            },
+            }
         }
     }
     return style

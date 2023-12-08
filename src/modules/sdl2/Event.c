@@ -30,11 +30,11 @@ static META_FUNCTION(Event, windowEvent) {
 static META_FUNCTION(Event, mouseMotionEvent) {
     CHECK_META(Event);
     PUSH_INTEGER(self->motion.which);
-    PUSH_INTEGER(self->motion.state);
     PUSH_INTEGER(self->motion.x);
     PUSH_INTEGER(self->motion.y);
     PUSH_INTEGER(self->motion.xrel);
     PUSH_INTEGER(self->motion.yrel);
+    PUSH_INTEGER(self->motion.state);
     return 6;
 }
 
@@ -54,14 +54,18 @@ static META_FUNCTION(Event, mouseWheelEvent) {
     PUSH_INTEGER(self->wheel.which);
     PUSH_INTEGER(self->wheel.x);
     PUSH_INTEGER(self->wheel.y);
+    PUSH_BOOLEAN(self->wheel.direction == SDL_MOUSEWHEEL_FLIPPED);
     return 4;
 }
 
 static META_FUNCTION(Event, keyboardEvent) {
     CHECK_META(Event);
-    PUSH_STRING(SDL_GetScancodeName(self->key.keysym.scancode));
+    PUSH_INTEGER(self->key.keysym.scancode);
+    PUSH_INTEGER(self->key.state == SDL_PRESSED);
     PUSH_BOOLEAN(self->key.repeat);
-return 2;
+    PUSH_INTEGER(self->key.keysym.sym);
+    PUSH_INTEGER(self->key.keysym.mod);
+    return 5;
 }
 
 static META_FUNCTION(Event, audioDeviceEvent) {
@@ -144,7 +148,16 @@ static META_FUNCTION(Event, dollarGestureEvent) {
 
 static META_FUNCTION(Event, textEvent) {
     CHECK_META(Event);
+    PUSH_STRING(self->text.text);
     return 1;
+}
+
+static META_FUNCTION(Event, textEditEvent) {
+    CHECK_META(Event);
+    PUSH_STRING(self->edit.text);
+    PUSH_INTEGER(self->edit.start);
+    PUSH_INTEGER(self->edit.length);
+    return 3;
 }
 
 BEGIN_META(Event) {
@@ -160,6 +173,9 @@ BEGIN_META(Event) {
         REG_META_FIELD(Event, mouseMotionEvent),
         REG_META_FIELD(Event, mouseButtonEvent),
         REG_META_FIELD(Event, keyboardEvent),
+        REG_META_FIELD(Event, joyHatEvent),
+        REG_META_FIELD(Event, textEvent),
+        REG_META_FIELD(Event, textEditEvent),
     END_REG()
     NEW_META(Event, _reg, _index_reg);
     return 1;

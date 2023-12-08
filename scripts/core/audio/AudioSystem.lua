@@ -7,6 +7,7 @@ local SoundInstance = require('audio.SoundInstance')
 --- @field device selene.sdl2.AudioDeviceID
 --- @field spec AudioSpec
 --- @field pool table
+--- @field auxData selene.Data
 local AudioSystem = {}
 
 local system_mt = {}
@@ -33,7 +34,7 @@ function AudioSystem.create(settings)
 
     audio.auxData = selene.Data.create(audio.spec.size)
     audio.pool = {}
-    for i=1,64 do
+    for _=1,64 do
         table.insert(
             audio.pool,
             sdl.AudioStream.create(audio.spec, audio.spec)
@@ -93,14 +94,14 @@ function AudioSystem:update()
             if res < 0 then
                 error('Stream put error: ' .. sdl.getError())
             elseif stream:available() == 0 then
-                if sound.loop then sound.offset = 0 
+                if sound.loop then sound.offset = 0
                 else table.insert(sounds_to_remove, i) end
             end
         end
     end
 
-    for i,s in ipairs(sounds_to_remove) do
-        local sound = table.remove(self.sounds, s)
+    for _,id in ipairs(sounds_to_remove) do
+        local sound = table.remove(self.sounds, id)
         sound.stream:unbind(self.device)
         table.insert(self.pool, sound.stream)
     end

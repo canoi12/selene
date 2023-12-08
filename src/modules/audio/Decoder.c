@@ -11,7 +11,7 @@ static MODULE_FUNCTION(Decoder, load) {
     INIT_ARG();
     size_t len;
     CHECK_LSTRING(path, &len);
-    char* p = path + len;
+    char* p = (char*)path + len;
     while (*p != '.')
         p--;
     int format = UNKNOWN_FORMAT;

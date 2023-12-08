@@ -25,6 +25,7 @@ local Image = require 'core.graphics.Image'
 --- @field texture selene.gl.Texture
 --- @field framebuffer selene.gl.Framebuffer
 --- @field program selene.gl.Program
+--- @field clipRect Rect | nil
 --- @field projection selene.linmath.Mat4
 --- @field modelview selene.linmath.Mat4
 local RenderState = {}
@@ -40,6 +41,8 @@ local RenderState = {}
 --- @field defaultFont Font
 --- @field window Window
 local Renderer = {}
+
+local size = {0, 0}
 
 ---Creates a new Renderer
 ---@param win Window
@@ -97,6 +100,8 @@ function Renderer.create(win)
 
     render.state.projection = Mat4.create()
     render.state.projection:ortho(0, width, height, 0, -1, 1)
+    size[1] = width
+    size[2] = height
 
     sdl.glSetSwapInterval(true)
     return setmetatable(render, {
@@ -177,6 +182,18 @@ function Renderer:setCanvas(canvas)
     end
 end
 
+--- @field rect Rect | nil
+function Renderer:setClipRect(rect)
+    self:finish()
+    self.batch:clear()
+    if not rect then
+        gl.scissor(0, 0, size[1], size[2])
+    else
+        gl.scissor(rect.x, size[2] - rect.h - rect.y, rect.w, rect.h)
+        -- print(rect.x, rect.y, rect.w, rect.h)
+    end
+end
+
 function Renderer:setFont(font)
     font = font or self.defaultFont
     self.state.font = font
@@ -202,7 +219,7 @@ function Renderer:begin()
     self:setFont()
     self:setCanvas()
 
-    gl.enable(gl.BLEND)
+    gl.enable(gl.BLEND, gl.SCISSOR_TEST)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
     self.defaultCanvas.width, self.defaultCanvas.height = self.window:getSize()
     self:setDrawColor(Color.white)
@@ -221,6 +238,8 @@ end
 function Renderer:onResize(w, h)
     gl.viewport(0, 0, w, h)
     self.state.projection:ortho(0, w, h, 0, -1, 1)
+    size[1] = w
+    size[2] = h
     if self.state.program then
         local loc = self.state.program:getUniformLocation("u_MVP")
         gl.uniformMatrix4fv(loc, 1, false, self.state.projection)

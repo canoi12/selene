@@ -11,7 +11,7 @@ local sound = Sound.load(app.audio, app.projectFs:resolve('sound.wav'))
 
 print(sound.data)
 
--- app.audio:playMusic(music)
+app.audio:playMusic(music)
 
 app.audio:playSound(sound)
 
@@ -86,3 +86,4 @@ function selene.key_callback(pressed, key, is_repeat)
       end
 end
 ]]
+

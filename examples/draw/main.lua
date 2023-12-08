@@ -1,14 +1,13 @@
-local graphics = require 'core.graphics'
-local Image = require 'core.graphics.Image'
+local App = require('App')
+local app = App.defaultEngine()
+local Image = require('graphics.Image')
+local img = Image.load(app.projectFs:resolve('sprites.png'))
 
-function selene.load()
-  image = Image('sprites.png')
-  local data = selene.stdc.malloc(10)
-  print(data, tonumber(data), tolightuserdata(0x90))
-  selene.stdc.free(data)
+--- @param r Renderer
+function app:draw(r)
+  r:clearColor({ 0, 0, 0, 255 })
+  r:clear()
+  r:copy(img)
 end
 
-function selene.draw()
-  graphics.clear()
-  graphics.draw(image)
-end
+return app

@@ -80,4 +80,21 @@ function Settings.default()
     return config
 end
 
+--- Load Settings from a lua file
+--- @param path string
+--- @param fs Filesystem | nil
+function Settings.load(path, fs)
+    local cfg = nil
+    if fs then
+        cfg = fs:load(path)
+    else
+        cfg = selene.fs.load(path)
+    end
+    if type(cfg) == "function" then
+        return cfg()
+    else
+        error("Invalid settings path")
+    end
+end
+
 return Settings

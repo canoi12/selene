@@ -342,6 +342,7 @@ BEGIN_MODULE(gl) {
         REG_FIELD(gl, clearColor),
         REG_FIELD(gl, clear),
         REG_FIELD(gl, viewport),
+        REG_FIELD(gl, scissor),
         REG_FIELD(gl, enable),
         REG_FIELD(gl, disable),
         REG_FIELD(gl, blendFunc),
