@@ -10,7 +10,7 @@ local Rect = require('core.Rect')
 local Drawable = require('core.graphics.Drawable')
 
 local Batch = require 'core.graphics.Batch'
-local Canvas = require 'core.graphics.Canvas'
+local Canvas = require 'graphics.Canvas'
 local Effect = require 'core.graphics.Effect'
 local Font = require 'core.graphics.Font'
 local Image = require 'core.graphics.Image'
@@ -170,6 +170,9 @@ end
 function Renderer:setCanvas(canvas)
     canvas = canvas or self.defaultCanvas
     if canvas.handle ~= self.state.framebuffer then
+        if canvas == self.defaultCanvas then
+            print('DEFAULT CANVAS', canvas.width, canvas.height)
+        end
         self:finish()
         self.batch:clear()
         gl.viewport(0, 0, canvas.width, canvas.height)
@@ -203,6 +206,7 @@ function Renderer:setDrawColor(c)
     self.state.drawColor = c
 end
 
+--- @param c Color
 function Renderer:setClearColor(c)
     self.state.clearColor = c
     gl.clearColor(c:toFloat())
@@ -240,6 +244,9 @@ function Renderer:onResize(w, h)
     self.state.projection:ortho(0, w, h, 0, -1, 1)
     size[1] = w
     size[2] = h
+    self.defaultCanvas.width = w
+    self.defaultCanvas.height = h
+    print('Resizing: ', w, h)
     if self.state.program then
         local loc = self.state.program:getUniformLocation("u_MVP")
         gl.uniformMatrix4fv(loc, 1, false, self.state.projection)

@@ -1,6 +1,13 @@
 local App = require('App')
+local Color = require('core.graphics.Color')
 local app = App.defaultEngine()
-app:initUI('pastel-pop16')
+--- @param r Renderer
+function app:onRender(r)
+    r:clearColor(Color.gray)
+    r:clear()
+    r:setDrawColor(Color.white)
+    r:print("Testando", 0, 16)
+end
 return app
 
 --[[

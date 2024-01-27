@@ -63,4 +63,7 @@ function Canvas:getUV(rect)
     return uv
 end
 
+function Canvas:getWidth() return self.width end
+function Canvas:getHeight() return self.height end
+
 return Canvas

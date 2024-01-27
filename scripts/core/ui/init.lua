@@ -1,9 +1,10 @@
-local Button = require('engine.ui.components.Button')
+local Button = require('ui.components.Button')
+local Checkbox = require('ui.components.Checkbox')
 local Color = require('graphics.Color')
-local Label = require('engine.ui.components.Label')
+local Label = require('ui.components.Label')
 local Rect = require('Rect')
 local Vec2 = require('math.Vec2')
-local Window = require('engine.ui.Window')
+local Window = require('ui.Window')
 
 --- @alias ui.ComponentState
 ---| "normal"
@@ -19,10 +20,6 @@ local Window = require('engine.ui.Window')
 --- @field size Vec2
 --- @field state ui.ComponentState
 local Component = {}
-
---- @class ui.Checkbox : ui.Component
---- @field checked boolean
-local Checkbox = {}
 
 --- @alias ui.WindowControl {current:ui.Window|nil,moving:boolean,resizing:boolean}
 
@@ -150,15 +147,20 @@ function ui:window(id, title, rect)
     win.components = {}
     self.windowPool[id].cursorPos[1] = win.rect.x
     self.windowPool[id].cursorPos[2] = win.rect.y + 18
+    win.nextY = win.cursorPos[2]
+    win.breakLine = false
     self.currentWindow = win
     return self.windowPool[id].isOpen
 end
 
+--- @param id string
 function ui:hbox(id)
-    return {
-        begin = function() end,
-        finish = function() end
-    }
+end
+
+function ui:breakLine()
+    if self.currentWindow then
+        self.currentWindow.breakLine = true
+    end
 end
 
 --- @param id string
@@ -168,16 +170,8 @@ function ui:label(id, label)
         self.components[id] = Label.create(id, label)
     end
     self.components[id].text = label
-    local size = { #label * 8 + 4, 8 }
-    local cursor = self.currentWindow.cursorPos
-    table.insert(
-        self.currentWindow.components,
-        {
-            id = id,
-            pos = { cursor[1], cursor[2] },
-            size = size,
-        })
-    cursor[1] = cursor[1] + size[1]
+    local size = { #label * 8 + 4, 16 }
+    self.currentWindow:addComponent(self.components[id], size)
 end
 
 --- @param id string
@@ -188,12 +182,19 @@ function ui:button(id, label, size)
     if not self.components[id] then
         self.components[id] = Button.create(id, label)
     end
-    self.components[id].label = label
     --- @type ui.component.Button
     local btn = self.components[id]
+    btn.label = label
+    local sz = { #label * 8 + 8, 16 }
+    self.currentWindow:addComponent(btn, sz)
+    --[[
     local win = self.currentWindow
     local cursor = self.currentWindow.cursorPos
     local sz = { #label * 8 + 8, 16 }
+    if cursor[1] + sz[1] > (win.rect.x + win.rect.w) then
+        cursor[1] = win.rect.x
+        cursor[2] = cursor[2] + 16
+    end
     table.insert(
         win.components,
         {
@@ -202,19 +203,47 @@ function ui:button(id, label, size)
             size = sz
         }
     )
+    ]]
     local pressed = btn.state == "released"
     if pressed then btn.state = "normal" end
-    cursor[1] = cursor[1] + sz[1]
+    -- cursor[1] = cursor[1] + sz[1]
     return pressed
 end
 
 function ui:item(id, label)
 end
 
+--- @param id string
+--- @param value boolean | nil
 function ui:checkbox(id, value)
     if not self.components[id] then
-        self.components[id] = {}
+        self.components[id] = Checkbox.create(id, value)
+        print(self.components[id])
     end
+    --- @type ui.component.Checkbox
+    local c = self.components[id]
+    self.currentWindow:addComponent(c, { 16, 16 })
+    --[[
+    local cursor = self.currentWindow.cursorPos
+    if cursor[1] + 16 > (win.rect.x + win.rect.w) then
+        cursor[1] = win.rect.x
+        cursor[2] = cursor[2] + 16
+    end
+    table.insert(
+        win.components,
+        {
+            id = id,
+            pos = { cursor[1], cursor[2] },
+            size = { 16, 16 }
+        }
+    )
+    ]]
+    local changed = c.state == "released"
+    if changed then
+        c.value = not c.value
+        c.state = "normal"
+    end
+    return changed, c.value
 end
 
 function ui:checklist(id, values)
@@ -323,15 +352,12 @@ function ui:onMouseMotion(x, y, dx, dy)
                 w = c.size[1],
                 h = c.size[2]
             }
-            local mt = getmetatable(cc)
-            if mt.__index == Button and cc.state ~= "pressed" then
+            if cc.state ~= 'pressed' then
                 if Rect.intersect(rr, x, y) then
-                    if cc.state ~= "pressed" then
-                        cc.state = "hovered"
-                        self.hoveredComponent = cc
-                    end
+                    cc.state = 'hovered'
+                    self.hoveredComponent = cc
                 else
-                    cc.state = "normal"
+                    cc.state = 'normal'
                 end
             end
         end
@@ -372,19 +398,14 @@ function ui:onMouseButton(btn, pressed, x, y)
                 w = c.size[1],
                 h = c.size[2]
             }
-            local mt = getmetatable(cc)
-            if mt.__index == Button then
-                if Rect.intersect(rr, x, y) then
-                    if pressed then
-                        cc.state = "pressed"
-                    elseif cc.state == "pressed" then
-                        cc.state = "released"
-                    else
-                        cc.state = "hovered"
-                    end
-                else
-                    cc.state = "normal"
+            if Rect.intersect(rr, x, y) then
+                if pressed then
+                    cc.state = "pressed"
+                elseif cc.state == "pressed" then
+                    cc.state = "released"
                 end
+            else
+                cc.state = "normal"
             end
         end
         if pressed and win.rect:intersect(x, y) then

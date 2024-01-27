@@ -19,7 +19,6 @@ function Image.create(width, height, channels, data)
     local texture = gl.Texture.create()
     channels = channels or 4
     assert(channels > 0 and channels < 5)
-    print(width, height)
     img.handle = texture
     img.width = width
     img.height = height

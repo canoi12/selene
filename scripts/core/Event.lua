@@ -59,6 +59,10 @@ local window_ev_table = {
     [sdl.WINDOWEVENT_MOVED] = "moved",
 }
 
+--- @alias EventName
+---| "quit"
+---| "mouse"
+
 --- @alias MouseEvent {which:integer,x:number,y:number,button:{index:integer,pressed:boolean},motion:{x:number,y:number},scroll:{value:number[],flipped:boolean}}
 --- @alias WindowEvent {id:integer,data:integer[]}
 --- @alias KeyboardEvent {scancode:integer,keycode:integer,mod:integer,isrepeat:boolean,pressed:boolean}

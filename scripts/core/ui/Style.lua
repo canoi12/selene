@@ -10,6 +10,7 @@ local FrameStyle = {}
 local WindowStyle = {}
 
 --- @alias ui.ButtonStyle {normal:ui.FrameStyle, hovered:ui.FrameStyle, pressed: ui.FrameStyle, released: ui.FrameStyle}
+--- @alias ui.CheckboxStyle {normal:ui.FrameStyle}
 
 --- @alias ui.TextStyle {fg:Color,shadow:Color}
 
@@ -29,28 +30,46 @@ function Style.create(palette)
         },
         window = {
             bg = palette[4],
-            borders = {palette[2], palette[6]},
+            borders = { palette[2], palette[6] },
             titleBar = {
                 bg = palette[16],
-                borders = {palette[2], palette[9]},
+                borders = { palette[2], palette[9] },
             }
         },
         button = {
             normal = {
                 bg = palette[4],
-                borders = {palette[2], palette[5]}
+                borders = { palette[2], palette[5] }
             },
             hovered = {
                 bg = palette[3],
-                borders = {palette[2], palette[5]}
+                borders = { palette[2], palette[5] }
             },
             pressed = {
                 bg = palette[6],
-                borders = {palette[5], palette[2]}
+                borders = { palette[5], palette[2] }
             },
             released = {
                 bg = palette[4],
-                borders = {palette[2], palette[5]}
+                borders = { palette[2], palette[5] }
+            },
+        },
+        checkbox = {
+            icon = {
+                fg = palette[10],
+                shadow = palette[1]
+            },
+            normal = {
+                bg = palette[3],
+                borders = { palette[5], palette[2] }
+            },
+            hovered = {
+                bg = palette[4],
+                borders = { palette[5], palette[2] }
+            },
+            pressed = {
+                bg = palette[5],
+                borders = { palette[5], palette[2] }
             },
         }
     }

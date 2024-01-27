@@ -1,4 +1,4 @@
-local Frame = require('engine.ui.Frame')
+local Frame = require('ui.Frame')
 --- @alias ui.ButtonState
 ---| "normal"
 ---| "hovered"

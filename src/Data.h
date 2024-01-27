@@ -5,10 +5,6 @@
 #include "lua_helper.h"
 
 typedef struct Data Data;
-struct Data {
-    void* data;
-    size_t size;
-};
 
 META_FUNCTION(Data, Realloc);
 META_FUNCTION(Data, Free);

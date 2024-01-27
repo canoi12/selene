@@ -19,8 +19,8 @@ local Settings = require('core.Settings')
 --- @field assetManager AssetManager | nil
 --- @field onEvent function | nil
 --- @field projectFs Filesystem
---- @field update function | nil
---- @field draw function | nil
+--- @field onTick function | nil
+--- @field onRender function | nil
 local App = {}
 local app_mt = {}
 app_mt.__index = App
@@ -47,7 +47,9 @@ function App.defaultEngine()
         error(engine)
     end
     --]]
-    app.draw = function(_, r)
+    app.onTick = function(_, dt)
+    end
+    app.onRender = function(_, r)
         r:clearColor(Color.black)
         r:clear()
     end
@@ -90,9 +92,9 @@ end
 
 --- @param paletteName ui.DefaultPalette | ui.Palette
 function App:initUI(paletteName)
-    local ui = require('engine.ui')
-    local palettes = require('engine.ui.palettes')
-    local Style = require('engine.ui.Style')
+    local ui = require('ui')
+    local palettes = require('ui.palettes')
+    local Style = require('ui.Style')
     local palette = {}
     if type(paletteName) == "string" then
         palette = palettes[paletteName]
@@ -136,12 +138,12 @@ function App:step()
 
     while deltaTime > 0.0 do
         local dt = math.min(delta, default_delta)
-        if self.update then self:update(dt) end
+        if self.onTick then self:onTick(dt) end
         deltaTime = deltaTime - dt
     end
 
     self.render:begin()
-    if self.draw then self:draw(self.render) end
+    if self.onRender then self:onRender(self.render) end
     if self.ui then self.ui:render(self.render) end
     self.render:finish()
     self.window:swap()
@@ -167,8 +169,8 @@ function App.createError(msg)
 
     app.window = Window.create(app.config)
     app.render = Render.create(app.window)
-    app.update = function() end
-    app.draw = function() end
+    app.onTick = function() end
+    app.onRender = function() end
     return setmetatable(app, {
         __index = App
     })
