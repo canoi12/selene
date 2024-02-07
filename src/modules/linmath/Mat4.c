@@ -10,6 +10,8 @@ static MODULE_FUNCTION(Mat4, create) {
 }
 
 static META_FUNCTION(Mat4, identity) {
+    CHECK_META(Mat4);
+    mat4x4_identity(*self);
     return 0;
 }
 
