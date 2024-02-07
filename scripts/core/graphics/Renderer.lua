@@ -1,73 +1,179 @@
---- @type selene.gl
 local gl = selene.gl
 local sdl = selene.sdl2
-local Mat4 = require 'core.math.Mat4'
-local Color = require 'core.graphics.Color'
-local Window = require 'core.Window'
 
-local Rect = require('core.Rect')
+local Color = require 'graphics.Color'
 
-local Drawable = require('core.graphics.Drawable')
-
-local Batch = require 'core.graphics.Batch'
+local Batch = require 'graphics.Batch'
 local Canvas = require 'graphics.Canvas'
-local Effect = require 'core.graphics.Effect'
-local Font = require 'core.graphics.Font'
-local Image = require 'core.graphics.Image'
+local Effect = require 'graphics.Effect'
+local Font = require 'graphics.Font'
+local Image = require 'graphics.Image'
 
---- @class RenderState
---- @field vao gl.VertexArray
---- @field drawMode string
---- @field drawColor Color
+local Vec2 = require('math.Vec2')
+local Mat4 = require('math.Mat4')
+
+local Rect = require 'Rect'
+
+--- @class RenderCommand
 --- @field clearColor Color
---- @field canvas Canvas | nil
---- @field font Font
---- @field texture selene.gl.Texture
---- @field framebuffer selene.gl.Framebuffer
---- @field program selene.gl.Program
---- @field clipRect Rect | nil
---- @field projection selene.linmath.Mat4
---- @field modelview selene.linmath.Mat4
-local RenderState = {}
+--- @field clearFlags integer
+--- @field clipRect Rect
+--- @field effect Effect
+--- @field canvas Canvas
+--- @field drawable Drawable
+--- @field drawInfo {mode:integer,first:integer,count:integer}
+--- @field call function
+local RenderCommand = {}
 
---- @class Renderer
---- @field state RenderState
---- @field glContext sdl.GLContext
---- @field vao gl.VertexArray
---- @field batch Batch
+local blitCount = 0
+
+local pass = function(cmd, r) end
+
+function RenderCommand.create(func)
+    local cmd = {}
+    cmd.drawInfo = {}
+    cmd.call = func or pass
+
+    return cmd
+end
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local clearRender = function (cmd, r)
+    gl.clearColor(cmd.clearColor:toFloat())
+    gl.clear(cmd.clearFlags)
+end
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local blitRender = function(cmd, r)
+    blitCount = blitCount + 1
+    local info = cmd.drawInfo
+    gl.drawArrays(info.mode, info.first, info.count)
+end
+
+local backToDefaultCanvas = RenderCommand.create(
+    --- @param cmd RenderCommand
+    --- @param r core.Renderer
+    function (cmd, r)
+        gl.Framebuffer.bind(gl.FRAMEBUFFER)
+        local canvas = r.defaultCanvas
+        local effect = r.currentEffect
+        gl.viewport(0, 0, canvas.width, canvas.height)
+        r.projection:ortho(0, canvas.width, canvas.height, 0, -1, 1)
+        effect:send("u_MVP", r.projection)
+        effect:send("u_View", r.modelview)
+    end
+)
+
+local backToDefaultEffect = RenderCommand.create(
+    --- @param cmd RenderCommand
+    --- @param r core.Renderer
+    function(cmd, r)
+        local effect = r.defaultEffect
+        gl.Program.use(effect.program)
+        effect:send("u_MVP", r.projection)
+        effect:send("u_View", r.modelview)
+    end
+)
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local backToWhiteImage = RenderCommand.create(
+    function(cmd, r)
+        local d = r.whiteImage
+        gl.Texture.bind(gl.TEXTURE_2D, d.texture)
+    end
+)
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local setClipRect = function (cmd, r)
+    local rect = cmd.clipRect
+    local size = r.size
+    gl.enable(gl.SCISSOR_TEST)
+    gl.scissor(rect.x, size[2] - rect.h - rect.y, rect.w, rect.h)
+end
+
+local disableScissor = RenderCommand.create(
+    --- @param cmd RenderCommand
+    --- @param r core.Renderer
+    function(cmd, r)
+        gl.disable(gl.SCISSOR_TEST)
+    end
+)
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local setCanvas = function(cmd, r)
+    gl.Framebuffer.bind(gl.FRAMEBUFFER, cmd.canvas.handle)
+    local canvas = cmd.canvas
+    local effect = cmd.effect
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    r.projection:ortho(0, canvas.width, canvas.height, 0, -1, 1)
+    effect:send("u_MVP", r.projection)
+    effect:send("u_View", r.modelview)
+end
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local setEffect = function(cmd, r)
+    local effect = cmd.effect
+    effect.program:use()
+    effect:send("u_MVP", r.projection)
+    effect:send("u_View", r.modelview)
+end
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local setDrawable = function(cmd, r)
+    local d = cmd.drawable
+    gl.Texture.bind(gl.TEXTURE_2D, d.texture)
+end
+
+--- @class core.Renderer
+--- @field glContext selene.sdl2.GLContext
+--- @field window Window
+--- @field clearColor Color
+--- @field drawColor Color
+--- @field vao selene.gl.VertexArray
+--- @field currentBatchOffset integer
+--- @field drawMode integer
 --- @field whiteImage Image
 --- @field defaultCanvas Canvas
 --- @field defaultEffect Effect
 --- @field defaultFont Font
---- @field window Window
+--- @field defaultBatch Batch
+--- @field size Vec2
+--- @field currentDrawable Drawable
+--- @field currentEffect Effect
+--- @field currentFont Font
+--- @field projection selene.linmath.Mat4
+--- @field modelview selene.linmath.Mat4
+--- @field commandPool {top:integer,commands:RenderCommand[]}
+--- @field drawCommands RenderCommand[]
 local Renderer = {}
 
-local size = {0, 0}
-
----Creates a new Renderer
----@param win Window
----@return Renderer
-function Renderer.create(win)
+--- Creates a new renderer
+--- @param app App
+--- @return core.Renderer
+function Renderer.create(app)
+    local win = app.window
     local render = {}
+
     render.glContext = sdl.GLContext.create(win.handle)
     sdl.glMakeCurrent(win.handle, render.glContext)
     gl.loadGlad(sdl.glGetProcAddress())
 
     render.window = win
-    --- @type RenderState
-    render.state = {}
 
-    render.state.drawMode = "triangles"
-    render.state.drawColor = Color.white
-    local vao = gl.VertexArray.create()
-    local batch = Batch.create(1000)
+    render.vao = gl.VertexArray.create()
+    render.defaultBatch = Batch.create(1000)
 
-    render.vao = vao
-    render.batch = batch
+    local batch = render.defaultBatch
 
-    vao:bind()
+    render.vao:bind()
     gl.Buffer.bind(gl.ARRAY_BUFFER, batch.buffer)
-
     gl.VertexArray.enable(0)
     gl.VertexArray.enable(1)
     gl.VertexArray.enable(2)
@@ -77,7 +183,7 @@ function Renderer.create(win)
     gl.VertexArray.attribPointer(p:getAttribLocation("a_Position"), 2, gl.FLOAT, false, 32, 0)
     gl.VertexArray.attribPointer(p:getAttribLocation("a_Color"), 4, gl.FLOAT, false, 32, 8)
     gl.VertexArray.attribPointer(p:getAttribLocation("a_Texcoord"), 2, gl.FLOAT, false, 32, 24)
-    
+
     gl.VertexArray.unbind()
     gl.Buffer.bind(gl.ARRAY_BUFFER)
 
@@ -85,7 +191,7 @@ function Renderer.create(win)
     imageData:writeBytes(0, 255, 255, 255, 255)
     local white = Image.create(1, 1, 4, imageData)
     imageData:free()
-
+    
     local width, height = win:getSize()
     local canvas = setmetatable({}, { __index = Canvas })
     canvas.width = width
@@ -98,305 +204,333 @@ function Renderer.create(win)
     render.defaultEffect = effect
     render.defaultFont = font
 
-    render.state.projection = Mat4.create()
-    render.state.projection:ortho(0, width, height, 0, -1, 1)
-    size[1] = width
-    size[2] = height
+    render.currentFont = font
+    render.currentCanvas = canvas
+    render.currentEffect = effect
+    render.currentDrawable = white
 
-    sdl.glSetSwapInterval(true)
-    return setmetatable(render, {
-        __index = Renderer
-    })
+    render.size = Vec2.create(win.width, win.height)
+
+    render.projection = Mat4.create()
+    render.projection:ortho(0, render.size[1], render.size[2], 0, -1, 1)
+    render.modelview = Mat4.create()
+
+    render.clearColor = Color.black
+    render.drawColor = Color.white
+
+    render.drawMode = gl.LINES
+
+    render.commandPool = {
+        top = 1,
+        commands = {}
+    }
+    for i=1,512 do
+        render.commandPool.commands[i] = RenderCommand.create()
+    end
+
+    render.drawCommands = {}
+
+    return setmetatable (
+        render,
+        { __index = Renderer }
+    )
 end
 
 function Renderer:destroy()
     self.glContext:destroy()
 end
 
-function Renderer:clearColor(color)
-    local cc = {0, 0, 0, 1}
-    for i,c in ipairs(color) do
-        cc[i] = c / 255
-    end
-    gl.clearColor(table.unpack(cc))
-end
-
-local drawModes = {
-    points = gl.POINTS,
-    lines = gl.LINES,
-    triangles = gl.TRIANGLES
-}
-
-local function setFramebuffer(r, t)
-    if t ~= r.state.texture then
-        r:finish()
-        r.batch:clear()
-        r.state.texture = t
-        gl.Texture.bind(gl.TEXTURE_2D, t)
-    end
-end
-
---- @param r Renderer
---- @param t selene.gl.Texture | nil
-local function setImage(r, t)
-    t = t or r.whiteImage.handle
-    if t ~= r.state.texture then
-        r:finish()
-        r.batch:clear()
-        r.state.texture = t
-        gl.Texture.bind(gl.TEXTURE_2D, t)
-    end
-end
-
-local function setDrawMode(r, mode)
-    if mode ~= r.state.drawMode then
-        r:finish()
-        r.batch:clear()
-        r.state.drawMode = mode
-    end
-end
-
-function Renderer:setEffect(effect)
-    effect = effect or self.defaultEffect
-    if effect.program ~= self.state.program then
-        self:finish()
-        self.batch:clear()
-        self.state.program = effect.program
-        gl.Program.use(effect.program)
-        effect:send("u_MVP", self.state.projection)
-    end
-end
-
-function Renderer:setCanvas(canvas)
-    canvas = canvas or self.defaultCanvas
-    if canvas.handle ~= self.state.framebuffer then
-        if canvas == self.defaultCanvas then
-            print('DEFAULT CANVAS', canvas.width, canvas.height)
-        end
-        self:finish()
-        self.batch:clear()
-        gl.viewport(0, 0, canvas.width, canvas.height)
-        gl.Framebuffer.bind(gl.FRAMEBUFFER, canvas.handle)
-        self.state.framebuffer = canvas.handle
-        
-        self.state.projection:ortho(0, canvas.width, canvas.height, 0, -1, 1)
-        local loc = self.state.program:getUniformLocation("u_MVP")
-        gl.uniformMatrix4fv(loc, 1, false, self.state.projection)
-    end
-end
-
---- @field rect Rect | nil
-function Renderer:setClipRect(rect)
-    self:finish()
-    self.batch:clear()
-    if not rect then
-        gl.scissor(0, 0, size[1], size[2])
-    else
-        gl.scissor(rect.x, size[2] - rect.h - rect.y, rect.w, rect.h)
-        -- print(rect.x, rect.y, rect.w, rect.h)
-    end
-end
-
-function Renderer:setFont(font)
-    font = font or self.defaultFont
-    self.state.font = font
-  end
-
-function Renderer:setDrawColor(c)
-    self.state.drawColor = c
-end
-
---- @param c Color
-function Renderer:setClearColor(c)
-    self.state.clearColor = c
-    gl.clearColor(c:toFloat())
-end
-
-function Renderer:clear()
-    gl.clear(gl.COLOR_BUFFER_BIT)
-end
-
-function Renderer:begin()
-    self.batch:clear()
-
-    self:setEffect()
-    self:setFont()
-    self:setCanvas()
-
-    gl.enable(gl.BLEND, gl.SCISSOR_TEST)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-    self.defaultCanvas.width, self.defaultCanvas.height = self.window:getSize()
-    self:setDrawColor(Color.white)
-end
-
-function Renderer:finish()
-    local mode = drawModes[self.state.drawMode]
-    assert(mode, "Invalid draw mode")
-    if not self.batch:flush() then return end
-    local count = self.batch:count()
-    self.vao:bind()
-    gl.drawArrays(mode, 0, count)
-    gl.VertexArray.unbind()
-end
-
 function Renderer:onResize(w, h)
     gl.viewport(0, 0, w, h)
-    self.state.projection:ortho(0, w, h, 0, -1, 1)
-    size[1] = w
-    size[2] = h
+    self.size[1] = w
+    self.size[2] = h
     self.defaultCanvas.width = w
     self.defaultCanvas.height = h
     print('Resizing: ', w, h)
-    if self.state.program then
-        local loc = self.state.program:getUniformLocation("u_MVP")
-        gl.uniformMatrix4fv(loc, 1, false, self.state.projection)
+end
+
+function Renderer:begin()
+    blitCount = 0
+    for i,cmd in ipairs(self.drawCommands) do
+        self.drawCommands[i] = nil
+    end
+    self.currentBatchOffset = 0
+    self.defaultBatch:clear()
+    self.commandPool.top = 1
+
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+    local cmd = self:newCommand(setCanvas)
+    cmd.canvas = self.defaultCanvas
+    cmd.effect = self.defaultEffect
+    table.insert(self.drawCommands, cmd)
+    table.insert(self.drawCommands, backToDefaultEffect)
+    table.insert(self.drawCommands, backToWhiteImage)
+
+    self.currentCanvas = self.defaultCanvas
+    self.currentEffect = self.defaultEffect
+    self.currentDrawable = self.whiteImage
+end
+
+
+function Renderer:finish()
+    self:pushBlitCommand()
+    self.defaultBatch:flush()
+    self.vao:bind()
+    for i,cmd in ipairs(self.drawCommands) do
+        cmd:call(self)
+    end
+    gl.VertexArray.unbind()
+end
+
+function Renderer:setClearColor(col)
+    self.clearColor = col or Color.black
+end
+
+function Renderer:setDrawColor(col)
+    self.drawColor = col or Color.white
+end
+
+function Renderer:newCommand(call)
+    local pool = self.commandPool
+    local cmd = pool.commands[pool.top]
+    cmd.call = call
+    if pool.top == #pool.commands then
+        local size = pool.top * 2
+        for i=pool.top+1,size do
+            pool.commands[i] = RenderCommand.create()
+        end
+    end
+    pool.top = pool.top + 1
+    return cmd
+end
+
+function Renderer:pushBlitCommand()
+    if self.currentBatchOffset == self.defaultBatch:getCount() then return end
+    local cmd = self:newCommand(blitRender)
+    cmd.drawInfo.mode = self.drawMode
+    cmd.drawInfo.first = self.currentBatchOffset
+    cmd.drawInfo.count = self.defaultBatch:getCount() - self.currentBatchOffset
+    self.currentBatchOffset = self.defaultBatch:getCount()
+    table.insert(self.drawCommands, cmd)
+end
+
+function Renderer:clear()
+    local cmd = self:newCommand(clearRender)
+    cmd.clearColor = self.clearColor
+    cmd.clearFlags = gl.COLOR_BUFFER_BIT
+    table.insert(self.drawCommands, cmd)
+end
+
+--- @param r core.Renderer
+--- @param m integer
+local function checkDrawMode(r, m)
+    if r.drawMode ~= m then
+        r:pushBlitCommand()
+        r.drawMode = m
+    end
+end
+
+--- @param r core.Renderer
+--- @param d Drawable
+local function checkDrawable(r, d)
+    if r.currentDrawable ~= d then
+        r:pushBlitCommand()
+        local cmd = r:newCommand(setDrawable)
+        cmd.drawable = d
+        table.insert(r.drawCommands, cmd)
+        r.currentDrawable = d
+    end
+end
+
+--- @param r core.Renderer
+local function checkWhiteImage(r)
+    if r.currentDrawable ~= r.whiteImage then
+        r:pushBlitCommand()
+        table.insert(r.drawCommands, backToWhiteImage)
+        r.currentDrawable = r.whiteImage
+    end
+end
+
+--- @param canvas Canvas | nil
+function Renderer:setCanvas(canvas)
+    canvas = canvas or self.defaultCanvas
+    if canvas ~= self.currentCanvas then
+        self:pushBlitCommand()
+        local cmd = self:newCommand(setCanvas)
+        cmd.effect = self.currentEffect
+        cmd.canvas = canvas
+        table.insert(self.drawCommands, cmd)
+        self.currentCanvas = canvas
+    end
+end
+
+--- @param effect Effect | nil
+function Renderer:setEffect(effect)
+    effect = effect or self.defaultEffect
+    if effect ~= self.currentEffect then
+        self:pushBlitCommand()
+        local cmd = self:newCommand(setEffect)
+        cmd.effect = effect
+        table.insert(self.drawCommands, cmd)
+        self.currentEffect = effect
+    end
+end
+
+--- @param rect Rect | nil
+function Renderer:setClipRect(rect)
+    self:pushBlitCommand()
+    if rect then
+        local cmd = self:newCommand(setClipRect)
+        cmd.clipRect = rect
+        table.insert(self.drawCommands, cmd)
+    else
+        table.insert(self.drawCommands, disableScissor)
     end
 end
 
 function Renderer:drawPoint(x, y)
-    setImage(self)
-    setDrawMode(self, 'points')
-    local r,g,b,a = self.state.drawColor:toFloat()
-    self.batch:push(x, y, r, g, b, a, 0, 0)
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.POINTS)
+    local r,g,b,a = self.drawColor:toFloat()
+    self.defaultBatch:push(x, y, r, g, b, a, 0, 0)
 end
 
 function Renderer:drawLine(x0, y0, x1, y1)
-    setImage(self)
-    setDrawMode(self, 'lines')
-    local r,g,b,a = self.state.drawColor:toFloat()
-    self.batch:push(x0, y0, r, g, b, a, 0.0, 0.0)
-    self.batch:push(x1, y1, r, g, b, a, 0.0, 0.0)
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.LINES)
+    local r,g,b,a = self.drawColor:toFloat()
+    self.defaultBatch:push(x0, y0, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x1, y1, r, g, b, a, 0.0, 0.0)
 end
 
 function Renderer:drawRectangle(x, y, width, height)
-    setImage(self)
-    setDrawMode(self, 'lines')
-    local r,g,b,a = self.state.drawColor:toFloat()
-    self.batch:push(x, y, r, g, b, a, 0.0, 0.0)
-    self.batch:push(x+width, y, r, g, b, a, 0.0, 0.0)
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.LINES)
+    local r,g,b,a = self.drawColor:toFloat()
+    self.defaultBatch:push(x, y, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x+width, y, r, g, b, a, 0.0, 0.0)
 
-    self.batch:push(x+width, y, r, g, b, a, 0.0, 0.0)
-    self.batch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x+width, y, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
 
-    self.batch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
-    self.batch:push(x, y+height, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x, y+height, r, g, b, a, 0.0, 0.0)
 
-    self.batch:push(x, y+height, r, g, b, a, 0.0, 0.0)
-    self.batch:push(x, y, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x, y+height, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x, y, r, g, b, a, 0.0, 0.0)
 end
 
 function Renderer:fillRectangle(x, y, width, height)
-    setImage(self)
-    setDrawMode(self, 'triangles')
-    local r,g,b,a = self.state.drawColor:toFloat()
-    self.batch:push(x, y, r, g, b, a, 0.0, 0.0)
-    self.batch:push(x+width, y, r, g, b, a, 0.0, 0.0)
-    self.batch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.TRIANGLES)
+    local r,g,b,a = self.drawColor:toFloat()
+    self.defaultBatch:push(x, y, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x+width, y, r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(x+width, y+height, r, g, b, a, 0.0, 0.0)
 
-    self.batch:push(x, y, r, g, b, a, 0, 0)
-    self.batch:push(x+width, y+height, r, g, b, a, 0, 0)
-    self.batch:push(x, y+height, r, g, b, a, 0, 0)
+    self.defaultBatch:push(x, y, r, g, b, a, 0, 0)
+    self.defaultBatch:push(x+width, y+height, r, g, b, a, 0, 0)
+    self.defaultBatch:push(x, y+height, r, g, b, a, 0, 0)
 end
 
 function Renderer:drawCircle(x, y, radius, side)
-    setImage(self)
-    setDrawMode(self, 'lines')
-    sides = sides or 32.0
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.LINES)
+    local sides = sides or 32.0
     local pi2 = math.pi * 2
-    local r,g,b,a = self.state.drawColor:toFloat()
+    local r,g,b,a = self.drawColor:toFloat()
     local u,v = 0, 0
     for i=1,sides do
     local tetha = ((i-1) * pi2) / sides
 
     local xx = x + (math.cos(tetha) * radius)
     local yy = y + (math.sin(tetha) * radius)
-    self.batch:push(xx, yy, r, g, b, a, u, v)
+    self.defaultBatch:push(xx, yy, r, g, b, a, u, v)
 
     tetha = (i * pi2) / sides
     xx = x + (math.cos(tetha) * radius)
     yy = y + (math.sin(tetha) * radius)
-    self.batch:push(xx, yy, r, g, b, a, u, v)
+    self.defaultBatch:push(xx, yy, r, g, b, a, u, v)
     end
 end
 
 function Renderer:fillCircle(x, y, radius, sides)
-    setImage(self)
-    setDrawMode(self, 'triangles')
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.TRIANGLES)
     sides = sides or 32.0
     local pi2 = math.pi * 2
-    local r,g,b,a = self.state.drawColor:toFloat()
+    local r,g,b,a = self.drawColor:toFloat()
     local u, v = 0, 0
     for i=1,sides do
-        self.batch:push(x, y, r, g, b, a, u, v)
+        self.defaultBatch:push(x, y, r, g, b, a, u, v)
 
         local tetha = ((i-1) * pi2) / sides
         local xx = x + (math.cos(tetha) * radius)
         local yy = y + (math.sin(tetha) * radius)
-        self.batch:push(xx, yy, r, g, b, a, u, v)
+        self.defaultBatch:push(xx, yy, r, g, b, a, u, v)
 
         tetha = (i * pi2) / sides
         xx = x + (math.cos(tetha) * radius)
         yy = y + (math.sin(tetha) * radius)
-        self.batch:push(xx, yy, r, g, b, a, u, v)
+        self.defaultBatch:push(xx, yy, r, g, b, a, u, v)
     end
 end
 
 function Renderer:drawTriangle(p0, p1, p2)
-    setImage(self)
-    setDrawMode(self, 'lines')
-    local r,g,b,a = self.state.drawColor:toFloat()
-    self.batch:push(p0[1], p0[2], r, g, b, a, 0.0, 0.0)
-    self.batch:push(p1[1], p1[2], r, g, b, a, 0.0, 0.0)
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.LINES)
+    local r,g,b,a = self.drawColor:toFloat()
+    self.defaultBatch:push(p0[1], p0[2], r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(p1[1], p1[2], r, g, b, a, 0.0, 0.0)
 
-    self.batch:push(p1[2], p1[2], r, g, b, a, 0.0, 0.0)
-    self.batch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(p1[2], p1[2], r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
 
-    self.batch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
-    self.batch:push(p0[1], p0[2], r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(p0[1], p0[2], r, g, b, a, 0.0, 0.0)
 end
 
 function Renderer:fillTriangle(p0, p1, p2)
-    setImage(self)
-    setDrawMode(self, 'triangles')
-    local r,g,b,a = self.state.drawColor:toFloat()
-    self.batch:push(p0[1], p0[2], r, g, b, a, 0.0, 0.0)
-    self.batch:push(p1[1], p1[2], r, g, b, a, 0.0, 0.0)
-    self.batch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
+    checkWhiteImage(self)
+    checkDrawMode(self, gl.TRIANGLES)
+    local r,g,b,a = self.drawColor:toFloat()
+    self.defaultBatch:push(p0[1], p0[2], r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(p1[1], p1[2], r, g, b, a, 0.0, 0.0)
+    self.defaultBatch:push(p2[1], p2[2], r, g, b, a, 0.0, 0.0)
 end
 
 --- @param drawable Drawable
 ---@param src Rect | nil
 ---@param dest Rect | nil
-function Renderer:copy(drawable, src, dest)
-    setImage(self, drawable:getTexture())
-    setDrawMode(self, "triangles")
+function Renderer:blit(drawable, src, dest)
+    checkDrawable(self, drawable)
+    checkDrawMode(self, gl.TRIANGLES)
     local o = drawable
 
-    local r,g,b,a = self.state.drawColor:toFloat()
+    local r,g,b,a = self.drawColor:toFloat()
     local s = src or Rect.create(0, 0, o:getWidth(), o:getHeight())
     local d = dest or {x = 0, y = 0, w = s.w, h = s.h}
     local uv = o:getUV(s)
     -- local uv = {0, 0, 1, 1}
 
-    self.batch:push(d.x, d.y, r, g, b, a, uv[1], uv[2])
-    self.batch:push(d.x+d.w, d.y, r, g, b, a, uv[3], uv[2])
-    self.batch:push(d.x+d.w, d.y+d.h, r, g, b, a, uv[3], uv[4])
+    self.defaultBatch:push(d.x, d.y, r, g, b, a, uv[1], uv[2])
+    self.defaultBatch:push(d.x+d.w, d.y, r, g, b, a, uv[3], uv[2])
+    self.defaultBatch:push(d.x+d.w, d.y+d.h, r, g, b, a, uv[3], uv[4])
 
-    self.batch:push(d.x, d.y, r, g, b, a, uv[1], uv[2])
-    self.batch:push(d.x+d.w, d.y+d.h, r, g, b, a, uv[3], uv[4])
-    self.batch:push(d.x, d.y+d.h, r, g, b, a, uv[1], uv[4])
+    self.defaultBatch:push(d.x, d.y, r, g, b, a, uv[1], uv[2])
+    self.defaultBatch:push(d.x+d.w, d.y+d.h, r, g, b, a, uv[3], uv[4])
+    self.defaultBatch:push(d.x, d.y+d.h, r, g, b, a, uv[1], uv[4])
 end
 
 function Renderer:print(text, x, y)
-    setDrawMode(self, "triangles")
-
+    checkDrawMode(self, gl.TRIANGLES)
     local ox = x or 0
     local oy = y or 0
-
-    local font = self.state.font
-    local image = font.texture
-    setImage(self, image)
-    local r,g,b,a = self.state.drawColor:toFloat()
+    local font = self.currentFont
+    checkDrawable(self, font)
+    local r,g,b,a = self.drawColor:toFloat()
     local i = 1
     while i <= #text do
         local c = text:byte(i)
@@ -417,13 +551,13 @@ function Renderer:print(text, x, y)
             uv[2] = 0
             uv[3] = uv[1] + (rect.bw / font.width)
             uv[4] = uv[2] + (rect.bh / font.height)
-            self.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
-            self.batch:push(xx+rect.bw, yy, r, g, b, a, uv[3], uv[2])
-            self.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
+            self.defaultBatch:push(xx, yy, r, g, b, a, uv[1], uv[2])
+            self.defaultBatch:push(xx+rect.bw, yy, r, g, b, a, uv[3], uv[2])
+            self.defaultBatch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
 
-            self.batch:push(xx, yy, r, g, b, a, uv[1], uv[2])
-            self.batch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
-            self.batch:push(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
+            self.defaultBatch:push(xx, yy, r, g, b, a, uv[1], uv[2])
+            self.defaultBatch:push(xx+rect.bw, yy+rect.bh, r, g, b, a, uv[3], uv[4])
+            self.defaultBatch:push(xx, yy+rect.bh, r, g, b, a, uv[1], uv[4])
 
             ox = ox + rect.ax
             oy = oy + rect.ay

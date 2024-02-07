@@ -3,15 +3,12 @@ local gl = selene.gl
 local Rect = require('core.Rect')
 
 --- @class Image : Drawable
---- @field handle selene.gl.Texture
---- @field width integer
---- @field height integer
 --- @field channels integer
 local Image = {}
 local image_mt = {}
 image_mt.__index = Image
 image_mt.__gc = function(s)
-    s.handle:destroy()
+    s.texture:destroy()
 end
 
 function Image.create(width, height, channels, data)
@@ -19,7 +16,7 @@ function Image.create(width, height, channels, data)
     local texture = gl.Texture.create()
     channels = channels or 4
     assert(channels > 0 and channels < 5)
-    img.handle = texture
+    img.texture = texture
     img.width = width
     img.height = height
     img.channels = channels
@@ -44,12 +41,14 @@ function Image.load(path)
 end
 
 function Image:getTexture()
-    return self.handle
+    return self.texture
 end
 
 function Image:getUV(rect)
     local width = self.width
     local height = self.height
+
+    self.
 
     rect = (rect or { x = 0, y = 0, w = width, h = height })
 

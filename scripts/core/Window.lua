@@ -1,7 +1,7 @@
 local sdl = selene.sdl2
 
 --- @class Window
---- @field handle sdl.Window
+--- @field handle selene.sdl2.Window
 --- @field width integer
 --- @field height integer
 --- @field fullscreen boolean

@@ -3,10 +3,7 @@ local gl = selene.gl
 local Rect = require 'core.Rect'
 
 --- @class Canvas : Drawable
---- @field handle gl.Framebuffer
---- @field texture gl.Texture | nil
---- @field width integer
---- @field height integer
+--- @field handle selene.gl.Framebuffer
 --- @field channels integer
 local Canvas = {}
 local canvas_mt = {

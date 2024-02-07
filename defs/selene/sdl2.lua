@@ -127,6 +127,9 @@ function Window:getSize() end
 --- Swap window
 function Window:swap() end
 
+--- Destroy window
+function Window:destroy() end
+
 ---------------- SDL2
 
 --- @class selene.sdl2

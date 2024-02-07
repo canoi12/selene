@@ -105,6 +105,8 @@ BEGIN_META(Gamepad) {
     BEGIN_REG()
         REG_FIELD(Gamepad, open),
         REG_FIELD(Gamepad, isValid),
+        REG_FIELD(Gamepad, getAxisFromString),
+        REG_FIELD(Gamepad, getButtonFromString),
     END_REG()
     BEGIN_REG(_index)
         REG_META_FIELD(Gamepad, getName),

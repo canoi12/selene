@@ -126,7 +126,8 @@ function Event.create()
             text = "",
             start = 0,
             lenght = 0
-        }
+        },
+        callbacks = {}
     }
     e.callbacks = {
         [sdl.QUIT] = function() e.name = 'quit' end,

@@ -21,6 +21,7 @@ local Settings = require('core.Settings')
 --- @field projectFs Filesystem
 --- @field onTick function | nil
 --- @field onRender function | nil
+--- @field onDestroy function | nil
 local App = {}
 local app_mt = {}
 app_mt.__index = App
@@ -58,7 +59,7 @@ function App.defaultEngine()
 
     app.audio = AudioSystem.create(config)
     app.window = Window.create(config)
-    app.render = Render.create(app.window)
+    app.render = Render.create(app)
     app.settings = config
 
     return setmetatable(app, app_mt)
@@ -81,7 +82,7 @@ function App.create(config)
     app.userFs = Filesystem.create(sdl.getPrefPath(org, config.name))
 
     app.window = Window.create(config)
-    app.render = Render.create(app.window)
+    app.render = Render.create(app)
     app.settings = config
 
     app.audio = AudioSystem.create(config)
@@ -168,7 +169,7 @@ function App.createError(msg)
     app.userFs = Filesystem.create(sdl.getPrefPath('selene', 'app'))
 
     app.window = Window.create(app.config)
-    app.render = Render.create(app.window)
+    app.render = Render.create(app)
     app.onTick = function() end
     app.onRender = function() end
     return setmetatable(app, {
@@ -177,6 +178,7 @@ function App.createError(msg)
 end
 
 function App:destroy()
+    if self.onDestroy then self:onDestroy() end
     self.audio:destroy()
     self.render:destroy()
     self.window:destroy()

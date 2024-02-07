@@ -1,10 +1,9 @@
---- @type Rect
-local Rect = require('core.Rect')
-
 --- @class Drawable
+--- @field texture selene.gl.Texture | nil
 --- @field width integer
 --- @field height integer
 local Drawable = {}
+
 --- @return selene.gl.Texture
 function Drawable:getTexture() end
 --- @param rect Rect

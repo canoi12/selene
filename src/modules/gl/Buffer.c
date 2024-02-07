@@ -18,8 +18,8 @@ static MODULE_FUNCTION(Buffer, bind) {
 static MODULE_FUNCTION(Buffer, data) {
     INIT_ARG();
     CHECK_INTEGER(target);
-    CHECK_INTEGER(size);
     CHECK_INTEGER(usage);
+    CHECK_INTEGER(size);
     TEST_UDATA(Data, data);
     if (data) glBufferData(target, size, data->data, usage);
     else glBufferData(target, size, NULL, usage);

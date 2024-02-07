@@ -1,9 +1,6 @@
 local gl = selene.gl
 
---- @class Font
---- @field texture selene.gl.Texture
---- @field width integer
---- @field height integer
+--- @class Font : Drawable
 --- @field size integer
 --- @field rects selene.font.Glyph
 local Font = {}
@@ -64,5 +61,8 @@ function Font.default()
 
     return setmetatable(f, font_mt)
 end
+
+function Font:getTexture() return self.texture end
+function Font:getHeight() return self.height end
 
 return Font

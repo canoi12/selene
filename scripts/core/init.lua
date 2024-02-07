@@ -42,6 +42,8 @@ else
     app = App.createError(ret)
 end
 
+selene.app = app
+
 return  {
     step = function() app:step() end,
     quit = function() app:destroy() end

@@ -4,11 +4,13 @@ local gl = selene.gl
 --- @field program selene.gl.Program
 --- @field vertShader selene.gl.Shader
 --- @field fragShader selene.gl.Shader
+--- @field worldLocation integer
+--- @field modelViewLocation integer
 local Effect = {}
 
 local defaultPosition = [[
 vec4 position(vec2 pos, mat4 mvp, mat4 view) {
-    return mvp * vec4(pos, 0.0, 1.0);
+    return mvp * view * vec4(pos, 0.0, 1.0);
 }
 ]]
 
