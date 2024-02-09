@@ -1,9 +1,12 @@
 local App = require('App')
 local Color = require('core.graphics.Color')
 local app = App.defaultEngine()
+for i,arg in ipairs(selene.args) do
+    print(i, arg)
+end
 --- @param r Renderer
 function app:onRender(r)
-    r:clearColor(Color.gray)
+    r:setClearColor(Color.gray)
     r:clear()
     r:setDrawColor(Color.white)
     r:print("Testando", 0, 16)

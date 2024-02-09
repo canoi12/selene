@@ -16,7 +16,7 @@ local Rect = require 'Rect'
 
 --- @class RenderCommand
 --- @field clearColor Color
---- @field clearFlags integer
+--- @field clearFlags integer[]
 --- @field clipRect Rect
 --- @field effect Effect
 --- @field canvas Canvas
@@ -41,7 +41,7 @@ end
 --- @param r core.Renderer
 local clearRender = function (cmd, r)
     gl.clearColor(cmd.clearColor:toFloat())
-    gl.clear(cmd.clearFlags)
+    gl.clear(table.unpack(cmd.clearFlags))
 end
 
 --- @param cmd RenderCommand
@@ -138,6 +138,7 @@ end
 --- @field drawColor Color
 --- @field vao selene.gl.VertexArray
 --- @field currentBatchOffset integer
+--- @field clearFlags integer[]
 --- @field drawMode integer
 --- @field whiteImage Image
 --- @field defaultCanvas Canvas
@@ -208,6 +209,8 @@ function Renderer.create(app)
     render.currentCanvas = canvas
     render.currentEffect = effect
     render.currentDrawable = white
+
+    render.clearFlags = {gl.COLOR_BUFFER_BIT}
 
     render.size = Vec2.create(win.width, win.height)
 
@@ -319,7 +322,10 @@ end
 function Renderer:clear()
     local cmd = self:newCommand(clearRender)
     cmd.clearColor = self.clearColor
-    cmd.clearFlags = gl.COLOR_BUFFER_BIT
+    cmd.clearFlags = {}
+    for i,flag in ipairs(self.clearFlags) do
+        cmd.clearFlags[i] = flag
+    end
     table.insert(self.drawCommands, cmd)
 end
 
