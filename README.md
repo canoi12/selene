@@ -86,16 +86,14 @@ local Settings = require('Settings')
 local s = Settings.create("game", 640, 380)
 local app = App.create(s)
 
-function app:update(dt)
+function app:onTick(dt)
 end
 
-function app:draw(render)
-    render:begin()
-    render:clearColor(Color.black)
+function app:onRender(render)
+    render:setClearColor(Color.black)
     render:clear()
 
     render:fillRectangle(32, 32, 64, 128)
-    render:finish()
 end
 return app
 ```
