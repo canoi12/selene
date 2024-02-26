@@ -19,7 +19,7 @@ local Settings = require('core.Settings')
 --- @field assetManager AssetManager | nil
 --- @field onEvent function | nil
 --- @field projectFs Filesystem
---- @field onTick function | nil
+--- @field onUpdate function | nil
 --- @field onRender function | nil
 --- @field onDestroy function | nil
 local App = {}
@@ -48,7 +48,7 @@ function App.defaultEngine()
         error(engine)
     end
     --]]
-    app.onTick = function(_, dt)
+    app.onUpdate = function(_, dt)
     end
     app.onRender = function(_, r)
         r:clearColor(Color.black)
@@ -139,7 +139,7 @@ function App:step()
 
     while deltaTime > 0.0 do
         local dt = math.min(delta, default_delta)
-        if self.onTick then self:onTick(dt) end
+        if self.onUpdate then self:onUpdate(dt) end
         deltaTime = deltaTime - dt
     end
 
@@ -170,7 +170,7 @@ function App.createError(msg)
 
     app.window = Window.create(app.config)
     app.render = Render.create(app)
-    app.onTick = function() end
+    app.onUpdate = function() end
     app.onRender = function() end
     return setmetatable(app, {
         __index = App

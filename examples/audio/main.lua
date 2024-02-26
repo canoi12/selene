@@ -15,7 +15,7 @@ app.audio:playMusic(music)
 
 app.audio:playSound(sound)
 
-function app:draw(r)
+function app:onRender(r)
     r:begin()
     r:clear()
     r:print('playing musics...')

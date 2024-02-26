@@ -38,6 +38,7 @@ local app = {}
 local state, ret = pcall(function() return require('main') end)
 if state then
     app = ret
+    if app.onInit then app:onInit() end
 else
     app = App.createError(ret)
 end

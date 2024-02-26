@@ -42,7 +42,7 @@ end
 
 local time = 0
 
-function app:onTick(dt)
+function app:onUpdate(dt)
     time = time + dt
     if Keyboard.isDown('left') then
         player.__worldX = player.__worldX - (80 * dt)

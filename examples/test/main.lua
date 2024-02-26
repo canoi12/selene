@@ -16,7 +16,7 @@ local gpad = Gamepad.open(0)
 print(Gamepad.getButtonFromString("a"))
 
 --- @param dt number
-function app:onTick(dt)
+function app:onUpdate(dt)
     if gpad:getButton(0) == 1 then
         print("AAAAAAAAAAH")
     end
