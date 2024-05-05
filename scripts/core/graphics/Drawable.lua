@@ -5,7 +5,7 @@
 local Drawable = {}
 
 --- @return selene.gl.Texture
-function Drawable:getTexture() end
+function Drawable:getTexture() return self.texture end
 --- @param rect Rect
 --- @return table
 function Drawable:getUV(rect) end

@@ -224,6 +224,18 @@ function Event.create()
             local which = e.handle:audioDeviceEvent()
             e.audio.added = false
             e.audio.which = which
+        end,
+        [sdl.CONTROLLERDEVICEADDED] = function ()
+            e.name = 'gamepad device'
+            local which = e.handle:gamepadDeviceEvent()
+            e.gamepad.added = true
+            e.gamepad.which = which
+        end,
+        [sdl.CONTROLLERDEVICEREMOVED] = function()
+            e.name = 'gamepad device'
+            local which = e.handle:gamepadDeviceEvent()
+            e.gamepad.added = false
+            e.gamepad.which = which
         end
     }
     return setmetatable(e, ev_mt)

@@ -176,6 +176,7 @@ BEGIN_META(Event) {
     REG_META_FIELD(Event, joyHatEvent),
     REG_META_FIELD(Event, textEvent),
     REG_META_FIELD(Event, textEditEvent),
+    REG_META_FIELD(Event, gamepadDeviceEvent),
   END_REG()
   NEW_META(Event, _reg, _index_reg);
   return 1;

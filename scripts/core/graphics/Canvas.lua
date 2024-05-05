@@ -1,6 +1,7 @@
 local gl = selene.gl
 --- @type Rect
 local Rect = require 'core.Rect'
+local Drawable = require('core.graphics.Drawable')
 
 --- @class Canvas : Drawable
 --- @field handle selene.gl.Framebuffer
@@ -38,12 +39,11 @@ function Canvas.create(width, height)
 end
 
 function Canvas.default()
-
 end
 
-function Canvas:getTexture()
-    return self.texture
-end
+Canvas.getTexture = Drawable.getTexture
+Canvas.getWidth = Drawable.getWidth
+Canvas.getHeight = Drawable.getHeight
 
 function Canvas:getUV(rect)
     local width = self.width
@@ -59,8 +59,5 @@ function Canvas:getUV(rect)
     uv[4] = 1 - (uv_y + rect.h / height)
     return uv
 end
-
-function Canvas:getWidth() return self.width end
-function Canvas:getHeight() return self.height end
 
 return Canvas

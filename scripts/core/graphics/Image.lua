@@ -1,6 +1,7 @@
 local gl = selene.gl
 --- @type Rect
 local Rect = require('core.Rect')
+local Drawable = require('core.graphics.Drawable')
 
 --- @class Image : Drawable
 --- @field channels integer
@@ -40,9 +41,9 @@ function Image.load(path)
     return img
 end
 
-function Image:getTexture()
-    return self.texture
-end
+Image.getTexture = Drawable.getTexture
+Image.getWidth = Drawable.getWidth
+Image.getHeight = Drawable.getHeight
 
 function Image:getUV(rect)
     local width = self.width
@@ -59,14 +60,6 @@ function Image:getUV(rect)
     uv[3] = uv[1] + rect.w / width
     uv[4] = uv_y + rect.h / height
     return uv
-end
-
-function Image:getWidth()
-    return self.width
-end
-
-function Image:getHeight()
-    return self.height
 end
 
 return Image
