@@ -1,18 +1,18 @@
 local gl = selene.gl
 local sdl = selene.sdl2
 
-local Color = require 'graphics.Color'
+local Color = require 'core.graphics.Color'
 
-local Batch = require 'graphics.Batch'
-local Canvas = require 'graphics.Canvas'
-local Effect = require 'graphics.Effect'
-local Font = require 'graphics.Font'
-local Image = require 'graphics.Image'
+local Batch = require 'core.graphics.Batch'
+local Canvas = require 'core.graphics.Canvas'
+local Effect = require 'core.graphics.Effect'
+local Font = require 'core.graphics.Font'
+local Image = require 'core.graphics.Image'
 
-local Vec2 = require('math.Vec2')
-local Mat4 = require('math.Mat4')
+local Vec2 = require('core.math.Vec2')
+local Mat4 = require('core.math.Mat4')
 
-local Rect = require 'Rect'
+local Rect = require 'core.Rect'
 
 --- @class RenderCommand
 --- @field clearColor Color
@@ -21,6 +21,9 @@ local Rect = require 'Rect'
 --- @field effect Effect
 --- @field canvas Canvas
 --- @field drawable Drawable
+--- @field translation number[]
+--- @field scale number[]
+--- @field rotation number
 --- @field drawInfo {mode:integer,first:integer,count:integer}
 --- @field call function
 local RenderCommand = {}
@@ -49,6 +52,10 @@ end
 local blitRender = function(cmd, r)
     blitCount = blitCount + 1
     local info = cmd.drawInfo
+    if r.cameraUpdated and r.currentEffect then
+        r.currentEffect:send("u_View", r.modelview)
+        r.cameraUpdated = false
+    end
     gl.drawArrays(info.mode, info.first, info.count)
 end
 
@@ -103,6 +110,36 @@ local disableScissor = RenderCommand.create(
     end
 )
 
+local resetModelView = RenderCommand.create(
+    --- @param cmd RenderCommand
+    --- @param r core.Renderer
+    function(cmd, r)
+        r.modelview:identity()
+        r.cameraUpdated = true
+    end
+)
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local translateModelView = function(cmd, r)
+    r.modelview:translate(cmd.translation[1], cmd.translation[2])
+    r.cameraUpdated = true
+end
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local scaleModelView = function(cmd, r)
+    r.modelview:scale(cmd.scale[1], cmd.scale[2])
+    r.cameraUpdated = true
+end
+
+--- @param cmd RenderCommand
+--- @param r core.Renderer
+local rotateModelView = function(cmd, r)
+    r.modelview:rotate(cmd.rotation)
+    r.cameraUpdated = true
+end
+
 --- @param cmd RenderCommand
 --- @param r core.Renderer
 local setCanvas = function(cmd, r)
@@ -112,7 +149,7 @@ local setCanvas = function(cmd, r)
     gl.viewport(0, 0, canvas.width, canvas.height)
     r.projection:ortho(0, canvas.width, canvas.height, 0, -1, 1)
     effect:send("u_MVP", r.projection)
-    effect:send("u_View", r.modelview)
+    -- effect:send("u_View", r.modelview)
 end
 
 --- @param cmd RenderCommand
@@ -122,6 +159,7 @@ local setEffect = function(cmd, r)
     effect.program:use()
     effect:send("u_MVP", r.projection)
     effect:send("u_View", r.modelview)
+    r.cameraUpdated = false
 end
 
 --- @param cmd RenderCommand
@@ -151,15 +189,17 @@ end
 --- @field currentFont Font
 --- @field projection selene.linmath.Mat4
 --- @field modelview selene.linmath.Mat4
+--- @field cameraUpdated boolean
 --- @field commandPool {top:integer,commands:RenderCommand[]}
 --- @field drawCommands RenderCommand[]
 local Renderer = {}
 
 --- Creates a new renderer
---- @param app App
+--- @param window Window
+--- @param conf Settings
 --- @return core.Renderer
-function Renderer.create(app)
-    local win = app.window
+function Renderer.create(window, conf)
+    local win = window
     local render = {}
 
     render.glContext = sdl.GLContext.create(win.handle)
@@ -223,6 +263,8 @@ function Renderer.create(app)
 
     render.drawMode = gl.LINES
 
+    render.cameraUpdated = false
+
     render.commandPool = {
         top = 1,
         commands = {}
@@ -270,6 +312,7 @@ function Renderer:begin()
     table.insert(self.drawCommands, cmd)
     table.insert(self.drawCommands, backToDefaultEffect)
     table.insert(self.drawCommands, backToWhiteImage)
+    table.insert(self.drawCommands, resetModelView)
 
     self.currentCanvas = self.defaultCanvas
     self.currentEffect = self.defaultEffect
@@ -357,6 +400,40 @@ local function checkWhiteImage(r)
         table.insert(r.drawCommands, backToWhiteImage)
         r.currentDrawable = r.whiteImage
     end
+end
+
+function Renderer:identity()
+    self:pushBlitCommand()
+    table.insert(self.drawCommands, resetModelView)
+end
+
+--- Translate the camera matrix
+--- @param x number
+--- @param y number
+function Renderer:translate(x, y)
+    self:pushBlitCommand()
+    local cmd = self:newCommand(translateModelView)
+    cmd.translation = {x, y}
+    table.insert(self.drawCommands, cmd)
+end
+
+--- Scale the camera matrix
+--- @param x number
+--- @param y number
+function Renderer:scale(x, y)
+    self:pushBlitCommand()
+    local cmd = self:newCommand(scaleModelView)
+    cmd.scale = {x, y}
+    table.insert(self.drawCommands, cmd)
+end
+
+--- Rotate the camera matrix
+--- @param angle number
+function Renderer:rotate(angle)
+    self:pushBlitCommand()
+    local cmd = self:newCommand(rotateModelView)
+    cmd.rotation = angle
+    table.insert(self.drawCommands, cmd)
 end
 
 --- @param canvas Canvas | nil
