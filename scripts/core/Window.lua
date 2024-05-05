@@ -10,7 +10,7 @@ local Window = {}
 
 --- Create a new window with settings
 --- @param settings Settings
---- @return Window
+--- @return Window | nil
 function Window.create(settings)
     --- @type Window
     local window = {}
@@ -53,6 +53,9 @@ function Window.create(settings)
         settings.window.width, settings.window.height,
         flags
     )
+
+    if window.handle == nil then return nil end
+
     return setmetatable(window, { __index = Window })
 end
 

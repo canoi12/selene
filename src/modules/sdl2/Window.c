@@ -18,13 +18,18 @@ static MODULE_FUNCTION(Window, create) {
             lua_pop(L, 1);
         }
 
-        NEW_UDATA(Window, window);
-        *window = SDL_CreateWindow(
+        SDL_Window* win = SDL_CreateWindow(
             title,
             x, y,
             width, height,
             flags
         );
+        if (!win)
+            lua_pushnil(L);
+        else {
+            NEW_UDATA(Window, window);
+            *window = win;
+        }
     }
     return 1;
 }
