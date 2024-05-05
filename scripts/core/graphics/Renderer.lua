@@ -1,18 +1,18 @@
 local gl = selene.gl
 local sdl = selene.sdl2
 
-local Color = require 'graphics.Color'
+local Color = require 'core.graphics.Color'
 
-local Batch = require 'graphics.Batch'
-local Canvas = require 'graphics.Canvas'
-local Effect = require 'graphics.Effect'
-local Font = require 'graphics.Font'
-local Image = require 'graphics.Image'
+local Batch = require 'core.graphics.Batch'
+local Canvas = require 'core.graphics.Canvas'
+local Effect = require 'core.graphics.Effect'
+local Font = require 'core.graphics.Font'
+local Image = require 'core.graphics.Image'
 
-local Vec2 = require('math.Vec2')
-local Mat4 = require('math.Mat4')
+local Vec2 = require('core.math.Vec2')
+local Mat4 = require('core.math.Mat4')
 
-local Rect = require 'Rect'
+local Rect = require 'core.Rect'
 
 --- @class RenderCommand
 --- @field clearColor Color
@@ -156,10 +156,10 @@ end
 local Renderer = {}
 
 --- Creates a new renderer
---- @param app App
+--- @param win Window
 --- @return core.Renderer
-function Renderer.create(app)
-    local win = app.window
+function Renderer.create(win)
+    -- local win = app.window
     local render = {}
 
     render.glContext = sdl.GLContext.create(win.handle)

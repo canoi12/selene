@@ -6,6 +6,9 @@ extern MODULE_FUNCTION(Data, meta);
 static int _running;
 static int _core_reg;
 
+static int _step_reg;
+static int _quit_reg;
+
 static int l_selene_getVersion(lua_State* L) {
     PUSH_STRING(SELENE_VERSION);
     return 1;
@@ -89,28 +92,34 @@ int luaopen_selene(lua_State* L) {
 
 static void _step(void* _L) {
     lua_State* L = (lua_State*)_L;
-    lua_rawgetp(L, LUA_REGISTRYINDEX, &_core_reg);
-    lua_getfield(L, -1, "step");
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &_step_reg);
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         const char* error_buf = lua_tostring(L, -1);
-        fprintf(stderr, "Failed to call core step function: %s\n", error_buf);
+        fprintf(stderr, "[selene] failed to call step function: %s\n", error_buf);
         _running = 0;
         return;
     }
-    lua_pop(L, 1);
 }
 
 const char* _boot =
 "local sdl = selene.sdl2\n"
 "local function add_path(path)\n"
-"    package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path\n"
+"    package.path = path .. '/?.lua;' .. path .. '/?/init.lua;' .. package.path\n"
 "end\n"
 "return function()\n"
+"   add_path(sdl.getBasePath())\n"
+"   if selene.args[2] then add_path(selene.args[2]) end\n"
+"   return require('main')\n"
+"end\n";
+#if 0
+"return function()\n"
 "    add_path(sdl.getBasePath())\n"
+"   add_path(selene.args[2])\n"
 // "    local state = xpcall(function() require('tl').loader() end,\n"
 // "    function() print('Booting without Teal') end)\n"
-"    return require('"CORE_DIR"')\n"
+// "    return require('"CORE_DIR"')\n"
 "end";
+#endif
 
 int main(int argc, char** argv) {
     lua_State* L = luaL_newstate();
@@ -127,11 +136,26 @@ int main(int argc, char** argv) {
 
     if (luaL_dostring(L, _boot) != LUA_OK) {
         const char* error_buf = lua_tostring(L, -1);
-        fprintf(stderr, "Failed to parse boot script: %s\n", error_buf);
+        fprintf(stderr, "[selene] failed to parse boot script: %s\n", error_buf);
         lua_close(L);
         return -1;
     }
 
+    if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
+        const char* error_buf = lua_tostring(L, -1);
+        fprintf(stderr, "[selene] failed to run boot script: %s\n", error_buf);
+        lua_close(L);
+        return -1;
+    }
+
+    lua_getfield(L, -1, "step");
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &_step_reg);
+    
+    lua_getfield(L, -1, "quit");
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &_quit_reg);
+    // lua_rawsetp(L, -1, &_quit_reg);
+    // lua_rawsetp(L, -1, &_step_reg);
+#if 0
     if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
         const char* error_buf = lua_tostring(L, -1);
         fprintf(stderr, "Failed to run boot function: %s\n", error_buf);
@@ -139,6 +163,7 @@ int main(int argc, char** argv) {
         return -1;
     }
     lua_rawsetp(L, LUA_REGISTRYINDEX, &_core_reg);
+#endif
     _running = 1;
 
 #if defined(__EMSCRIPTEN__)
@@ -147,15 +172,13 @@ int main(int argc, char** argv) {
     while (_running) _step(L);
 #endif
 
-    lua_rawgetp(L, LUA_REGISTRYINDEX, &_core_reg);
-    lua_getfield(L, -1, "quit");
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &_quit_reg);
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         const char* error_buf = lua_tostring(L, -1);
-        fprintf(stderr, "Failed to call lua deinit function: %s\n", error_buf);
+        fprintf(stderr, "[selene] failed to call quit function: %s\n", error_buf);
         lua_close(L);
         return -1;
     }
-    lua_pop(L, 1);
     lua_close(L);
     return 0;
 }
