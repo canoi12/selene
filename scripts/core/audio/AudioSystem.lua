@@ -1,6 +1,6 @@
 --- @type selene.sdl2
 local sdl = selene.sdl2
-local SoundInstance = require('audio.SoundInstance')
+local SoundInstance = require('core.audio.SoundInstance')
 --- @class AudioSystem
 --- @field music Music | nil
 --- @field sounds table

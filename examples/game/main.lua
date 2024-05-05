@@ -1,20 +1,21 @@
-local App = require('App')
-local Canvas = require('graphics.Canvas')
-local Color = require('graphics.Color')
-local Image = require('graphics.Image')
-local Rect = require('Rect')
-local Keyboard = require('input.Keyboard')
-local app = App.defaultEngine()
+local core = require('core').init()
+
+local Canvas = require('core.graphics.Canvas')
+local Color = require('core.graphics.Color')
+local Image = require('core.graphics.Image')
+local Rect = require('core.Rect')
+local Keyboard = require('core.input.Keyboard')
+-- local app = App.defaultEngine()
 
 json = require('libs.json')
 
-local source = app.projectFs:read('game.ldtk'):getString()
+local source = core.projectFs:read('game.ldtk'):getString()
 local project = json.decode(source)
 
 local canvas = Canvas.create(160, 95)
 
 local tilesets = project.defs.tilesets
-local sprites = Image.load(app.projectFs:resolve(tilesets[1].relPath))
+local sprites = Image.load(core.projectFs:resolve(tilesets[1].relPath))
 local levels = project.levels
 local level = levels[1]
 
@@ -26,7 +27,7 @@ local layer = level.layerInstances[2]
 
 local player = entities.entityInstances[1].__tile
 
-function app:onInit()
+function core.onStart()
     
 end
 
@@ -42,7 +43,7 @@ end
 
 local time = 0
 
-function app:onUpdate(dt)
+function core.onUpdate(dt)
     time = time + dt
     if Keyboard.isDown('left') then
         player.__worldX = player.__worldX - (80 * dt)
@@ -59,8 +60,8 @@ end
 
 print(canvas.handle)
 local cr = Rect.create(0, 0, 640, 380)
---- @param r Renderer
-function app:onRender(r)
+--- @param r core.Renderer
+function core.onRender(r)
     r:setClearColor(Color.gray)
     r:clear()
     r:setCanvas(canvas)
@@ -91,4 +92,4 @@ function app:onRender(r)
     r:blit(canvas, nil, cr)
 end
 
-return app
+return core.default()

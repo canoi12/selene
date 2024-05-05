@@ -1,13 +1,14 @@
-local App = require('App')
-local app = App.defaultEngine()
-local Image = require('graphics.Image')
-local img = Image.load(app.projectFs:resolve('sprites.png'))
+local core = require('core').init()
+local Color = require('core.graphics.Color')
+local Image = require('core.graphics.Image')
 
---- @param r Renderer
-function app:onRender(r)
-  r:clearColor({ 0, 0, 0, 255 })
+local img = Image.load(core.projectFs:resolve('sprites.png'))
+
+--- @param r core.Renderer
+function core.onRender(r)
+  r:setClearColor(Color.black)
   r:clear()
-  r:copy(img)
+  r:blit(img)
 end
 
-return app
+return core.default()

@@ -195,11 +195,10 @@ end
 local Renderer = {}
 
 --- Creates a new renderer
---- @param window Window
---- @param conf Settings
+--- @param win Window
 --- @return core.Renderer
-function Renderer.create(window, conf)
-    local win = window
+function Renderer.create(win)
+    -- local win = app.window
     local render = {}
 
     render.glContext = sdl.GLContext.create(win.handle)
