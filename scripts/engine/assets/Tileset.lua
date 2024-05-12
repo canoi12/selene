@@ -1,4 +1,4 @@
---- @class engine.Tileset
+--- @class engine.assets.Tileset
 local Tileset = {}
 local mt = {}
 mt.__index = Tileset

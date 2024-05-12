@@ -19,8 +19,8 @@ function Tileset.create(data)
 end
 
 --- @param r core.Renderer
-function Tileset:draw(r)
-    r:blit(self.image, self.dest, self.src)
+function Tileset:onRender(r)
+    r:blit(self.image, self.src, self.dest)
 end
 
 return Tileset

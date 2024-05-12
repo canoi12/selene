@@ -8,9 +8,9 @@ function Layer.create(data)
 end
 
 --- @param dt number
-function Layer:update(dt)
+function Layer:onUpdate(dt)
 end
 
 --- @param r core.Renderer
-function Layer:draw(r)
+function Layer:onRender(r)
 end

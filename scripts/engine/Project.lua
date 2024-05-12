@@ -1,8 +1,6 @@
 local Image = require('core.graphics.Image')
 local Tileset = require('engine.Tileset')
 local World = require('engine.World')
-selene.json = require('third.json')
-local json = selene.json
 
 --- @class engine.Project
 --- @field data table
@@ -15,19 +13,16 @@ local Project = {}
 local mt = {}
 mt.__index = Project
 
-function Project.create(ldtk)
+function Project.create(data)
+    if not data then
+        error('Project data cannot be null')
+    end
     --- @type engine.Project
     local p = setmetatable({}, mt)
 
-    p.fs = selene.projectFs
-    
-    if type(ldtk) == "string" then
-        p.data = json.load(p.fs:resolve(ldtk))
-    elseif type(ldtk) == "table" then
-        p.data = ldtk
-    else
-        error("Invalid type for project data")
-    end
+    p.fs = selene.engine.projectFs
+    p.data = data
+
     selene.project = p
 
     p.worlds = {}
@@ -47,18 +42,18 @@ function Project.create(ldtk)
 end
 
 --- @param dt number
-function Project:update(dt)
+function Project:onUpdate(dt)
     local w = self.worlds[self.currentWorld]
     if w then
-        w:update(dt)
+        w:onUpdate(dt)
     end
 end
 
 --- @param r core.Renderer
-function Project:draw(r)
+function Project:onRender(r)
     local w = self.worlds[self.currentWorld]
     if w then
-        w:draw(r)
+        w:onRender(r)
     end
 end
 

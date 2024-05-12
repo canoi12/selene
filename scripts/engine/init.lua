@@ -1,12 +1,16 @@
 local sdl = selene.sdl2
 local traceback = debug.traceback
 
-local AudioSystem = require('engine.audio.AudioSystem')
-local Event = require('engine.Event')
-local Filesystem = require('engine.Filesystem')
-local Settings = require('engine.Settings')
-local Renderer = require('engine.graphics.Renderer')
-local Window = require('engine.Window')
+local AudioSystem = require('core.audio.AudioSystem')
+local Event = require('core.Event')
+local Filesystem = require('core.Filesystem')
+local Renderer = require('core.graphics.Renderer')
+local Settings = require('core.Settings')
+local Window = require('core.Window')
+
+local Project = require('engine.Project')
+
+local json = require('engine.third.json')
 
 --- @class engine.Context
 --- @field audio AudioSystem
@@ -28,7 +32,7 @@ if not sdl.init(
     error("Failed to init SDL2: " .. sdl.getError())
 end
 
-function engine.init(settings)
+function engine.init(path)
     local args = selene.args
     engine.event = Event.create()
     engine.execFs = Filesystem.create(sdl.getBasePath())
@@ -37,6 +41,8 @@ function engine.init(settings)
     else
         engine.projectFs = Filesystem.create(args[2])
     end
+    local str = engine.projectFs:read(path):getString()
+    local data = json.decode(str)
     settings = settings or Settings.default()
 
     local org = settings.org or 'selene'
@@ -51,6 +57,10 @@ function engine.init(settings)
     engine.settings = settings
 
     engine.audio = AudioSystem.create(settings)
+
+    selene.engine = engine
+    engine.project = Project.create(data)
+
     return engine
 end
 
@@ -73,6 +83,9 @@ function engine.processCallback(e)
     end
     if engine.onEvent then engine.onEvent(e) end
 end
+
+engine.onUpdate = function (dt) engine.project:onUpdate(dt) end
+engine.onRender = function(r) engine.project:onRender(r) end
 
 function engine.default()
     if engine.onStart then engine.onStart() end
