@@ -4,7 +4,6 @@
 extern MODULE_FUNCTION(Data, meta);
 
 static int _running;
-static int _core_reg;
 
 static int _step_reg;
 static int _quit_reg;
