@@ -46,6 +46,8 @@ endif()
 file(GLOB selene_source src/selene.c src/Data.c src/modules/*/*.c external/glad/src/glad.c)
 file(GLOB lua_source external/lua/src/*.c)
 
+list(REMOVE_ITEM lua_source ${CMAKE_SOURCE_DIR}/external/lua/src/lua.c ${CMAKE_SOURCE_DIR}/external/lua/src/luac.c)
+
 add_library(lua STATIC ${lua_source})
 # target_link_libraries(lua m)
 

@@ -1,18 +1,19 @@
-local graphics = require 'core.graphics'
-local filesystem = require 'core.filesystem'
+local core = require('core').init()
 
-function selene.load()
+function core.onStart()
     selene.fs.File.__gc = function(f)
-        f:Close()
+        f:close()
     end
-    file = filesystem.open('file.txt')
-    data = file:Read()
+    file = core.projectFs:open('file.txt')
+    data = file:read()
 
-    str = data:GetString()
+    str = data:getString()
     print(str)
 end
 
-function selene.draw()
-    graphics.clear()
-    graphics.print(str, 8, 8)
+function core.onRender(r)
+    r:clear()
+    r:print(str, 8, 8)
 end
+
+return core.default()

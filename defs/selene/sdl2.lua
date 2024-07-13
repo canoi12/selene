@@ -87,6 +87,39 @@ function AudioStream:available() end
 --- @class selene.sdl2.Event
 local Event = {}
 
+--- Create a new SDL2 Event
+--- @return selene.sdl2.Event
+function Event.create() end
+
+--- Poll events
+--- @return boolean
+function Event:poll() end
+
+--- Event type ID
+--- @return integer
+function Event:getType() end
+
+--- Return the data of the window event
+--- @return integer, integer, integer, integer
+function Event:windowEvent() end
+
+--- Return the data of the mouse motion event
+--- @return integer, integer, integer, integer, integer, integer
+function Event:mouseMotionEvent() end
+
+--- Return the data of the mouse button event
+--- @return integer, integer, integer, integer, integer
+function Event:mouseButtonEvent() end
+
+--- Return the data of the mouse wheel event
+--- @return integer, integer, integer, integer
+function Event:mouseWheelEvent() end
+
+--- Return the data of the keyboard event
+--- @return integer, integer, integer, integer, integer
+function Event:KeyboardEvent() end
+
+
 ---------------- Gamepad
 
 --- @class selene.sdl2.Gamepad

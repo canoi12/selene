@@ -1,28 +1,24 @@
 local Music = require 'core.audio.Music'
 local Sound = require 'core.audio.Sound'
 
-local App = require('App')
-local Settings = require('Settings')
-
-local app = App.create(Settings.create("audio example", 640, 380))
-
-local music = Music.load(app.audio, app.projectFs:resolve('music.ogg'))
-local sound = Sound.load(app.audio, app.projectFs:resolve('sound.wav'))
+local core = require("core").init()
+local music = Music.load(core.audio, core.projectFs:resolve('music.ogg'))
+local sound = Sound.load(core.audio, core.projectFs:resolve('sound.wav'))
 
 print(sound.data)
 
-app.audio:playMusic(music)
+core.audio:playMusic(music)
 
-app.audio:playSound(sound)
+core.audio:playSound(sound)
 
-function app:onRender(r)
+function core.onRender(r)
     r:begin()
     r:clear()
     r:print('playing musics...')
     r:finish()
 end
 
-return app
+return core.default()
 
 --[[
 
