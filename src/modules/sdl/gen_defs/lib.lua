@@ -90,7 +90,58 @@ local AudioDeviceID = {
     lua_getfield(L, arg, "samples");
     int samples = (int)luaL_checkinteger(L, -1);
     lua_pop(L, 1);
-	return 1;
+
+    lua_getfield(L, arg, "poolSize");
+    int pool_size = (int)luaL_optinteger(L, -1, 256);
+    lua_pop(L, 1);
+    arg++;
+
+    SDL_AudioSpec desired, obtained;
+    desired.freq = freq;
+    desired.channels = channels;
+    desired.samples = samples;
+    desired.format = AUDIO_S16SYS;
+    desired.callback = _audio_stream_callback;
+
+    AudioStreamPool* pool = malloc(sizeof(*pool));
+    desired.userdata = pool;
+
+    pool->count = pool_size;
+    pool->data = malloc(pool_size * sizeof(sdlAudioStream));
+    memset(pool->data, 0, pool_size * sizeof(sdlAudioStream));
+    pool->top = 0;
+    pool->availables = malloc(pool_size * sizeof(int));
+    for (int i = 0; i < pool_size; i++) {
+        pool->availables[i] = pool_size - i - 1;
+    }
+    pool->top = pool_size;
+
+    GET_BOOLEAN(allowed_changes);
+    sdlAudioDeviceID d = SDL_OpenAudioDevice(device, is_capture, &desired, &obtained, allowed_changes);
+    if (d == 0) {
+        PUSH_NIL();
+        return 1;
+    } else {
+        NEW_UDATA(sdlAudioDeviceID, dev);
+        *dev = d;
+    }
+    PUSH_VALUE(-1);
+    PUSH_LUDATA(pool);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+
+    lua_createtable(LUA_STATE_NAME, 0, 4);
+    PUSH_INTEGER(obtained.channels);
+    SET_FIELD(-2, "channels");
+    PUSH_INTEGER(obtained.freq);
+    SET_FIELD(-2, "sampleRate");
+    PUSH_INTEGER(obtained.samples);
+    SET_FIELD(-2, "samples");
+    PUSH_INTEGER(obtained.format);
+    SET_FIELD(-2, "format");
+    PUSH_INTEGER(obtained.size);
+    SET_FIELD(-2, "size");
+
+	return 2;
 ]]
     }),
     function_block('integer', 'get_num_audio_devices', 'boolean is_capture', { ccall = "PUSH_INTEGER(SDL_GetNumAudioDevices(is_capture));" }),
