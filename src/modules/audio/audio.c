@@ -1,14 +1,9 @@
 #include "audio.h"
-
-#include "selene.h"
 #include "lua_helper.h"
 
-extern MODULE_FUNCTION(Decoder, meta);
-
-BEGIN_MODULE(audio) {
-    BEGIN_REG()
+int luaopen_audio(lua_State* L) {
+    BEGIN_REG(reg)
     END_REG()
-    luaL_newlib(L, _reg);
-    LOAD_META(Decoder);
+    luaL_newlib(L, reg);
     return 1;
 }

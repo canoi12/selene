@@ -1,24 +1,25 @@
-local Music = require 'core.audio.Music'
-local Sound = require 'core.audio.Sound'
+local runner = require('runner')
+runner.init('runner example', 640, 380)
 
-local core = require("core").init()
-local music = Music.load(core.audio, core.projectFs:resolve('music.ogg'))
-local sound = Sound.load(core.audio, core.projectFs:resolve('sound.wav'))
+local AudioSystem = require('AudioSystem')
+runner.audio = AudioSystem.create()
+
+local Music = require('AudioSystem.Music')
+local Sound = require('AudioSystem.Sound')
+
+local music = Music.load(runner.audio, selene.__dir .. '/music.ogg')
+local sound = Sound.load(runner.audio, selene.__dir .. '/sound.wav')
 
 print(sound.data)
 
-core.audio:playMusic(music)
+runner.audio:playMusic(music)
+-- runner.audio:playSound(sound)
 
-core.audio:playSound(sound)
-
-function core.onRender(r)
-    r:begin()
-    r:clear()
-    r:print('playing musics...')
-    r:finish()
-end
-
-return core.default()
+selene.setStep(function()
+    runner.audio:update()
+    runner.step()
+end)
+selene.setQuit(runner.quit)
 
 --[[
 

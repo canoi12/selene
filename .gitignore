@@ -1,6 +1,5 @@
 build/
-*.json
-external/SDL2
+dist/
+compile_commands.json
+src/third/SDL2/
 .cache/
-.vscode/
-web/

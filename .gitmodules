@@ -1,0 +1,3 @@
+[submodule "plugins"]
+	path = plugins
+	url = https://codeberg.org/canoi12/selene-plugins

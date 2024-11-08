@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "selsdl.h": "c",
+        "selgl.h": "c",
+        "dr_wav.h": "c",
+        "lauxlib.h": "c",
+        "data_types.h": "c",
+        "selene_sdl.h": "c",
+        "selene.h": "c"
+    },
+    "C_Cpp.default.compilerPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\bin\\clang.exe"
+}
