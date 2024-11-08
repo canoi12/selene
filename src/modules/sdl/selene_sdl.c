@@ -79,6 +79,28 @@ static MODULE_FUNCTION(sdl, is_tablet) {
  #                      #
  ************************/
  
+static void _audio_stream_callback(void* userdata, Uint8* stream, int len) {
+    #if defined(OS_WIN)
+        Uint8 temp[32000];
+    #else
+        Uint8 temp[len];
+    #endif
+    SDL_memset(stream, 0, len);
+    AudioStreamPool* pool = (AudioStreamPool*)userdata;
+    int i = 0;
+    while (i < pool->count) {
+        if (pool->data[i] != NULL) {
+            int result = SDL_AudioStreamGet(pool->data[i], temp, len);
+            if (result < 0) {}
+            else if (result != len) {
+                SDL_memset(temp + result, 0, len - result);
+            }
+            SDL_MixAudioFormat(stream, temp, AUDIO_S16SYS, len, SDL_MIX_MAXVOLUME);
+        }
+        i++;
+    }
+}
+
 static MODULE_FUNCTION(sdl, open_audio_device) {
     INIT_ARG();
 	const char* device = NULL;
