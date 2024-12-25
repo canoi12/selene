@@ -1,8 +1,7 @@
+local plugins = require('plugins')
+plugins.setup()
 local runner = require('runner')
 runner.init('runner example', 640, 380)
-
-local AudioSystem = require('AudioSystem')
-runner.audio = AudioSystem.create()
 
 local Music = require('AudioSystem.Music')
 local Sound = require('AudioSystem.Sound')
@@ -12,14 +11,14 @@ local sound = Sound.load(runner.audio, selene.__dir .. '/sound.wav')
 
 print(sound.data)
 
-runner.audio:playMusic(music)
+runner.audio:play_music(music)
 -- runner.audio:playSound(sound)
 
-selene.setStep(function()
+selene.set_step(function()
     runner.audio:update()
     runner.step()
 end)
-selene.setQuit(runner.quit)
+selene.set_quit(runner.quit)
 
 --[[
 

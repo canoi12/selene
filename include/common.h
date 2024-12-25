@@ -44,4 +44,8 @@
 #endif
 #endif
 
+#ifndef SELENE_NO_AUDIO
+
+#endif
+
 #endif /* COMMON_H_ */

@@ -17,9 +17,10 @@ local last = sdl.get_ticks()
 
 local speed = 320
 
-local font_data = selene.FontData.create8x8()
-local font, image = sdl.create_font(render, font_data)
-print(font, image, font_data.image_width)
+-- local font_data = selene.FontData.create8x8()
+local font_data = font.create8x8()
+local ft, image = sdl.create_font(render, font_data)
+print(ft, image, font_data.image_width)
 render:set_blend_mode(sdl.BLENDMODE_BLEND)
 image:set_blend_mode(sdl.BLENDMODE_BLEND)
 print(render.set_blend_mode, image.set_blend_mode)
@@ -57,8 +58,8 @@ function()
     end
     render:draw_circle(pos[1], pos[2], 8)
     render:fill_circle(w/2, h/2, 32)
-    render:print(font, 'pois é meu amigo de fé, meu irmão, camarada.\n acho que tá funcionando', 64, 128)
-    render:print(font, str)
+    render:print(ft, 'pois é meu amigo de fé, meu irmão, camarada.\n acho que tá funcionando', 64, 128)
+    render:print(ft, str)
     -- render:copy(image, nil, {0, 0, 2048, 8})
     render:present()
 end

@@ -7,7 +7,7 @@ local profile = {
 if os.host() == "android" then
     profile.major = 2
     profile.minor = 0
-    profile.profile = sdl.GL_CONTEXT_PROFILE_ES 
+    profile.profile = sdl.GL_CONTEXT_PROFILE_ES
 end
 sdl.gl_set_attribute(sdl.GL_CONTEXT_MAJOR_VERSION, profile.major)
 sdl.gl_set_attribute(sdl.GL_CONTEXT_MINOR_VERSION, profile.minor)
@@ -36,32 +36,21 @@ local frag = gl.create_shader(gl.FRAGMENT_SHADER)
 gl.shader_source(vert, [[
 #version 100
 attribute vec3 position;
-attribute vec3 colors;
-attribute vec2 texcoord;
 
 uniform mat4 world;
 uniform mat4 view;
 uniform mat4 model;
 
-varying vec2 v_texcoord;
-varying vec3 v_colors;
-
 void main() {
     gl_Position = world * view * model * vec4(position, 1);
-    v_texcoord = texcoord;
-    v_colors = colors;
-    }
+}
 ]])
 gl.shader_source(frag, [[
 #version 100
 precision mediump float;
-varying vec2 v_texcoord;
-varying vec3 v_colors;
-
-uniform sampler2D u_tex;
 
 void main() {
-    gl_FragColor = texture2D(u_tex, v_texcoord) * vec4(v_colors, 1);
+    gl_FragColor = vec4(1, 0, 1, 1);
 }
 ]])
 gl.compile_shader(vert)
@@ -98,7 +87,7 @@ gl.use_program()
 gl.delete_shader(vert)
 gl.delete_shader(frag)
 
-local cube = selene.MeshData.cubeData()
+local cube = selene.cube_data()
 print(cube.vertices, cube.indices)
 
 local vao = gl.gen_vertex_arrays(1)
@@ -106,31 +95,33 @@ local vao = gl.gen_vertex_arrays(1)
 gl.bind_vertex_array(vao)
 gl.bind_buffer(gl.ARRAY_BUFFER, buf)
 gl.bind_buffer(gl.ELEMENT_ARRAY_BUFFER, index)
-gl.buffer_data(gl.ARRAY_BUFFER, cube.num_vertices * 8 * 4, cube.vertices, gl.STATIC_DRAW)
+gl.buffer_data(gl.ARRAY_BUFFER, cube.num_vertices * 12, cube.vertices, gl.STATIC_DRAW)
 gl.buffer_data(gl.ELEMENT_ARRAY_BUFFER, cube.num_indices * 4, cube.indices, gl.STATIC_DRAW)
 print(cube.num_vertices, cube.num_indices)
 
 gl.enable_vertex_attrib_array(0)
-gl.enable_vertex_attrib_array(1)
-gl.enable_vertex_attrib_array(2)
-local s = cube.num_vertices * 4
+-- gl.enable_vertex_attrib_array(1)
+-- gl.enable_vertex_attrib_array(2)
+-- local s = cube.num_vertices * 4
 gl.vertex_attrib_pointer(0, 3, gl.FLOAT, false, 0, 0)
-gl.vertex_attrib_pointer(1, 3, gl.FLOAT, false, 0, s*3)
-gl.vertex_attrib_pointer(2, 2, gl.FLOAT, false, 0, s*3*2)
+-- gl.vertex_attrib_pointer(1, 3, gl.FLOAT, false, 0, s*3)
+-- gl.vertex_attrib_pointer(2, 2, gl.FLOAT, false, 0, s*3*2)
 
 gl.bind_vertex_array()
 gl.bind_buffer(gl.ARRAY_BUFFER)
 gl.bind_buffer(gl.ELEMENT_ARRAY_BUFFER)
 
-local img_data = selene.Data.create(4)
-img_data:writeBytes(0, 255, 255, 255, 255)
+local img_data = selene.create_data(4)
+print(img_data, img_data.write_bytes)
+img_data:write_bytes(0, 255, 255, 255, 255)
+print('teste')
 local tex = gl.gen_textures(1)
 gl.bind_texture(gl.TEXTURE_2D, tex)
 gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 -- gl.Texture.paremeteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-gl.tex_image2d(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, img_data.root)
+gl.tex_image2d(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, img_data:root())
 gl.bind_texture(gl.TEXTURE_2D)
 
 gl.enable(gl.DEPTH_TEST)

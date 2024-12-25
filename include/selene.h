@@ -27,7 +27,7 @@ static const char* selene_init_script =
 "local path = selene.__exec\n"
 "if path then\n"
 #if defined(__linux__)
-    "package.path = path .. '?.lua;'\n"
+    "package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path\n"
     "package.cpath = path .. '/?.so;' .. package.cpath\n"
 #endif
     "selene.__dir = './'\n"
@@ -55,11 +55,15 @@ static const char* selene_init_script =
 
 extern int selene_running;
 
+#if 0
 typedef struct {
     size_t size;
     char* root;
 } Data;
+#endif
+typedef unsigned int Data;
 
+#ifndef SELENE_NO_IMAGE
 enum {
     SELENE_PIXEL_NONE = -1,
     SELENE_PIXEL_FANTASY,
@@ -70,22 +74,40 @@ enum {
     SELENE_PIXEL_BGR,
     SELENE_PIXEL_BGRA
 };
+#endif
 
-typedef struct {
-    int data_size;
-    unsigned char* pixels;
-    int width, height;
+#ifndef SELENE_NO_AUDIO
+enum {
+    SELENE_UNKNOWN_AUDIO_FORMAT = 0,
+    SELENE_WAV_FORMAT,
+    SELENE_OGG_FORMAT,
+    SELENE_MP3_FORMAT,
+    SELENE_FLAC_FORMAT,
+};
+
+typedef struct AudioDecoder AudioDecoder;
+
+typedef struct AudioInfo AudioInfo;
+struct AudioInfo {
+    int sample_rate;
     int channels;
-    int pixel_format;
-} ImageData;
+    int format;
+    int bit_depth;
+    int size;
+    int frame_count;
+};
+#endif
 
+#ifndef SELENE_NO_FONT
 typedef struct {
     int ax, ay;
     int bl, bt;
     int bw, bh;
     int tx;
 } FontGlyph;
+#endif
 
+#if 0
 typedef struct {
     int data_size;
     unsigned char* bitmap;
@@ -94,6 +116,14 @@ typedef struct {
     int pixel_format;
     FontGlyph glyphs[256];
 } FontData;
+
+typedef struct {
+    int data_size;
+    unsigned char* pixels;
+    int width, height;
+    int channels;
+    int pixel_format;
+} ImageData;
 
 typedef struct {
     int num_vertices;
@@ -106,6 +136,7 @@ typedef struct {
     float* texcoords;
     unsigned int* indices;
 } MeshData;
+#endif
 
 #if defined(__cplusplus)
 extern "C" {

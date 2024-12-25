@@ -66,7 +66,7 @@ if (COMPILE_WEB) then
 end
     filter {}
 
-require('src.modules')
+-- require('src.modules')
 project("selene")
     filter {"system:android"}
         files {"src/platforms/android.c"}
@@ -82,8 +82,9 @@ project("selene")
     language "C"
     targetdir(_BIN_DIR)
     includedirs {"include/", "./", "plugins/", "src/"}
-    links {"modules", "lua"}
-    files {"src/selene.c", "include/*.h", 'src/third/glad/src/glad.c'}
+    -- links {"modules", "lua"}
+    links {"lua"}
+    files {"src/selene.c", "src/Data.c", "src/modules/*.c", "include/*.h", 'src/third/glad/src/glad.c'}
 
     if _OPTIONS['plugins'] then
         links {"selene-plugins"}

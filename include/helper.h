@@ -4,33 +4,32 @@
 #include "selene.h"
 #include "common.h"
 
-void char_rect(void* f, const int c, float *x, float *y, int* out_pos, int* out_rect, int width) {
-    FontData* font = (FontData*)f;
+void char_rect(FontGlyph* glyphs, const int c, float *x, float *y, int* out_pos, int* out_rect, int width, int line_height) {
     if (c == '\n') {
         *x = 0;
-        *y += font->image_width;
+        *y += line_height;
         return;
     }
 
     if (c == '\t') {
-        *x += font->glyphs[c].bw * 2;
+        *x += glyphs[c].bw * 2;
         return;
     }
-    if (width != 0 && *x + (font->glyphs[c].bl) > width) {
+    if (width != 0 && *x + (glyphs[c].bl) > width) {
         *x = 0;
-        *y += font->image_height;
+        *y += line_height;
     }
 
-    float x2 = *x + (float)font->glyphs[c].bl;
-    float y2 = *y + (float)font->glyphs[c].bt;
+    float x2 = *x + (float)glyphs[c].bl;
+    float y2 = *y + (float)glyphs[c].bt;
 
-    float s0 = font->glyphs[c].tx;
+    float s0 = glyphs[c].tx;
     float t0 = 0;
-    int s1 = font->glyphs[c].bw;
-    int t1 = font->glyphs[c].bh;
+    int s1 = glyphs[c].bw;
+    int t1 = glyphs[c].bh;
 
-    *x += font->glyphs[c].ax;
-    *y += font->glyphs[c].ay;
+    *x += glyphs[c].ax;
+    *y += glyphs[c].ay;
 
     if (out_pos) {
         out_pos[0] = x2;
