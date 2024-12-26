@@ -2,7 +2,7 @@
 
 An executable with embedded Lua modules for game making programming (sdl2, opengl, linmath, json, asset loaders).
 
-## build
+## Building
 
 First you need to install [premake5](https://premake.github.io/) on your system.
 
@@ -47,3 +47,11 @@ make -C build/ config=[debug_linux,release_linux]
 ### Other platforms
 
 I made some tests building for `Android` and `Emscripten` as well, later I will update this README with the steps to build for those platforms.
+
+## Running
+
+After build or download a release file, you can execute the binay: `selene` or `selene.exe` on Windows.
+Notice that on Windows you will also need to put the SDL2.dll on the same folder.
+
+The executable searches for a main.lua. It uses the lua `require`, to it will search that file following the `package.path` hierarchy.
+From running a project that is on another directory, you can use the flag `-d` and provide the path (both absolute and relative works), `selene -d examples/sdl2`.
