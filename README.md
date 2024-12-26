@@ -53,5 +53,5 @@ I made some tests building for `Android` and `Emscripten` as well, later I will 
 After build or download a release file, you can execute the binay: `selene` or `selene.exe` on Windows.
 Notice that on Windows you will also need to put the SDL2.dll on the same folder.
 
-The executable searches for a main.lua. It uses the lua `require`, to it will search that file following the `package.path` hierarchy.
+The executable searches for a main.lua file, and it uses the lua `require` to do this job, so it will search the main file following the `package.path` hierarchy.
 From running a project that is on another directory, you can use the flag `-d` and provide the path (both absolute and relative works), `selene -d examples/sdl2`.
