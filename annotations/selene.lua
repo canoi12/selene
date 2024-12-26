@@ -1,8 +1,6 @@
 --- @meta
 --- @class selene
---- @field AudioDecoder selene.AudioDecoder
 --- @field Data selene.Data
---- @field FontData selene.FontData
 --- @field __dir string
 --- @field __exec string
 selene = {}
@@ -10,9 +8,23 @@ selene = {}
 --- @return string
 function selene.get_version() end
 
+--- Get executable path
+--- @return string
+function selene.get_exec_path() end
+
 --- Set state of selene main loop
 --- @param val boolean
 function selene.set_running(val) end
+
+--- Create data
+--- @param size integer
+--- @param copy_data selene.Data|nil
+--- @return selene.Data
+function selene.create_data(size, copy_data) end
+
+--- Create cube data for simple examples
+--- @return {vertices:userdata, indices:userdata, num_vertices:integer, num_indices:integer}
+function selene.cube_data() end
 
 --- Set step callback
 --- @param func function
