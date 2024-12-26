@@ -4,7 +4,8 @@ newoption {
     description = 'generate files of the selected lib',
     allowed = {
         {'sdl2', 'SDL2'},
-        {'gl', 'OpenGL'}
+        {'gl', 'OpenGL'},
+        {'fs', 'Filesystem'},
     }
 }
 
