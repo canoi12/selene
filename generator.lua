@@ -43,6 +43,38 @@ function Lib:add_header(blk)
     end
 end
 
+local function generate_enums(lib)
+    local file = ''
+    if lib.enums then
+        file = file .. 'BEGIN_ENUM(' .. lib.name .. '_Enums)\n'
+        for i,enum in ipairs(lib.enums) do
+            local prefix = lib.enum_prefix
+            local name = enum
+            if type(enum) == 'table' then
+                if enum.iif then
+                    file = file .. '#if ' .. enum.iif .. '\n'
+                end
+                name = enum[1]
+            end
+            if prefix and string.contains(name, prefix) then
+                local plen = string.len(prefix)
+                local e = string.sub(name, plen, string.len(name))
+                if string.sub(e, 1, 1) == '_' then e = string.sub(e, 2, string.len(e)) end
+                file = file .. '    ENUM_FIELD(' .. e .. ', ' .. prefix .. '),\n'
+            else
+                file = file .. '    {"' .. name .. '", ' .. name .. '},\n'
+            end
+            if type(enum) == 'table' then
+                if enum.iif then
+                    file = file .. '#endif\n'
+                end
+            end
+        end
+        file = file .. 'END_ENUM()\n'
+    end
+    return file
+end
+
 function generate_header(lib)
     print('Generating header')
     local hfile = '#ifndef SELENE_' .. string.upper(lib.name) .. '_H_\n'
@@ -52,21 +84,7 @@ function generate_header(lib)
         hfile = hfile .. lib.header_include
     end
 
-    if lib.enums then
-        hfile = hfile .. 'BEGIN_ENUM(' .. lib.name .. '_Enums)\n'
-        for i,enum in ipairs(lib.enums) do
-            local prefix = lib.enum_prefix
-            if prefix and string.contains(enum, prefix) then
-                local plen = string.len(prefix)
-                local e = string.sub(enum, plen, string.len(enum))
-                if string.sub(e, 1, 1) == '_' then e = string.sub(e, 2, string.len(e)) end
-                hfile = hfile .. '    ENUM_FIELD(' .. e .. ', ' .. prefix .. '),\n'
-            else
-                hfile = hfile .. '    {"' .. enum .. '", ' .. enum .. '},\n'
-            end
-        end
-        hfile = hfile .. 'END_ENUM()\n'
-    end
+    hfile = hfile .. generate_enums(lib)
 
     if lib.meta_types then
         hfile = hfile .. '\n'
@@ -101,14 +119,16 @@ function generate_source(lib)
     end
     cfile = cfile .. '    END_REG()\n'
     cfile = cfile .. '    luaL_newlib(L, reg);\n'
-    
+
     if lib.meta_types and #lib.meta_types > 0 then
         cfile = cfile .. '    for (int i = 0; ' .. lib.name .. '_MetaTypes[i].name != NULL; i++) {\n'
         cfile = cfile .. '        ' .. lib.name .. '_MetaTypes[i].func(L);\n'
         cfile = cfile .. '        lua_setfield(L, -2, ' .. lib.name .. '_MetaTypes[i].name);\n'
         cfile = cfile .. '    }\n'
     end
-    cfile = cfile .. '    LOAD_ENUM(' .. lib.name .. '_Enums);\n'
+    if lib.enums then
+        cfile = cfile .. '    LOAD_ENUM(' .. lib.name .. '_Enums);\n'
+    end
     cfile = cfile .. '    return 1;\n'
     cfile = cfile .. '}\n'
 
@@ -144,22 +164,7 @@ function generate_single(lib)
         file = file .. lib.header_include
     end
 
-
-    if lib.enums then
-        file = file .. 'BEGIN_ENUM(' .. lib.name .. '_Enums)\n'
-        for i,enum in ipairs(lib.enums) do
-            local prefix = lib.enum_prefix
-            if prefix and string.contains(enum, prefix) then
-                local plen = string.len(prefix)
-                local e = string.sub(enum, plen, string.len(enum))
-                if string.sub(e, 1, 1) == '_' then e = string.sub(e, 2, string.len(e)) end
-                file = file .. '    ENUM_FIELD(' .. e .. ', ' .. prefix .. '),\n'
-            else
-                file = file .. '    {"' .. enum .. '", ' .. enum .. '},\n'
-            end
-        end
-        file = file .. 'END_ENUM()\n'
-    end
+    file = file .. generate_enums(lib)
 
     if lib.meta_types then
         file = file .. '\n'
@@ -195,7 +200,9 @@ function generate_single(lib)
         file = file .. '        lua_setfield(L, -2, ' .. lib.name .. '_MetaTypes[i].name);\n'
         file = file .. '    }\n'
     end
-    file = file .. '    LOAD_ENUM(' .. lib.name .. '_Enums);\n'
+    if lib.enums then
+        file = file .. '    LOAD_ENUM(' .. lib.name .. '_Enums);\n'
+    end
     file = file .. '    return 1;\n'
     file = file .. '}\n'
 
@@ -232,6 +239,9 @@ function generate_lua_defs(lib)
         for i,enum in ipairs(lib.enums) do
             -- print(enum)
             local prefix = lib.enum_prefix
+            if type(enum) == 'table' then
+                enum = enum[1]
+            end
             if prefix and string.contains(enum, prefix) then
                 local plen = string.len(prefix)
                 local e = string.sub(enum, plen, string.len(enum))
@@ -412,6 +422,9 @@ function __generate_lib(filename, lib)
         for i,enum in ipairs(lib.enums) do
             -- print(enum)
             local prefix = lib.enum_prefix
+            if type(enum) == 'table' then
+                enum = enum[1]
+            end
             if prefix and string.contains(enum, prefix) then
                 local plen = string.len(prefix)
                 local e = string.sub(enum, plen, string.len(enum))
