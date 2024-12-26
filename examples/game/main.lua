@@ -22,8 +22,8 @@ local ev = sdl.create_event()
 local project = ldtk.load('game.ldtk')
 local level = project.levels[1]
 
-local vertices = selene.Data.create(6 * 8 * 4)
-vertices:writeFloats(0,
+local vertices = selene.create_data(6 * 8 * 4)
+vertices:write_floats(0,
     0, 0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0,
     256, 0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
     256, 256, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
