@@ -33,7 +33,7 @@ local enums = {
     "SDL_TEXTEDITING",
     "SDL_TEXTINPUT",
     "SDL_KEYMAPCHANGED",
-    "SDL_TEXTEDITING_EXT",
+    {iif = "SDL_VERSION_ATLEAST(2, 0, 22)", "SDL_TEXTEDITING_EXT"},
 
     -- Mouse events */
     "SDL_MOUSEMOTION",
@@ -49,7 +49,7 @@ local enums = {
     "SDL_JOYBUTTONUP",
     "SDL_JOYDEVICEADDED",
     "SDL_JOYDEVICEREMOVED",
-    "SDL_JOYBATTERYUPDATED",
+    {iif = "SDL_VERSION_ATLEAST(2, 24, 0)", "SDL_JOYBATTERYUPDATED"},
 
     -- Game controller events */
     "SDL_CONTROLLERAXISMOTION",

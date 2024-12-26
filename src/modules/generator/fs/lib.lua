@@ -1,25 +1,20 @@
-#include "platforms.h"
-#include "common.h"
-#include "selene.h"
-#include "lua_helper.h"
-#if !defined(OS_WIN)
-#include <dirent.h>
-#include <unistd.h>
-#endif
-#include <sys/stat.h>
+local sources = {}
 
-static MODULE_FUNCTION(fs, exists) {
-    INIT_ARG();
-    CHECK_STRING(path);
-    int exists = 1;
+--- @type generator.Group
+sources[1] = {
+    function_block('boolean', 'exists', 'string path',
+    {
+        ccall =
+[[int exists = 1;
     struct stat info;
     if (stat(path, &info) == -1)
         exists = 0;
-    PUSH_BOOLEAN(exists);
-    return 1;
-}
-
-static MODULE_FUNCTION(fs, read) {
+    PUSH_BOOLEAN(exists);]]
+    }),
+    function_block('Data', 'read', 'string path',
+    {
+        cdef =
+[[
     INIT_ARG();
     CHECK_STRING(path);
     #if defined(OS_WIN)
@@ -45,9 +40,12 @@ static MODULE_FUNCTION(fs, read) {
     fclose(fp);
 
     return 1;
-}
-
-static MODULE_FUNCTION(fs, read_text) {
+]]
+    }),
+    function_block('string', 'read_text', 'string path',
+    {
+        cdef =
+[[
     INIT_ARG();
     CHECK_STRING(path);
 #if defined(OS_WIN)
@@ -72,9 +70,12 @@ static MODULE_FUNCTION(fs, read_text) {
     free(data);
 
     return 1;
-}
-
-static MODULE_FUNCTION(fs, write) {
+]]
+    }),
+    function_block('boolean', 'write', 'string path, string text',
+    {
+        cdef =
+[[
     INIT_ARG();
     size_t len;
     CHECK_STRING(path);
@@ -91,35 +92,43 @@ static MODULE_FUNCTION(fs, write) {
     fclose(fp);
     PUSH_BOOLEAN(1);
     return 1;
-}
-
-static MODULE_FUNCTION(fs, mkdir) {
-    INIT_ARG();
-    CHECK_STRING(path);
-    #if defined(OS_WIN)
+]]
+    }),
+    function_block('', 'mkdir', 'string path',
+    {
+        ccall =
+[[#if defined(OS_WIN)
     mkdir(path);
 #else
     mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+#endif]]
+    }),
+    function_block('', 'rmdir', 'string path', { ccall = "rmdir(path);" }),
+    -- function_block('boolean', 'load', 'string path', { ccall = "luaL_loadfile(L, path);" })
+}
+
+local lib = Lib.create('fs')
+lib:add_source(
+{
+c_code_block([[
+#if !defined(OS_WIN)
+#include <dirent.h>
+#include <unistd.h>
 #endif
-    return 0;
+#include <sys/stat.h>
+]])
 }
+)
+for i,value in ipairs(sources) do
+    lib:add_source(value)
+end
 
-static MODULE_FUNCTION(fs, rmdir) {
-    INIT_ARG();
-    CHECK_STRING(path);
-    rmdir(path);
-    return 0;
-}
+lib.header_include =
+[[
+#include "platforms.h"
+#include "common.h"
+#include "selene.h"
+#include "lua_helper.h"
+]]
 
-int luaopen_fs(lua_State* L) {
-    BEGIN_REG(reg)
-        REG_FIELD(fs, exists),
-        REG_FIELD(fs, read),
-        REG_FIELD(fs, read_text),
-        REG_FIELD(fs, write),
-        REG_FIELD(fs, mkdir),
-        REG_FIELD(fs, rmdir),
-    END_REG()
-    luaL_newlib(L, reg);
-    return 1;
-}
+return lib
