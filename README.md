@@ -1,3 +1,7 @@
+<p align="center">
+<img src="selene_icon.svg" width="256" alt="icon"/>
+</p>
+
 # selene
 
 An executable with embedded Lua modules for game making programming (sdl2, opengl, linmath, json, asset loaders).
