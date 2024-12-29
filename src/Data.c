@@ -26,7 +26,7 @@ static MODULE_FUNCTION(Data, root) {
     GET_META(Data);
     OPT_INTEGER(offset, 0);
     char* data = (char*)(&self[1]);
-    PUSH_LUDATA(data);
+    PUSH_LUDATA(data+offset);
     return 1;
 }
 
