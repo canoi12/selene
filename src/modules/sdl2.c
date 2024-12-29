@@ -1645,7 +1645,8 @@ static MODULE_FUNCTION(sdlRenderer, set_color) {
 static MODULE_FUNCTION(sdlRenderer, set_target) {
     CHECK_META(sdlRenderer);
     const TEST_UDATA(sdlTexture, tex);
-    SDL_SetRenderTarget(*self, *tex);
+    SDL_Texture* t = tex ? *tex : NULL;
+    SDL_SetRenderTarget(*self, t);
     return 0;
 }
 
@@ -2159,7 +2160,6 @@ static MODULE_FUNCTION(sdlWindow, get_size) {
 }
 
 static MODULE_FUNCTION(sdlWindow, set_size) {
-    return 0;
 }
 
 static MODULE_FUNCTION(sdlWindow, get_position) {
@@ -2172,7 +2172,6 @@ static MODULE_FUNCTION(sdlWindow, get_position) {
 }
 
 static MODULE_FUNCTION(sdlWindow, set_position) {
-    return 0;
 }
 
 static MODULE_FUNCTION(sdlWindow, gl_swap) {

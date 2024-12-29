@@ -749,7 +749,8 @@ meta_types[7] = {
 [[
     CHECK_META(sdlRenderer);
     const TEST_UDATA(sdlTexture, tex);
-    SDL_SetRenderTarget(*self, *tex);
+    SDL_Texture* t = tex ? *tex : NULL;
+    SDL_SetRenderTarget(*self, t);
     return 0;
 ]]
     }),
