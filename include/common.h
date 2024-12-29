@@ -30,6 +30,12 @@
 #define RAD2DEG(rad) ((rad)*(180.0/M_PI))
 #define STR(x) #x
 
+#ifndef SELENE_NO_GL
+#if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_APPLE)
+#include <glad/glad.h>
+#endif
+#endif
+
 #ifndef SELENE_NO_SDL
 #if defined(OS_EMSCRIPTEN)
     #include <SDL2/SDL.h>
@@ -42,10 +48,6 @@
         #include <SDL_opengles2.h>
     #endif
 #endif
-#endif
-
-#ifndef SELENE_NO_AUDIO
-
 #endif
 
 #endif /* COMMON_H_ */

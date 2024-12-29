@@ -1,20 +1,29 @@
 #ifndef PLATFORMS_H_
 #define PLATFORMS_H_
 
-#if defined(ANDROID) || defined(__ANDROID__)
+#if defined(ANDROID) || defined(__ANDROID__) // Android
 #define OS_ANDROID 1
-#elif defined(__EMSCRIPTEN__)
+#elif defined(__EMSCRIPTEN__) // Emscripten
 #define OS_EMSCRIPTEN 1
-#elif defined(_WIN32) || defined(_WIN64)
+#elif defined(_WIN32) || defined(_WIN64) // Windows
 #define OS_WIN 1
-#elif defined(__APPLE__)
-#define OS_OSX 1
-#elif defined(__linux__)
+#elif defined(__APPLE__) // MacOSX
+#define OS_APPLE 1
+#ifdef TARGET_OS_IPHONE
+#define OS_IOS 1
+#else
+#define OS_MACOSX 1
+#endif
+#elif defined(__linux__) // Linux
 #define OS_LINUX 1
 #define OS_UNIX 1
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#elif defined(__3DS__) // Nintendo 3DS
+#define OS_3DS 1
+#elif defined(__NS64) // Nintendo Switch 64
+#define OS_NS64 1
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) // BSD
 #define OS_BSD 1
-#elif defined(__unix__)
+#elif defined(__unix__) // Unix
 #define OS_UNIX 1
 #endif
 

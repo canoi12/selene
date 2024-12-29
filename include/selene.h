@@ -3,9 +3,8 @@
 
 #define SELENE_VERSION "0.1.0"
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#include <platforms.h>
+#include <common.h>
 
 #if defined(BUILD_LIB_AS_DLL)
     #if defined(OS_WIN)
@@ -55,12 +54,6 @@ static const char* selene_init_script =
 
 extern int selene_running;
 
-#if 0
-typedef struct {
-    size_t size;
-    char* root;
-} Data;
-#endif
 typedef unsigned int Data;
 
 #ifndef SELENE_NO_IMAGE
@@ -105,37 +98,6 @@ typedef struct {
     int bw, bh;
     int tx;
 } FontGlyph;
-#endif
-
-#if 0
-typedef struct {
-    int data_size;
-    unsigned char* bitmap;
-    int image_width, image_height;
-    int image_channels;
-    int pixel_format;
-    FontGlyph glyphs[256];
-} FontData;
-
-typedef struct {
-    int data_size;
-    unsigned char* pixels;
-    int width, height;
-    int channels;
-    int pixel_format;
-} ImageData;
-
-typedef struct {
-    int num_vertices;
-    int num_indices;
-    int num_triangles;
-    size_t data_size;
-
-    float* vertices;
-    float* normals;
-    float* texcoords;
-    unsigned int* indices;
-} MeshData;
 #endif
 
 #if defined(__cplusplus)
