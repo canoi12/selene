@@ -1055,7 +1055,7 @@ static void s_top_flat_triangle(SDL_Renderer* r, float v[3][2]) {
     if (lua_type(L, arg) == LUA_TTABLE) {
         float ctr[2];
         for (int i = 0; i < 2; i++) {
-            lua_rawgeti(L, arg+1, i+1);
+            lua_rawgeti(L, arg, i+1);
             ctr[i] = (float)luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }

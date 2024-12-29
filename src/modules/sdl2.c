@@ -1912,7 +1912,7 @@ static MODULE_FUNCTION(sdlRenderer, copy_ex) {
     if (lua_type(L, arg) == LUA_TTABLE) {
         float ctr[2];
         for (int i = 0; i < 2; i++) {
-            lua_rawgeti(L, arg+1, i+1);
+            lua_rawgeti(L, arg, i+1);
             ctr[i] = (float)luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
