@@ -6,11 +6,13 @@ sources['Core'] = {
     {
         cdef =
 [[
+#ifndef OS_EMSCRIPTEN
     INIT_ARG();
     if (lua_type(L, arg) == LUA_TLIGHTUSERDATA) {
         gladLoadGLLoader(lua_touserdata(L, arg));
         return 0;
     } else gladLoadGL();
+#endif
     return 0;
 ]]
     }),
@@ -35,7 +37,7 @@ sources['Draw Functions'] = {
     function_block('', 'blend_func', 'integer sfactor, integer dfactor', { ccall = 'glBlendFunc(sfactor, dfactor);' }),
     function_block('', 'blend_equation', 'integer eq', { ccall = 'glBlendEquation(eq);' }),
     function_block('', 'draw_arrays', 'integer mode, integer start, integer count', { ccall = 'glDrawArrays(mode, start, count);' }),
-    function_block('', 'draw_elements', 'integer mode, integer start, integer type, integer indices', { ccall = 'glDrawElements(mode, start, type, indices);' }),
+    function_block('', 'draw_elements', 'integer mode, integer start, integer type, integer indices', { ccall = 'glDrawElements(mode, start, type, (void*)indices);' }),
 }
 
 --- @type generator.Group

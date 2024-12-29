@@ -17,7 +17,7 @@ workspace "selene"
     filter {"action:vs*"}
         platforms {"win32", "win64"}
         system "windows"
-    filter {"action:gmake*", "options:not emscripten"}
+    filter {"action:gmake*"}
         platforms {"linux", "win32", "win64"}
     filter {"action:androidmk"}
         platforms {"android"}
@@ -62,7 +62,7 @@ workspace "selene"
 if (COMPILE_WEB) then
     filter {"platforms:emscripten"}
         system "emscripten"
-        linkoptions {"-s WASM=1"}
+        buildoptions {"-s WASM=1", "-sUSE_SDL=2"}
 end
     filter {}
 

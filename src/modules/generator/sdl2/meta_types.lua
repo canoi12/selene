@@ -1000,8 +1000,8 @@ static void s_top_flat_triangle(SDL_Renderer* r, float v[3][2]) {
     CHECK_UDATA(sdlTexture, tex);
     SDL_Rect* psrc = NULL;
     SDL_FRect* pdst = NULL;
+    int src[4];
     if (lua_type(L, arg) == LUA_TTABLE) {
-        int src[4];
         for (int i = 0; i < 4; i++) {
             lua_rawgeti(L, arg, i+1);
             src[i] = (int)luaL_checkinteger(L, -1);
@@ -1009,8 +1009,8 @@ static void s_top_flat_triangle(SDL_Renderer* r, float v[3][2]) {
         }
         psrc = (SDL_Rect*)src;
     }
+    float dst[4];
     if (lua_type(L, arg+1) == LUA_TTABLE) {
-        float dst[4];
         for (int i = 0; i < 4; i++) {
             lua_rawgeti(L, arg+1, i+1);
             dst[i] = (float)luaL_checknumber(L, -1);
@@ -1031,8 +1031,8 @@ static void s_top_flat_triangle(SDL_Renderer* r, float v[3][2]) {
     CHECK_UDATA(sdlTexture, tex);
     SDL_Rect* psrc = NULL;
     SDL_FRect* pdst = NULL;
+    int src[4];
     if (lua_type(L, arg) == LUA_TTABLE) {
-        int src[4];
         for (int i = 0; i < 4; i++) {
             lua_rawgeti(L, arg, i+1);
             src[i] = (int)luaL_checkinteger(L, -1);
@@ -1040,8 +1040,8 @@ static void s_top_flat_triangle(SDL_Renderer* r, float v[3][2]) {
         }
         psrc = (SDL_Rect*)src;
     }
+    float dst[4];
     if (lua_type(L, arg+1) == LUA_TTABLE) {
-        float dst[4];
         for (int i = 0; i < 4; i++) {
             lua_rawgeti(L, arg+1, i+1);
             dst[i] = (float)luaL_checknumber(L, -1);
@@ -1052,8 +1052,8 @@ static void s_top_flat_triangle(SDL_Renderer* r, float v[3][2]) {
     arg += 2;
     OPT_NUMBER(double, angle, 0.f);
     SDL_FPoint* center = NULL;
+    float ctr[2];
     if (lua_type(L, arg) == LUA_TTABLE) {
-        float ctr[2];
         for (int i = 0; i < 2; i++) {
             lua_rawgeti(L, arg, i+1);
             ctr[i] = (float)luaL_checknumber(L, -1);
