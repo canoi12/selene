@@ -1,5 +1,4 @@
 #ifndef SELENE_NO_IMAGE
-#include "common.h"
 #include "selene.h"
 #include "lua_helper.h"
 

@@ -1,5 +1,3 @@
-#include "platforms.h"
-#include "common.h"
 #include "selene.h"
 #include "lua_helper.h"
 BEGIN_ENUM(sdl_Enums)
@@ -2161,6 +2159,7 @@ static MODULE_FUNCTION(sdlWindow, get_size) {
 }
 
 static MODULE_FUNCTION(sdlWindow, set_size) {
+    return 0;
 }
 
 static MODULE_FUNCTION(sdlWindow, get_position) {
@@ -2173,6 +2172,7 @@ static MODULE_FUNCTION(sdlWindow, get_position) {
 }
 
 static MODULE_FUNCTION(sdlWindow, set_position) {
+    return 0;
 }
 
 static MODULE_FUNCTION(sdlWindow, gl_swap) {

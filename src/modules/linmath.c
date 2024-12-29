@@ -1034,7 +1034,7 @@ static MODULE_FUNCTION(quat, meta) {
     return 1;
 }
 
-BEGIN_MODULE(linmath) {
+int luaopen_linmath(lua_State* L) {
     lua_newtable(L);
     LOAD_META(vec2);
     LOAD_META(vec3);

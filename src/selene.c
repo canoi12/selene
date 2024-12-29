@@ -1,15 +1,11 @@
 #include "selene.h"
-#include "SDL_log.h"
-#include "common.h"
 #include "lua_helper.h"
-#include "platforms.h"
+
 
 #ifdef SELENE_PLUGINS_PRELOAD
 extern int luaopen_plugins(lua_State *L);
 #endif
 
-static int _step_reg;
-static int _quit_reg;
 int selene_running = 0;
 
 // Type Modules
@@ -73,7 +69,9 @@ luaL_Reg _mod_regs[] = {
   {"audio", luaopen_audio},
 #endif
   {"fs", luaopen_fs},
+#ifndef SELENE_NO_GL
   {"gl", luaopen_gl},
+#endif
   {"linmath", luaopen_linmath},
 #ifndef SELENE_NO_JSON
   {"json", luaopen_json},

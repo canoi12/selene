@@ -1,5 +1,3 @@
-#include "platforms.h"
-#include "common.h"
 #include "selene.h"
 #include "lua_helper.h"
 #if !defined(OS_WIN)

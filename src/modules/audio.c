@@ -1,5 +1,4 @@
 #ifndef SELENE_NO_AUDIO
-#include "common.h"
 #include "selene.h"
 #include "lua_helper.h"
 
@@ -90,7 +89,7 @@ static MODULE_FUNCTION(AudioDecoder, readS16) {
     int frame_count;
     switch (self->format) {
         case SELENE_WAV_FORMAT: {
-            frame_count = drwav_read_pcm_frames_s16(&(self->wav), len, (drwav_int16*)(&data[1]));
+            frame_count = (int)drwav_read_pcm_frames_s16(&(self->wav), len, (drwav_int16*)(&data[1]));
         }
         break;
         case SELENE_OGG_FORMAT: {
@@ -98,11 +97,11 @@ static MODULE_FUNCTION(AudioDecoder, readS16) {
         }
         break;
         case SELENE_MP3_FORMAT: {
-            frame_count = drmp3_read_pcm_frames_s16(&(self->mp3), len, (drmp3_int16*)(&data[1]));
+            frame_count = (int)drmp3_read_pcm_frames_s16(&(self->mp3), len, (drmp3_int16*)(&data[1]));
         }
         break;
         case SELENE_FLAC_FORMAT: {
-            frame_count = drflac_read_pcm_frames_s16(self->flac, len, (drflac_int16*)(&data[1]));
+            frame_count = (int)drflac_read_pcm_frames_s16(self->flac, len, (drflac_int16*)(&data[1]));
         }
         break;
         default:

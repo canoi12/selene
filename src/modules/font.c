@@ -1,4 +1,3 @@
-#include "common.h"
 #ifndef SELENE_NO_FONT
 #include "selene.h"
 #include "lua_helper.h"
