@@ -5,8 +5,9 @@ function build_sdl()
             sdl_dir = _WORKING_DIR .. '/' .. sdl_dir
         end
         includedirs {sdl_dir .. '/include'}
-    elseif not _OPTIONS['no-sdl'] and not _OPTIONS['emscripten'] then
-        buildoptions {"`sdl2-config --cflags`"}
+    elseif not _OPTIONS['no-sdl'] then
+        filter {"platforms:not emscripten"}
+            buildoptions {"`sdl2-config --cflags`"}
     end
 
     filter {"options:no-sdl"}

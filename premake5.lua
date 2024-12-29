@@ -31,7 +31,6 @@ workspace "selene"
 
     if COMPILE_WEB then
         platforms {"emscripten"}
-        defines {"__EMSCRIPTEN__"}
     end
 
     build_sdl()
@@ -63,6 +62,7 @@ if (COMPILE_WEB) then
     filter {"platforms:emscripten"}
         system "emscripten"
         buildoptions {"-s WASM=1", "-sUSE_SDL=2"}
+        defines {"__EMSCRIPTEN__"}
 end
     filter {}
 
