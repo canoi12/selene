@@ -390,15 +390,6 @@ lib.enum_prefix = 'GL_'
 lib.header_include =
 [[
 
-#if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
-    #include <GLES2/gl2.h>
-    #include <GLES2/gl2ext.h>
-#else
-    #include <glad/glad.h>
-#endif
-
-#include "platforms.h"
-#include "common.h"
 #include "selene.h"
 #include "lua_helper.h"
 

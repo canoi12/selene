@@ -125,8 +125,6 @@ end
 
 lib.header_include =
 [[
-#include "platforms.h"
-#include "common.h"
 #include "selene.h"
 #include "lua_helper.h"
 ]]

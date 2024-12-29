@@ -802,8 +802,6 @@ lib.meta_types = require('meta_types')
 lib.enum_prefix = 'SDL_'
 lib.header_include =
 [[
-#include "platforms.h"
-#include "common.h"
 #include "selene.h"
 #include "lua_helper.h"
 ]]
