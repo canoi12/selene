@@ -19,6 +19,7 @@ From running a project that is on another directory, you can use the flag `-d` a
 As I said, the entry file is a `main.lua`. The selene structure use two simple callbacks, `step` in the main loop and `quit` when closing. You can set them using `selene.set_step(function)` or `selene.set_quit(function)`.
 
 ```lua
+-- main.lua
 local i = 1
 selene.set_step(function()
     print(i, 'aloooooooooooooooooooooo')
@@ -35,6 +36,7 @@ end)
 ### SDL2 example
 
 ```lua
+-- main.lua
 if not sdl.init(sdl.INIT_VIDEO) then
     error('Failed to init SDL2 ' .. sdl.get_error())
 end
