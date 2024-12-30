@@ -593,7 +593,7 @@ static META_FUNCTION(vec4, index) {
         PUSH_NUMBER(vec[index-1]);
         return 1;
     }
-    uaL_getmetatable(L, "vec4");
+    luaL_getmetatable(L, "vec4");
     int top = lua_gettop(L);
     lua_getfield(L, -1, lua_tostring(L, arg));
     lua_remove(L, top);
