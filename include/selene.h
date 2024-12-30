@@ -1,7 +1,7 @@
 #ifndef SELENE_H_
 #define SELENE_H_
 
-#define SELENE_VERSION "0.1.4"
+#define SELENE_VERSION "0.2.0"
 
 #include <platforms.h>
 #include <common.h>
@@ -70,6 +70,23 @@ enum {
 #endif
 
 #ifndef SELENE_NO_AUDIO
+
+#ifndef SELENE_AUDIO_SAMPLE_RATE
+#define SELENE_AUDIO_SAMPLE_RATE 44100
+#endif
+
+#ifndef SELENE_AUDIO_FORMAT
+#define SELENE_AUDIO_FORMAT AUDIO_S16SYS
+#endif
+
+#ifndef SELENE_AUDIO_CHANNELS
+#define SELENE_AUDIO_CHANNELS 2
+#endif
+
+#ifndef SELENE_AUDIO_SAMPLES
+#define SELENE_AUDIO_SAMPLES 4096
+#endif
+
 enum {
     SELENE_UNKNOWN_AUDIO_FORMAT = 0,
     SELENE_WAV_FORMAT,
