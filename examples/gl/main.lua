@@ -3,30 +3,15 @@ sdl.gl_set_attribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
 sdl.gl_set_attribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
 sdl.gl_set_attribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
 local window = sdl.create_window("SDL2 Test", sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED, 640, 380, sdl.WINDOW_SHOWN | sdl.WINDOW_OPENGL)
--- local render = sdl.Renderer.create(window)
+
+-- Create and load modern GL context
 local ctx = sdl.create_gl_context(window)
 gl.setup()
+
 local event = sdl.create_event()
 
 local current = sdl.get_ticks()
 local last = sdl.get_ticks()
-
-function create_ortho(left, right, bottom, top, near, far)
-    local m = {
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-    }
-    m[1] = 2 / (right - left)
-    m[6] = 2 / (top - bottom)
-    m[11] = -2 / (far - near)
-    m[13] = -(right + left) / (right - left)
-    m[14] = -(top + bottom) / (top - bottom)
-    m[15] = -(far + near) / (far - near)
-    m[16] = 1
-    return m
-end
 
 local buf = gl.gen_buffers(1)
 local vert = gl.create_shader(gl.VERTEX_SHADER)
@@ -47,7 +32,7 @@ void main() {
     gl_Position = world * vec4(position, 0, 1);
     v_color = color;
     v_texcoord = texcoord;
-    }
+}
 ]])
 gl.shader_source(frag, [[
 #version 120
@@ -70,31 +55,26 @@ gl.link_program(prog)
 
 gl.use_program(prog)
 local loc = gl.get_uniform_location(prog, 'world')
-print(loc)
+
+-- Ortho matrix
 local m = linmath.mat4x4.alloc()
-print(m, m.identity, linmath.mat4x4.identity)
+-- print(m, m.identity, linmath.mat4x4.identity)
 m:identity()
 m:ortho(0, 640, 380, 0, -1, 1)
 gl.uniform_matrix4fv(loc, 1, false, m)
--- gl.uniformMatrix4fv(loc, 1, false, {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1})
-gl.use_program()
 
+gl.use_program()
 
 gl.delete_shader(vert)
 gl.delete_shader(frag)
--- print(selene.fs, selene.image, selene.data)
--- for i,v in pairs(selene) do
---     print(i, v)
--- end
+
 local xx = 0
+
+-- Data for triangle
 local data = selene.create_data(4 * 7 * 3)
 data:write_floats(0, 320, 0, 1, 0, 1, 0.5, 0)
 data:write_floats(28, 640, 380, 0, 1, 1, 1, 1)
 data:write_floats(56, 0, 380, 1, 1, 0, 0, 1)
-
--- data:writeFloats(0, 0, 0.5, 1, 0, 1, 0.5, 0)
--- data:writeFloats(28, 0.5, -0.5, 0, 1, 1, 0, 1)
--- data:writeFloats(56, -0.5, -0.5, 1, 1, 0, 1, 1)
 
 local vao = gl.gen_vertex_arrays(1)
 
@@ -113,12 +93,11 @@ gl.bind_buffer(gl.ARRAY_BUFFER)
 gl.bind_vertex_array()
 
 local img_data = image.from_file('tuiteiro.jpg')
-print(img_data[1], img_data[2], img_data[3])
+print(img_data.width, img_data.height)
 
 local tex = gl.gen_textures(1)
 gl.bind_texture(gl.TEXTURE_2D, tex)
 gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
--- gl.Texture.paremeteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 gl.tex_image2d(gl.TEXTURE_2D, 0, gl.RGBA, img_data.width, img_data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, img_data.data:root())
 gl.bind_texture(gl.TEXTURE_2D)
 
@@ -144,9 +123,6 @@ function()
     gl.use_program()
     gl.bind_texture(gl.TEXTURE_2D)
 
-    -- render:setColor(75, 75, 125, 255)
-    -- render:clear()
-    -- render:present()
     window:gl_swap()
 end
 )
@@ -158,7 +134,6 @@ function()
     gl.delete_buffers(buf)
     gl.delete_program(prog)
     gl.delete_vertex_arrays(vao)
-    -- render:destroy()
     ctx:destroy()
     window:destroy()
     sdl.quit()

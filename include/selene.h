@@ -1,7 +1,7 @@
 #ifndef SELENE_H_
 #define SELENE_H_
 
-#define SELENE_VERSION "0.1.3"
+#define SELENE_VERSION "0.1.4"
 
 #include <platforms.h>
 #include <common.h>

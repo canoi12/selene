@@ -49,86 +49,53 @@ function os.host() end
 --- @return string|nil
 function os.arch() end
 
---- @class selene.AudioDecoder
-local AudioDecoder = {}
-
---- @param path string
---- @return selene.AudioDecoder
-function AudioDecoder.load(path) end
-
-function AudioDecoder:close() end
-
---- @param index integer
-function AudioDecoder:seek(index) end
-
---- @param data selene.Data
---- @param len integer|nil
---- @return integer
-function AudioDecoder:readS16(data, len) end
-
---- @param data selene.Data
---- @param len integer|nil
---- @return integer
-function AudioDecoder:readF32(data, len) end
-
---- @param data selene.Data
---- @param len integer|nil
---- @return integer
-function AudioDecoder:getChunk(data, len) end
-
---- @return integer
-function AudioDecoder:getSampleRate() end
-
---- @return integer
-function AudioDecoder:getChannels() end
-
---- @return integer
-function AudioDecoder:getBitDepth() end
-
---- @return integer
-function AudioDecoder:getFrameCount() end
-
 --- @class selene.Data
---- @field size integer
---- @field root lightuserdata
 local Data = {}
 
---- @param size integer
---- @param copy_data selene.Data|nil
---- @return selene.Data
-function Data.create(size, copy_data) end
+--- @return integer
+function Data:size() end
+
+--- @param offset integer
+--- @return lightuserdata
+function Data:root(offset) end
+
+--- @return string
+function Data:get_string() end
+
+--- @param offset integer
+--- @param count integer|nil
+--- @return integer ...
+function Data:read_bytes(offset, count) end
+
+--- @param offset integer
+--- @param count integer|nil
+--- @return integer ...
+function Data:read_ints(offset, count) end
+
+--- @param offset integer
+--- @param count integer|nil
+--- @return integer ...
+function Data:read_floats(offset, count) end
+
+--- @param offset integer
+--- @vararg integer
+--- @return integer
+function Data:write_bytes(offset, ...) end
+
+--- @param offset integer
+--- @vararg integer
+--- @return integer
+function Data:write_ints(offset, ...) end
 
 --- @param offset integer
 --- @vararg number
-function Data:writeFloats(offset, ...) end
+--- @return integer
+function Data:write_floats(offset, ...) end
 
---- @class selene.FontData
---- @field image_width integer
---- @field image_height integer
-local FontData = {}
-
---- @return selene.FontData
-function FontData.create8x8() end
-
---- @param filename string
---- @return selene.FontData
-function FontData.loadFromTTF(filename) end
-
---- @class selene.ImageData
---- @field data_size integer
---- @field width integer
---- @field height integer
---- @field pixels lightuserdata
-local ImageData = {}
-
---- @param filename string
----@param comp integer|nil
-function ImageData.load(filename, comp) end
-
---- @param data selene.Data
---- @param comp integer|nil
-function ImageData.fromMemory(data, comp) end
-
+--- @param offset integer
+--- @param str string
+--- @return integer
+function Data:write_string(offset, str) end
 
 --- @class selene.fs
 fs = {}
@@ -138,33 +105,3 @@ function fs.exists(path) end
 
 --- @param filename string
 function fs.read_text(filename) end
-
---[[
-*************************
-*    linmath
-*************************
-]]
---- @class selene.linmath
-lmath = {}
-
---- @return userdata
-function lmath.alloc_mat4x4() end
-
---- Set the values of matrix to identity
---- @param mat userdata|lightuserdata
-function lmath.mat4x4_identity(mat) end
-
---- Create an orthogonal matrix
---- @param mat userdata|lightuserdata
---- @param left number
---- @param right number
---- @param top number
---- @param bottom number
---- @param near number
---- @param far number
-function lmath.mat4x4_ortho(mat, left, right, top, bottom, near, far) end
-
---- Duplicate matrix B to the matrix A
---- @param a userdata|lightuserdata
---- @param b userdata|lightuserdata
-function lmath.mat4x4_dup(a, b) end

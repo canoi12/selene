@@ -184,7 +184,7 @@
 --- @field VERTEX_SHADER integer
 --- @field COMPILE_STATUS integer
 --- @field LINK_STATUS integer
-local gl = {}
+gl = {}
 
 --- @param proc_func lightuserdata|nil
 function gl.setup(proc_func) end

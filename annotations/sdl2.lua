@@ -140,7 +140,7 @@
 --- @field ScaleModeNearest integer
 --- @field ScaleModeLinear integer
 --- @field ScaleModeBest integer
-local sdl = {}
+sdl = {}
 
 --- @param flags integer
 --- @return boolean
