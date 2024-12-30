@@ -192,37 +192,12 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
     return 1;
 }
 
-#if 0
-static MODULE_FUNCTION(AudioDecoder, close) {
-    CHECK_META(AudioDecoder);
-    switch (self->format) {
-        case SELENE_WAV_FORMAT: {
-           drwav_uninit(&(self->wav));
-        }
-        break;
-        case SELENE_OGG_FORMAT: {
-            stb_vorbis_close(self->ogg);
-        }
-        break;
-        case SELENE_MP3_FORMAT: {
-           drmp3_uninit(&(self->mp3));
-        }
-        break;
-        case SELENE_FLAC_FORMAT: {
-           drflac_close(self->flac);
-        }
-        break;
-        default: break;
-    }
-    return 0;
-}
-#else
 static MODULE_FUNCTION(AudioDecoder, close) {
     CHECK_META(AudioDecoder);
     s_AudioDecoder_close(self);
     return 0;
 }
-#endif
+
 int s_AudioDecoder_close(AudioDecoder* self) {
     switch (self->format) {
         case SELENE_WAV_FORMAT: {
@@ -249,39 +224,13 @@ int s_AudioDecoder_close(AudioDecoder* self) {
 static MODULE_FUNCTION(AudioDecoder, clone) {
     return 1;
 }
-#if 0
-static MODULE_FUNCTION(AudioDecoder, seek) {
-    CHECK_META(AudioDecoder);
-    CHECK_INTEGER(index);
-    switch (self->format) {
-        case SELENE_WAV_FORMAT: {
-            drwav_seek_to_pcm_frame(&(self->wav), index);
-        }
-        break;
-        case SELENE_OGG_FORMAT: {
-            stb_vorbis_seek(self->ogg, index);
-        }
-        break;
-        case SELENE_MP3_FORMAT: {
-            drmp3_seek_to_pcm_frame(&(self->mp3), index);
-        }
-        break;
-        case SELENE_FLAC_FORMAT: {
-            drflac_seek_to_pcm_frame(self->flac, index);
-        }
-        break;
-        default: break;
-    }
-    return 0;
-}
-#else
+
 static MODULE_FUNCTION(AudioDecoder, seek) {
     CHECK_META(AudioDecoder);
     CHECK_INTEGER(index);
     s_AudioDecoder_seek(self, index);
     return 0;
 }
-#endif
 
 int s_AudioDecoder_seek(AudioDecoder* self, int index) {
     switch (self->format) {
@@ -311,36 +260,7 @@ static MODULE_FUNCTION(AudioDecoder, decode_data) {
     CHECK_UDATA(Data, data);
     return 1;
 }
-#if 0
-static MODULE_FUNCTION(AudioDecoder, read_s16) {
-    CHECK_META(AudioDecoder);
-    CHECK_UDATA(Data, data);
-    OPT_INTEGER(len, data[0]);
-    int frame_count;
-    switch (self->format) {
-        case SELENE_WAV_FORMAT: {
-            frame_count = (int)drwav_read_pcm_frames_s16(&(self->wav), len, (drwav_int16*)(&data[1]));
-        }
-        break;
-        case SELENE_OGG_FORMAT: {
-            frame_count = stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, (short*)(&data[1]), len);
-        }
-        break;
-        case SELENE_MP3_FORMAT: {
-            frame_count = (int)drmp3_read_pcm_frames_s16(&(self->mp3), len, (drmp3_int16*)(&data[1]));
-        }
-        break;
-        case SELENE_FLAC_FORMAT: {
-            frame_count = (int)drflac_read_pcm_frames_s16(self->flac, len, (drflac_int16*)(&data[1]));
-        }
-        break;
-        default:
-            return luaL_error(L, "Invalid audio format in decoder\n");
-    }
-    PUSH_INTEGER(frame_count);
-    return 1;
-}
-#else
+
 static MODULE_FUNCTION(AudioDecoder, read_s16) {
     CHECK_META(AudioDecoder);
     CHECK_UDATA(Data, data);
@@ -350,7 +270,6 @@ static MODULE_FUNCTION(AudioDecoder, read_s16) {
     PUSH_INTEGER(frame_count);
     return 1;
 }
-#endif
 
 int s_AudioDecoder_read_s16(AudioDecoder* self, int len, short* data) {
     switch (self->format) {
@@ -375,36 +294,6 @@ int s_AudioDecoder_read_s16(AudioDecoder* self, int len, short* data) {
     }
 }
 
-#if 0
-static MODULE_FUNCTION(AudioDecoder, read_f32) {
-    CHECK_META(AudioDecoder);
-    CHECK_UDATA(Data, data);
-    OPT_INTEGER(len, data[0]);
-    int frame_count;
-    switch (self->format) {
-        case SELENE_WAV_FORMAT: {
-            frame_count = drwav_read_pcm_frames_f32(&(self->wav), len, (float*)(&data[1]));
-        }
-        break;
-        case SELENE_OGG_FORMAT: {
-            frame_count = stb_vorbis_get_samples_float_interleaved(self->ogg, self->info.channels, (float*)(&data[1]), len);
-        }
-        break;
-        case SELENE_MP3_FORMAT: {
-            frame_count = drmp3_read_pcm_frames_f32(&(self->mp3), len, (float*)(&data[1]));
-        }
-        break;
-        case SELENE_FLAC_FORMAT: {
-            frame_count = drflac_read_pcm_frames_f32(self->flac, len, (float*)(&data[1]));
-        }
-        break;
-        default:
-            return luaL_error(L, "Invalid audio format in decoder\n");
-    }
-    PUSH_INTEGER(frame_count);
-    return 1;
-}
-#else
 static MODULE_FUNCTION(AudioDecoder, read_f32) {
     CHECK_META(AudioDecoder);
     CHECK_UDATA(Data, data);
@@ -414,7 +303,6 @@ static MODULE_FUNCTION(AudioDecoder, read_f32) {
     PUSH_INTEGER(frame_count);
     return 1;
 }
-#endif
 
 int s_AudioDecoder_read_f32(AudioDecoder* self, int len, float* data) {
     switch (self->format) {
@@ -506,7 +394,6 @@ static int l_AudioDecoder_meta(lua_State* LUA_STATE_NAME) {
     luaL_setfuncs(L, reg, 0);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
-    // NEW_META(AudioDecoder, reg, index_reg);
     return 1;
 }
 
@@ -516,7 +403,6 @@ static int l_AudioDecoder_meta(lua_State* LUA_STATE_NAME) {
 
 static MODULE_FUNCTION(AudioSystem, play) {
     CHECK_META(AudioSystem);
-    // CHECK_UDATA(AudioDecoder, decoder);
     TEST_UDATA(AudioDecoder, dec);
     arg--;
     TEST_UDATA(AudioData, adata);
@@ -524,8 +410,8 @@ static MODULE_FUNCTION(AudioSystem, play) {
         return luaL_error(L, "invalid audio data type");
     GET_BOOLEAN(loop);
     OPT_NUMBER(float, volume, 1.f);
+
     int i = 0;
-    fprintf(stdout, "Dec: %p, Data: %p\n", dec, adata);
     while (i < self->pool_count) {
         struct AudioBuffer* buffer = &(self->buffer_pool[i]);
         if (!buffer->stream) {
@@ -553,15 +439,10 @@ static MODULE_FUNCTION(AudioSystem, play) {
         }
         i++;
     }
-    // if (i == self->pool_count) {
-    //     self->pool_count++;
-    //     self->buffer_pool = (struct AudioBuffer*)realloc(self->buffer_pool, self->pool_count * sizeof(struct AudioBuffer));
-    //     self->buffer_pool[i].playing = 1;
-    //     self->buffer_pool[i].stream = SDL_NewAudioStream(
-    //         AUDIO_S16SYS, decoder->info.channels, decoder->info.sample_rate,
-    //         self->spec.format, self->spec.channels, self->spec.freq);
-    // }
-    return 0;
+    if (i == self->pool_count)
+        return 0;
+    lua_pushinteger(L, i);
+    return 1;
 }
 
 static MODULE_FUNCTION(AudioSystem, update) {
@@ -569,7 +450,7 @@ static MODULE_FUNCTION(AudioSystem, update) {
     if (self->paused)
         return 0;
     int i = 0;
-    short aux[17000];
+    short* aux = (short*)self->aux_data;
     while (i < self->pool_count) {
         struct AudioBuffer* buffer = &(self->buffer_pool[i]);
         if (buffer->decoder && buffer->type == 0) {
@@ -588,7 +469,6 @@ static MODULE_FUNCTION(AudioSystem, update) {
                 int res = SDL_AudioStreamPut(buffer->stream, aux, read * self->spec.channels * sizeof(short));
             }
         } else if (buffer->audio_data && buffer->type == 1) {
-            // fprintf(stdout, "Testandow\n");
             int size = buffer->audio_data->size;
             int len = self->spec.size;
             if (buffer->offset + len > size) {
@@ -621,6 +501,28 @@ static MODULE_FUNCTION(AudioSystem, pause_device) {
     return 0;
 }
 
+static MODULE_FUNCTION(AudioSystem, set_volume) {
+    CHECK_META(AudioSystem);
+    CHECK_INTEGER(sound);
+    if (sound < 0 || sound >= self->pool_count)
+        return luaL_error(L, "invalid sound instance");
+    CHECK_NUMBER(float, volume);
+    struct AudioBuffer* buf = &(self->buffer_pool[sound]);
+    buf->volume = SDL_MIX_MAXVOLUME * volume;
+    return 0;
+}
+
+static MODULE_FUNCTION(AudioSystem, set_loop) {
+    CHECK_META(AudioSystem);
+    CHECK_INTEGER(sound);
+    if (sound < 0 || sound >= self->pool_count)
+        return luaL_error(L, "invalid sound instance");
+    GET_BOOLEAN(loop);
+    struct AudioBuffer* buf = &(self->buffer_pool[sound]);
+    buf->loop = loop;
+    return 0;
+}
+
 static MODULE_FUNCTION(AudioSystem, close) {
     CHECK_META(AudioSystem);
     if (self->aux_data)
@@ -636,6 +538,8 @@ static MODULE_FUNCTION(AudioSystem, meta) {
         REG_FIELD(AudioSystem, play),
         REG_FIELD(AudioSystem, pause_device),
         REG_FIELD(AudioSystem, update),
+        REG_FIELD(AudioSystem, set_volume),
+        REG_FIELD(AudioSystem, set_loop),
         REG_FIELD(AudioSystem, close),
     END_REG()
     luaL_newmetatable(L, "AudioSystem");
@@ -657,87 +561,7 @@ static MODULE_FUNCTION(audio, load_data) {
     if (res <= 0) {
         return res;
     }
-#if 0
-    char* p = (char*)path + len;
-    while (*p != '.')
-        p--;
-    int format = SELENE_UNKNOWN_AUDIO_FORMAT;
-    if (!strcmp(p, ".ogg"))
-        format = SELENE_OGG_FORMAT;
-    else if (!strcmp(p ,".wav"))
-        format = SELENE_WAV_FORMAT;
-    else if (!strcmp(p ,".mp3"))
-        format = SELENE_MP3_FORMAT;
-    else if (!strcmp(p ,".flac"))
-        format = SELENE_FLAC_FORMAT;
-    else
-        return luaL_error(L, "Unsupported audio format: %s\n", path);
-    
-    AudioDecoder dec;
-    dec.format = format;
-    switch (format) {
-        case SELENE_WAV_FORMAT: {
-#if !defined(OS_ANDROID)
-            int success = drwav_init_file(&(dec.wav), path, NULL);
-#else
-            int success = drwav_init_memory(&(dec.wav), (const void*)data, data_size, NULL);
-#endif
-            if (!success)
-                return luaL_error(L, "Failed to load wav: %s\n", path);
-            dec.info.bit_depth = dec.wav.bitsPerSample;
-            dec.info.sample_rate = dec.wav.sampleRate;
-            dec.info.channels = dec.wav.channels;
-            dec.info.size = dec.wav.dataChunkDataSize;
-            dec.info.frame_count = dec.wav.totalPCMFrameCount;
-        }
-        break;
-        case SELENE_OGG_FORMAT: {
-#if !defined(OS_ANDROID)
-            stb_vorbis* ogg = stb_vorbis_open_filename(path, NULL, NULL);
-#else
-            stb_vorbis* ogg = stb_vorbis_open_memory(data, data_size, NULL, NULL);
-#endif
-            if (ogg == NULL)
-                return luaL_error(L, "Failed to load ogg: %s\n", path);
-            stb_vorbis_info info = stb_vorbis_get_info(ogg);
-            dec.info.sample_rate = info.sample_rate;
-            dec.info.channels = info.channels;
-            dec.ogg = ogg;
-        }
-        break;
-        case SELENE_MP3_FORMAT: {
-#if !defined(OS_ANDROID)
-            int success = drmp3_init_file(&(dec.mp3), path, NULL);
-#else
-            int success = drmp3_init_memory(&(dec.mp3), data, data_size, NULL);
-#endif
-            if (!success)
-                return luaL_error(L, "Failed to load mp3: %s\n", path);
-            // dec.info.bit_depth = dec.mp3.bit;
-            dec.info.sample_rate = dec.mp3.sampleRate;
-            dec.info.channels = dec.mp3.channels;
-            dec.info.size = dec.mp3.dataSize;
-            dec.info.frame_count = dec.mp3.pcmFramesRemainingInMP3Frame;
-        }
-        break;
-        case SELENE_FLAC_FORMAT: {
-#if !defined(OS_ANDROID)
-            dec.flac = drflac_open_file(path, NULL);
-#else
-            dec.flac = drflac_open_memory(data, data_size, NULL);
-#endif
-            if (dec.flac == NULL)
-                return luaL_error(L, "Failed to load flac: %s\n", path);
-            dec.info.bit_depth = dec.flac->bitsPerSample;
-            dec.info.sample_rate = dec.flac->sampleRate;
-            dec.info.channels = dec.flac->channels;
-            dec.info.size = dec.flac->maxBlockSizeInPCMFrames;
-            dec.info.frame_count = dec.flac->totalPCMFrameCount;
-        }
-        break;
-        default: break;
-    }
-#endif
+
     // fprintf(stderr, "format: %d\n", format);
     int freq = SELENE_AUDIO_SAMPLE_RATE;
     int audio_format = SELENE_AUDIO_FORMAT;
@@ -761,9 +585,7 @@ static MODULE_FUNCTION(audio, load_data) {
     if (frame_count < 0) {
         return luaL_error(L, "Failed to read audio decoder");
     }
-    // fprintf(stderr, "freq: %d, format: %d, channels: %d, samples: %d\n", freq, audio_format, channels, samples);
-    // char* data = NULL;
-    // size_t data_size;
+
     SDL_AudioStream* stream = SDL_NewAudioStream(
         AUDIO_S16SYS, dec.info.channels, dec.info.sample_rate,
         audio_format, channels, freq);
@@ -779,14 +601,12 @@ static MODULE_FUNCTION(audio, load_data) {
         // free(buffer);
     }
     size_t size = SDL_AudioStreamAvailable(stream);
-    // NEW_UDATA_ADD(Data, data, size);
     NEW_UDATA(AudioData, data);
     data->size = size;
     data->data = malloc(size);
     data->info.sample_rate = freq;
     data->info.channels = channels;
     data->info.format = audio_format;
-    // data[0] = size;
     int read = SDL_AudioStreamGet(stream, data->data, size);
     if (read < 0) {
         return luaL_error(L, "Failed to read audio stream: %s", SDL_GetError());
@@ -802,96 +622,7 @@ static MODULE_FUNCTION(audio, load_decoder) {
     INIT_ARG();
     size_t len;
     CHECK_LSTRING(path, &len);
-#if 0
-    char* p = (char*)path + len;
-    while (*p != '.')
-        p--;
-    int format = SELENE_UNKNOWN_AUDIO_FORMAT;
-    if (!strcmp(p, ".ogg"))
-        format = SELENE_OGG_FORMAT;
-    else if (!strcmp(p ,".wav"))
-        format = SELENE_WAV_FORMAT;
-    else if (!strcmp(p ,".mp3"))
-        format = SELENE_MP3_FORMAT;
-    else if (!strcmp(p ,".flac"))
-        format = SELENE_FLAC_FORMAT;
-    else
-        return luaL_error(L, "Unsupported audio format: %s\n", path);
 
-    char* data = NULL;
-    size_t data_size;
-#if defined(OS_ANDROID)
-    SDL_RWops* fp = SDL_RWFromFile(path, "rb");
-    data_size = SDL_RWsize(fp);
-    data = (char*)malloc(data_size);
-    SDL_RWread(fp, data, 1, data_size);
-    SDL_RWclose(fp);
-#endif
-    NEW_UDATA(AudioDecoder, dec);
-    dec->format = format;
-    switch (format) {
-        case SELENE_WAV_FORMAT: {
-#if !defined(OS_ANDROID)
-            int success = drwav_init_file(&(dec->wav), path, NULL);
-#else
-            int success = drwav_init_memory(&(dec->wav), (const void*)data, data_size, NULL);
-#endif
-            if (!success)
-                return luaL_error(L, "Failed to load wav: %s\n", path);
-            dec->info.bit_depth = dec->wav.bitsPerSample;
-            dec->info.sample_rate = dec->wav.sampleRate;
-            dec->info.channels = dec->wav.channels;
-            dec->info.size = dec->wav.dataChunkDataSize;
-            dec->info.frame_count = dec->wav.totalPCMFrameCount;
-        }
-        break;
-        case SELENE_OGG_FORMAT: {
-#if !defined(OS_ANDROID)
-            stb_vorbis* ogg = stb_vorbis_open_filename(path, NULL, NULL);
-#else
-            stb_vorbis* ogg = stb_vorbis_open_memory(data, data_size, NULL, NULL);
-#endif
-            if (ogg == NULL)
-                return luaL_error(L, "Failed to load ogg: %s\n", path);
-            stb_vorbis_info info = stb_vorbis_get_info(ogg);
-            dec->info.sample_rate = info.sample_rate;
-            dec->info.channels = info.channels;
-            dec->ogg = ogg;
-        }
-        break;
-        case SELENE_MP3_FORMAT: {
-#if !defined(OS_ANDROID)
-            int success = drmp3_init_file(&(dec->mp3), path, NULL);
-#else
-            int success = drmp3_init_memory(&(dec->mp3), data, data_size, NULL);
-#endif
-            if (!success)
-                return luaL_error(L, "Failed to load mp3: %s\n", path);
-            // dec->info.bit_depth = dec->mp3.bit;
-            dec->info.sample_rate = dec->mp3.sampleRate;
-            dec->info.channels = dec->mp3.channels;
-            dec->info.size = dec->mp3.dataSize;
-            dec->info.frame_count = dec->mp3.pcmFramesRemainingInMP3Frame;
-        }
-        break;
-        case SELENE_FLAC_FORMAT: {
-#if !defined(OS_ANDROID)
-            dec->flac = drflac_open_file(path, NULL);
-#else
-            dec->flac = drflac_open_memory(data, data_size, NULL);
-#endif
-            if (dec->flac == NULL)
-                return luaL_error(L, "Failed to load flac: %s\n", path);
-            dec->info.bit_depth = dec->flac->bitsPerSample;
-            dec->info.sample_rate = dec->flac->sampleRate;
-            dec->info.channels = dec->flac->channels;
-            dec->info.size = dec->flac->maxBlockSizeInPCMFrames;
-            dec->info.frame_count = dec->flac->totalPCMFrameCount;
-        }
-        break;
-        default: break;
-    }
-#endif
     AudioDecoder out;
     int res = s_AudioDecoder_init(L, path, len, &out);
     if (res <= 0) {
@@ -943,7 +674,7 @@ static MODULE_FUNCTION(audio, create_system) {
             return luaL_error(L, "Failed to open audio device: %s\n", SDL_GetError());
     }
 
-    fprintf(stdout, "obtained: %d %d %d %d %d\n", obtained.freq, obtained.format, obtained.channels, obtained.samples, obtained.size);
+    // fprintf(stdout, "obtained: %d %d %d %d %d\n", obtained.freq, obtained.format, obtained.channels, obtained.samples, obtained.size);
     
     memcpy(&(system->spec), &obtained, sizeof(SDL_AudioSpec));
     system->device = dev;
