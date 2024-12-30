@@ -14,7 +14,7 @@ typedef struct AudioData AudioData;
 
 struct AudioData {
     int size;
-    void* data;
+    char* data;
     AudioInfo info;
 };
 
