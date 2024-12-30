@@ -61,7 +61,8 @@ workspace "selene"
 if (COMPILE_WEB) then
     filter {"platforms:emscripten"}
         system "emscripten"
-        buildoptions {"-s WASM=1", "-sUSE_SDL=2"}
+        buildoptions {"-sUSE_SDL=2"}
+        linkoptions {"-s WASM=1"}
         defines {"__EMSCRIPTEN__"}
 end
     filter {}
