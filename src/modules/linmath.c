@@ -148,10 +148,10 @@ static META_FUNCTION(vec2, index) {
         PUSH_NUMBER(vec[index-1]);
         return 1;
     }
-    CHECK_STRING(key);
     luaL_getmetatable(L, "vec2");
-    lua_getfield(L, -1, key);
-    lua_remove(L, -2);
+    int top = lua_gettop(L);
+    lua_getfield(L, -1, lua_tostring(L, arg));
+    lua_remove(L, top);
     return 1;
 }
 
@@ -179,13 +179,14 @@ BEGIN_META(vec2) {
         REG_FIELD(vec2, max),
         REG_FIELD(vec2, dup),
     END_REG()
-    luaL_newlib(L, reg);
+    // luaL_newlib(L, reg);
     luaL_newmetatable(L, "vec2");
     lua_pushcfunction(L, l_vec2__index);
     lua_setfield(L, -2, "__index");
     lua_pushcfunction(L, l_vec2__newindex);
     lua_setfield(L, -2, "__newindex");
-    lua_setmetatable(L, -2);
+    luaL_setfuncs(L, reg, 0);
+    // lua_setmetatable(L, -2);
     // NEW_META(vec2, _reg, _index_reg);
     return 1;
 }
@@ -368,7 +369,11 @@ static META_FUNCTION(vec3, index) {
         PUSH_NUMBER(vec[index-1]);
         return 1;
     }
-    return 0;
+    luaL_getmetatable(L, "vec3");
+    int top = lua_gettop(L);
+    lua_getfield(L, -1, lua_tostring(L, arg));
+    lua_remove(L, top);
+    return 1;
 }
 
 static META_FUNCTION(vec3, newindex) {
@@ -397,13 +402,14 @@ BEGIN_META(vec3) {
         REG_FIELD(vec3, mul_cross),
         REG_FIELD(vec3, reflect),
     END_REG()
-    luaL_newlib(L, reg);
+    // luaL_newlib(L, reg);
     luaL_newmetatable(L, "vec3");
     lua_pushcfunction(L, l_vec3__index);
     lua_setfield(L, -2, "__index");
     lua_pushcfunction(L, l_vec3__newindex);
     lua_setfield(L, -2, "__newindex");
-    lua_setmetatable(L, -2);
+    luaL_setfuncs(L, reg, 0);
+    // lua_setmetatable(L, -2);
     return 1;
 }
 
@@ -587,7 +593,11 @@ static META_FUNCTION(vec4, index) {
         PUSH_NUMBER(vec[index-1]);
         return 1;
     }
-    return 0;
+    uaL_getmetatable(L, "vec4");
+    int top = lua_gettop(L);
+    lua_getfield(L, -1, lua_tostring(L, arg));
+    lua_remove(L, top);
+    return 1;
 }
 
 static META_FUNCTION(vec4, newindex) {
@@ -616,13 +626,14 @@ BEGIN_META(vec4) {
         REG_FIELD(vec4, mul_cross),
         REG_FIELD(vec4, reflect),
     END_REG()
-    luaL_newlib(L, reg);
+    // luaL_newlib(L, reg);
     luaL_newmetatable(L, "vec4");
     lua_pushcfunction(L, l_vec4__index);
     lua_setfield(L, -2, "__index");
     lua_pushcfunction(L, l_vec4__newindex);
     lua_setfield(L, -2, "__newindex");
-    lua_setmetatable(L, -2);
+    luaL_setfuncs(L, reg, 0);
+    // lua_setmetatable(L, -2);
     return 1;
 }
 
@@ -851,6 +862,10 @@ static META_FUNCTION(mat4x4, index) {
         lua_pushnumber(L, (float)self[index-1]);
         return 1;
     }
+    luaL_getmetatable(L, "mat4x4");
+    int top = lua_gettop(L);
+    lua_getfield(L, -1, lua_tostring(L, arg));
+    lua_remove(L, top);
     return 1;
 }
 
@@ -885,13 +900,14 @@ BEGIN_META(mat4x4) {
         REG_FIELD(mat4x4, perspective),
         REG_FIELD(mat4x4, look_at),
     END_REG()
-    luaL_newlib(LUA_STATE_NAME, reg);
+    // luaL_newlib(LUA_STATE_NAME, reg);
     luaL_newmetatable(L, "mat4x4");
     lua_pushcfunction(L, l_mat4x4__index);
     lua_setfield(L, -2, "__index");
     lua_pushcfunction(L, l_mat4x4__newindex);
     lua_setfield(L, -2, "__newindex");
-    lua_pop(L, 1);
+    // lua_pop(L, 1);
+    luaL_setfuncs(L, reg, 0);
     // NEW_META(mat4x4, _reg, _index_reg);
     return 1;
 }
@@ -1000,6 +1016,10 @@ static META_FUNCTION(quat, index) {
         lua_pushnumber(L, (float)self[index-1]);
         return 1;
     }
+    luaL_getmetatable(L, "quat");
+    int top = lua_gettop(L);
+    lua_getfield(L, -1, lua_tostring(L, arg));
+    lua_remove(L, top);
     return 1;
 }
 
@@ -1024,13 +1044,14 @@ static MODULE_FUNCTION(quat, meta) {
         REG_META_FIELD(quat, rotate),
         REG_META_FIELD(quat, mul_vec3),
     END_REG()
-    luaL_newlib(LUA_STATE_NAME, reg);
+    // luaL_newlib(LUA_STATE_NAME, reg);
     luaL_newmetatable(L, "quat");
     lua_pushcfunction(L, l_quat__index);
     lua_setfield(L, -2, "__index");
     lua_pushcfunction(L, l_quat__newindex);
     lua_setfield(L, -2, "__newindex");
-    lua_setmetatable(L, -2);
+    luaL_setfuncs(L, reg, 0);
+    // lua_setmetatable(L, -2);
     return 1;
 }
 
