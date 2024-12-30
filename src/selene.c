@@ -48,8 +48,17 @@ static int l_load_from_sdl_rwops(lua_State *L) {
 #endif
   SDL_RWops *rw = SDL_RWFromFile(path, "r");
   if (!rw) {
-    lua_pushfstring(L, "[selene] failed to open file: %s", path);
-    return 1;
+    strcpy(path, module_name);
+    for (int i = 0; i < len; i++) {
+      if (path[i] == '.')
+        path[i] = '/';
+    }
+    strcat(path, "/init.lua");
+    rw = SDL_RWFromFile(path, "r");
+    if (!rw) {
+      lua_pushfstring(L, "[selene] RWops: failed to open module: %s", module_name);
+      return 1;
+    }
   }
   size_t size = SDL_RWsize(rw);
   char *content = malloc(size);
