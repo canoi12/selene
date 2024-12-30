@@ -6,7 +6,7 @@ sources['Core'] = {
     {
         cdef =
 [[
-#ifndef GL_ES_VERSION_2_0
+#ifndef USE_GLES2
     INIT_ARG();
     if (lua_type(L, arg) == LUA_TLIGHTUSERDATA) {
         gladLoadGLLoader(lua_touserdata(L, arg));

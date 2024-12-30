@@ -40,12 +40,14 @@
 #if defined(OS_EMSCRIPTEN)
     #include <SDL2/SDL.h>
     #include <SDL2/SDL_opengles2.h>
+    #define USE_GLES2 1
 #else
     #include <SDL.h>
     #if !defined(OS_ANDROID)
         #include <SDL_opengl.h>
     #else
         #include <SDL_opengles2.h>
+        #define USE_GLES2 1
     #endif
 #endif
 #endif

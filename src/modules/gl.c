@@ -30,24 +30,24 @@ BEGIN_ENUM(gl_Enums)
     ENUM_FIELD(ONE_MINUS_DST_COLOR, GL_),
     ENUM_FIELD(SRC_ALPHA_SATURATE, GL_),
     ENUM_FIELD(NONE, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(FRONT_LEFT, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(FRONT_RIGHT, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(BACK_LEFT, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(BACK_RIGHT, GL_),
 #endif
     ENUM_FIELD(FRONT, GL_),
     ENUM_FIELD(BACK, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(LEFT, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(RIGHT, GL_),
 #endif
     ENUM_FIELD(FRONT_AND_BACK, GL_),
@@ -58,29 +58,29 @@ BEGIN_ENUM(gl_Enums)
     ENUM_FIELD(OUT_OF_MEMORY, GL_),
     ENUM_FIELD(CW, GL_),
     ENUM_FIELD(CCW, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(POINT_SIZE, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(POINT_SIZE_RANGE, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(POINT_SIZE_GRANULARITY, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(LINE_SMOOTH, GL_),
 #endif
     ENUM_FIELD(LINE_WIDTH, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(LINE_WIDTH_RANGE, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(LINE_WIDTH_GRANULARITY, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(POLYGON_MODE, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(POLYGON_SMOOTH, GL_),
 #endif
     ENUM_FIELD(CULL_FACE, GL_),
@@ -102,10 +102,10 @@ BEGIN_ENUM(gl_Enums)
     ENUM_FIELD(STENCIL_WRITEMASK, GL_),
     ENUM_FIELD(VIEWPORT, GL_),
     ENUM_FIELD(DITHER, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(BLEND_DST, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(BLEND_SRC, GL_),
 #endif
     ENUM_FIELD(BLEND, GL_),
@@ -113,17 +113,17 @@ BEGIN_ENUM(gl_Enums)
     ENUM_FIELD(DEPTH_BUFFER_BIT, GL_),
     ENUM_FIELD(STENCIL_BUFFER_BIT, GL_),
     ENUM_FIELD(COLOR_BUFFER_BIT, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(TEXTURE_1D, GL_),
 #endif
     ENUM_FIELD(TEXTURE_2D, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(TEXTURE_WIDTH, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(TEXTURE_HEIGHT, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(TEXTURE_BORDER_COLOR, GL_),
 #endif
     ENUM_FIELD(DONT_CARE, GL_),
@@ -136,85 +136,85 @@ BEGIN_ENUM(gl_Enums)
     ENUM_FIELD(INT, GL_),
     ENUM_FIELD(UNSIGNED_INT, GL_),
     ENUM_FIELD(FLOAT, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(CLEAR, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(AND, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(AND_REVERSE, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(COPY, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(AND_INVERTED, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(NOOP, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(XOR, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(OR, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(NOR, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(EQUIV, GL_),
 #endif
     ENUM_FIELD(INVERT, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(OR_REVERSE, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(COPY_INVERTED, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(OR_INVERTED, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(NAND, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(SET, GL_),
 #endif
     ENUM_FIELD(TEXTURE, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(COLOR, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(DEPTH, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(STENCIL, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(STENCIL_INDEX, GL_),
 #endif
     ENUM_FIELD(DEPTH_COMPONENT, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(RED, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(GREEN, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(BLUE, GL_),
 #endif
     ENUM_FIELD(ALPHA, GL_),
     ENUM_FIELD(RGB, GL_),
     ENUM_FIELD(RGBA, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(POINT, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(LINE, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(FILL, GL_),
 #endif
     ENUM_FIELD(KEEP, GL_),
@@ -236,28 +236,28 @@ BEGIN_ENUM(gl_Enums)
     ENUM_FIELD(TEXTURE_WRAP_S, GL_),
     ENUM_FIELD(TEXTURE_WRAP_T, GL_),
     ENUM_FIELD(REPEAT, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(BGR, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(BGRA, GL_),
 #endif
     ENUM_FIELD(CLAMP_TO_EDGE, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(CLAMP_TO_BORDER, GL_),
 #endif
     ENUM_FIELD(BLEND_DST_RGB, GL_),
     ENUM_FIELD(BLEND_SRC_RGB, GL_),
     ENUM_FIELD(BLEND_DST_ALPHA, GL_),
     ENUM_FIELD(BLEND_SRC_ALPHA, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(POINT_FADE_THRESHOLD_SIZE, GL_),
 #endif
     ENUM_FIELD(DEPTH_COMPONENT16, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(DEPTH_COMPONENT24, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(DEPTH_COMPONENT32, GL_),
 #endif
     ENUM_FIELD(MIRRORED_REPEAT, GL_),
@@ -277,24 +277,24 @@ BEGIN_ENUM(gl_Enums)
     ENUM_FIELD(ARRAY_BUFFER_BINDING, GL_),
     ENUM_FIELD(ELEMENT_ARRAY_BUFFER_BINDING, GL_),
     ENUM_FIELD(STREAM_DRAW, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(STREAM_READ, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(STREAM_COPY, GL_),
 #endif
     ENUM_FIELD(STATIC_DRAW, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(STATIC_READ, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(STATIC_COPY, GL_),
 #endif
     ENUM_FIELD(DYNAMIC_DRAW, GL_),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(DYNAMIC_READ, GL_),
 #endif
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(USE_GLES2)
     ENUM_FIELD(DYNAMIC_COPY, GL_),
 #endif
     ENUM_FIELD(FRAGMENT_SHADER, GL_),
@@ -304,289 +304,69 @@ BEGIN_ENUM(gl_Enums)
 END_ENUM()
 /************************
  #                      #
- #    Draw Functions    #
+ #    Vertex Arrays     #
  #                      #
  ************************/
 
-static MODULE_FUNCTION(gl, clear) {
-    INIT_ARG();
-    CHECK_INTEGER(mask);
-    glClear(mask);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, clear_color) {
-    INIT_ARG();
-    CHECK_NUMBER(float, r);
-    CHECK_NUMBER(float, g);
-    CHECK_NUMBER(float, b);
-    CHECK_NUMBER(float, a);
-    glClearColor(r, g, b, a);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, enable) {
-    INIT_ARG();
-    CHECK_INTEGER(val);
-    glEnable(val);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, disable) {
-    INIT_ARG();
-    CHECK_INTEGER(val);
-    glDisable(val);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, blend_func) {
-    INIT_ARG();
-    CHECK_INTEGER(sfactor);
-    CHECK_INTEGER(dfactor);
-    glBlendFunc(sfactor, dfactor);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, blend_equation) {
-    INIT_ARG();
-    CHECK_INTEGER(eq);
-    glBlendEquation(eq);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, draw_arrays) {
-    INIT_ARG();
-    CHECK_INTEGER(mode);
-    CHECK_INTEGER(start);
-    CHECK_INTEGER(count);
-    glDrawArrays(mode, start, count);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, draw_elements) {
-    INIT_ARG();
-    CHECK_INTEGER(mode);
-    CHECK_INTEGER(start);
-    CHECK_INTEGER(type);
-    CHECK_INTEGER(indices);
-    glDrawElements(mode, start, type, (void*)indices);
-    return 0;
-}
-
-/************************
- #                      #
- #       Program        #
- #                      #
- ************************/
-
-static MODULE_FUNCTION(gl, create_program) {
-    INIT_ARG();
-    PUSH_INTEGER(glCreateProgram());
-    return 1;
-}
-
-static MODULE_FUNCTION(gl, delete_program) {
-    INIT_ARG();
-    CHECK_INTEGER(prog);
-    glDeleteProgram(prog);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, use_program) {
-    INIT_ARG();
-    OPT_INTEGER(prog, 0);
-    glUseProgram(prog);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, attach_shader) {
-    INIT_ARG();
-    CHECK_INTEGER(prog);
-    CHECK_INTEGER(shader);
-    glAttachShader(prog, shader);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, link_program) {
-    INIT_ARG();
-    CHECK_INTEGER(prog);
-    glLinkProgram(prog);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, get_programiv) {
-    INIT_ARG();
-    CHECK_INTEGER(prog);
-    CHECK_INTEGER(pname);
-        int out;
-    glGetProgramiv(prog, pname, &out);
-    PUSH_INTEGER(out);
-
-    return 1;
-}
-
-static MODULE_FUNCTION(gl, get_program_info_log) {
-    INIT_ARG();
-    CHECK_INTEGER(prog);
-        char log[1024];
-    glGetProgramInfoLog(prog, 1024, NULL, log);
-    PUSH_STRING(log);
-
-    return 1;
-}
-
-static MODULE_FUNCTION(gl, get_uniform_location) {
-    INIT_ARG();
-    CHECK_INTEGER(prog);
-    CHECK_STRING(name);
-    PUSH_INTEGER(glGetUniformLocation(prog, name));
-    return 1;
-}
-
-static MODULE_FUNCTION(gl, get_attrib_location) {
-    INIT_ARG();
-    CHECK_INTEGER(prog);
-    CHECK_STRING(name);
-    PUSH_INTEGER(glGetAttribLocation(prog, name));
-    return 1;
-}
-
-    float aux[512];
-
-static MODULE_FUNCTION(gl, uniform_matrix4fv) {
-    INIT_ARG();
-    CHECK_INTEGER(loc);
-    CHECK_INTEGER(count);
-    CHECK_BOOLEAN(transpose);
-    int args = lua_gettop(L);
-    float* m = NULL;
-    int type = lua_type(L, arg);
-    if (type == LUA_TLIGHTUSERDATA || type == LUA_TUSERDATA) {
-        m = lua_touserdata(L, arg);
-    } else {
-        for (int i = 0; i < count * 16; i++) {
-            aux[i] = luaL_checknumber(L, arg + i);
-        }
-        m = aux;
-    }
-    glUniformMatrix4fv(loc, count, transpose, m);
-    return 0;
-}
-
-/************************
- #                      #
- #     Framebuffers     #
- #                      #
- ************************/
-
-static MODULE_FUNCTION(gl, gen_framebuffers) {
+static MODULE_FUNCTION(gl, gen_vertex_arrays) {
+#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
     INIT_ARG();
     CHECK_INTEGER(n);
     for (int i = 0; i < n; i++) {
         int t;
-        glGenFramebuffers(1, &t);
-        PUSH_INTEGER(t);
+        glGenVertexArrays(1, &t);
+        lua_pushinteger(L, t);
     }
     return n;
+#else
+    return 0;
+#endif
 }
 
-static MODULE_FUNCTION(gl, delete_framebuffers) {
+static MODULE_FUNCTION(gl, delete_vertex_arrays) {
+#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
     INIT_ARG();
     for (int i = 0; i < lua_gettop(L); i++) {
-        CHECK_INTEGER(b);
-        glDeleteFramebuffers(1, &b);
+        CHECK_INTEGER(vao);
+        glDeleteVertexArrays(1, &vao);
     }
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, bind_framebuffer) {
-    INIT_ARG();
-    CHECK_INTEGER(target);
-    OPT_INTEGER(fbo, 0);
-    glBindFramebuffer(target, fbo);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, framebuffer_texture2d) {
-    INIT_ARG();
-    CHECK_INTEGER(target);
-    CHECK_INTEGER(attachment);
-    CHECK_INTEGER(textarget);
-    CHECK_INTEGER(texture);
-    CHECK_INTEGER(level);
-    glFramebufferTexture2D(target, attachment, textarget, texture, level);
-    return 0;
-}
-
-/************************
- #                      #
- #        Buffer        #
- #                      #
- ************************/
-
-static MODULE_FUNCTION(gl, gen_buffers) {
-    INIT_ARG();
-    CHECK_INTEGER(n);
-    for (int i = 0; i < n; i++) {
-        int t;
-        glGenBuffers(1, &t);
-        PUSH_INTEGER(t);
-    }
-    return n;}
-
-static MODULE_FUNCTION(gl, delete_buffers) {
-    INIT_ARG();
-    for (int i = 0; i < lua_gettop(L); i++) {
-        CHECK_INTEGER(b);
-        glDeleteBuffers(1, &b);
-    }
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, bind_buffer) {
-    INIT_ARG();
-    CHECK_INTEGER(target);
-    OPT_INTEGER(buf, 0);
-    glBindBuffer(target, buf);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, buffer_data) {
-    INIT_ARG();
-    CHECK_INTEGER(target);
-    CHECK_INTEGER(size);
-    const char* data = lua_touserdata(L, arg++);
-    CHECK_INTEGER(usage);
-    glBufferData(target, size, data, usage);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, buffer_sub_data) {
-    INIT_ARG();
-    CHECK_INTEGER(target);
-    CHECK_INTEGER(start);
-    CHECK_INTEGER(size);
-    CHECK_LUDATA(const void*, data);
-    glBufferSubData(target, start, size, data);
-    return 0;
-}
-
-static MODULE_FUNCTION(gl, setup) {
-#ifndef GL_ES_VERSION_2_0
-    INIT_ARG();
-    if (lua_type(L, arg) == LUA_TLIGHTUSERDATA) {
-        gladLoadGLLoader(lua_touserdata(L, arg));
-        return 0;
-    } else gladLoadGL();
 #endif
     return 0;
 }
 
-static MODULE_FUNCTION(gl, get_string) {
+static MODULE_FUNCTION(gl, enable_vertex_attrib_array) {
     INIT_ARG();
-    CHECK_INTEGER(pname);
-    PUSH_STRING((const char*)glGetString(pname));
-    return 1;
+    CHECK_INTEGER(attrib);
+    glEnableVertexAttribArray(attrib);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, disable_vertex_attrib_array) {
+    INIT_ARG();
+    CHECK_INTEGER(attrib);
+    glDisableVertexAttribArray(attrib);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, vertex_attrib_pointer) {
+    INIT_ARG();
+    CHECK_INTEGER(attrib);
+    CHECK_INTEGER(size);
+    CHECK_INTEGER(type);
+    GET_BOOLEAN(normalized);
+    CHECK_INTEGER(stride);
+    CHECK_INTEGER(offset);
+    glVertexAttribPointer(attrib, size, type, normalized, stride, (void*)offset);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, bind_vertex_array) {
+    INIT_ARG();
+    OPT_INTEGER(vao, 0);
+    #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
+    glBindVertexArray(vao);
+#endif
+    return 0;
 }
 
 /************************
@@ -794,68 +574,270 @@ static MODULE_FUNCTION(gl, uniform4iv) {
 
 /************************
  #                      #
- #    Vertex Arrays     #
+ #       Program        #
  #                      #
  ************************/
 
-static MODULE_FUNCTION(gl, gen_vertex_arrays) {
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
+static MODULE_FUNCTION(gl, create_program) {
+    INIT_ARG();
+    PUSH_INTEGER(glCreateProgram());
+    return 1;
+}
+
+static MODULE_FUNCTION(gl, delete_program) {
+    INIT_ARG();
+    CHECK_INTEGER(prog);
+    glDeleteProgram(prog);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, use_program) {
+    INIT_ARG();
+    OPT_INTEGER(prog, 0);
+    glUseProgram(prog);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, attach_shader) {
+    INIT_ARG();
+    CHECK_INTEGER(prog);
+    CHECK_INTEGER(shader);
+    glAttachShader(prog, shader);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, link_program) {
+    INIT_ARG();
+    CHECK_INTEGER(prog);
+    glLinkProgram(prog);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, get_programiv) {
+    INIT_ARG();
+    CHECK_INTEGER(prog);
+    CHECK_INTEGER(pname);
+        int out;
+    glGetProgramiv(prog, pname, &out);
+    PUSH_INTEGER(out);
+
+    return 1;
+}
+
+static MODULE_FUNCTION(gl, get_program_info_log) {
+    INIT_ARG();
+    CHECK_INTEGER(prog);
+        char log[1024];
+    glGetProgramInfoLog(prog, 1024, NULL, log);
+    PUSH_STRING(log);
+
+    return 1;
+}
+
+static MODULE_FUNCTION(gl, get_uniform_location) {
+    INIT_ARG();
+    CHECK_INTEGER(prog);
+    CHECK_STRING(name);
+    PUSH_INTEGER(glGetUniformLocation(prog, name));
+    return 1;
+}
+
+static MODULE_FUNCTION(gl, get_attrib_location) {
+    INIT_ARG();
+    CHECK_INTEGER(prog);
+    CHECK_STRING(name);
+    PUSH_INTEGER(glGetAttribLocation(prog, name));
+    return 1;
+}
+
+    float aux[512];
+
+static MODULE_FUNCTION(gl, uniform_matrix4fv) {
+    INIT_ARG();
+    CHECK_INTEGER(loc);
+    CHECK_INTEGER(count);
+    CHECK_BOOLEAN(transpose);
+    int args = lua_gettop(L);
+    float* m = NULL;
+    int type = lua_type(L, arg);
+    if (type == LUA_TLIGHTUSERDATA || type == LUA_TUSERDATA) {
+        m = lua_touserdata(L, arg);
+    } else {
+        for (int i = 0; i < count * 16; i++) {
+            aux[i] = luaL_checknumber(L, arg + i);
+        }
+        m = aux;
+    }
+    glUniformMatrix4fv(loc, count, transpose, m);
+    return 0;
+}
+
+/************************
+ #                      #
+ #    Draw Functions    #
+ #                      #
+ ************************/
+
+static MODULE_FUNCTION(gl, clear) {
+    INIT_ARG();
+    CHECK_INTEGER(mask);
+    glClear(mask);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, clear_color) {
+    INIT_ARG();
+    CHECK_NUMBER(float, r);
+    CHECK_NUMBER(float, g);
+    CHECK_NUMBER(float, b);
+    CHECK_NUMBER(float, a);
+    glClearColor(r, g, b, a);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, enable) {
+    INIT_ARG();
+    CHECK_INTEGER(val);
+    glEnable(val);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, disable) {
+    INIT_ARG();
+    CHECK_INTEGER(val);
+    glDisable(val);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, blend_func) {
+    INIT_ARG();
+    CHECK_INTEGER(sfactor);
+    CHECK_INTEGER(dfactor);
+    glBlendFunc(sfactor, dfactor);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, blend_equation) {
+    INIT_ARG();
+    CHECK_INTEGER(eq);
+    glBlendEquation(eq);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, draw_arrays) {
+    INIT_ARG();
+    CHECK_INTEGER(mode);
+    CHECK_INTEGER(start);
+    CHECK_INTEGER(count);
+    glDrawArrays(mode, start, count);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, draw_elements) {
+    INIT_ARG();
+    CHECK_INTEGER(mode);
+    CHECK_INTEGER(start);
+    CHECK_INTEGER(type);
+    CHECK_INTEGER(indices);
+    glDrawElements(mode, start, type, (void*)indices);
+    return 0;
+}
+
+/************************
+ #                      #
+ #     Framebuffers     #
+ #                      #
+ ************************/
+
+static MODULE_FUNCTION(gl, gen_framebuffers) {
     INIT_ARG();
     CHECK_INTEGER(n);
     for (int i = 0; i < n; i++) {
         int t;
-        glGenVertexArrays(1, &t);
-        lua_pushinteger(L, t);
+        glGenFramebuffers(1, &t);
+        PUSH_INTEGER(t);
     }
     return n;
-#else
-    return 0;
-#endif
 }
 
-static MODULE_FUNCTION(gl, delete_vertex_arrays) {
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
+static MODULE_FUNCTION(gl, delete_framebuffers) {
     INIT_ARG();
     for (int i = 0; i < lua_gettop(L); i++) {
-        CHECK_INTEGER(vao);
-        glDeleteVertexArrays(1, &vao);
+        CHECK_INTEGER(b);
+        glDeleteFramebuffers(1, &b);
     }
-#endif
     return 0;
 }
 
-static MODULE_FUNCTION(gl, enable_vertex_attrib_array) {
+static MODULE_FUNCTION(gl, bind_framebuffer) {
     INIT_ARG();
-    CHECK_INTEGER(attrib);
-    glEnableVertexAttribArray(attrib);
+    CHECK_INTEGER(target);
+    OPT_INTEGER(fbo, 0);
+    glBindFramebuffer(target, fbo);
     return 0;
 }
 
-static MODULE_FUNCTION(gl, disable_vertex_attrib_array) {
+static MODULE_FUNCTION(gl, framebuffer_texture2d) {
     INIT_ARG();
-    CHECK_INTEGER(attrib);
-    glDisableVertexAttribArray(attrib);
+    CHECK_INTEGER(target);
+    CHECK_INTEGER(attachment);
+    CHECK_INTEGER(textarget);
+    CHECK_INTEGER(texture);
+    CHECK_INTEGER(level);
+    glFramebufferTexture2D(target, attachment, textarget, texture, level);
     return 0;
 }
 
-static MODULE_FUNCTION(gl, vertex_attrib_pointer) {
+/************************
+ #                      #
+ #        Buffer        #
+ #                      #
+ ************************/
+
+static MODULE_FUNCTION(gl, gen_buffers) {
     INIT_ARG();
-    CHECK_INTEGER(attrib);
+    CHECK_INTEGER(n);
+    for (int i = 0; i < n; i++) {
+        int t;
+        glGenBuffers(1, &t);
+        PUSH_INTEGER(t);
+    }
+    return n;}
+
+static MODULE_FUNCTION(gl, delete_buffers) {
+    INIT_ARG();
+    for (int i = 0; i < lua_gettop(L); i++) {
+        CHECK_INTEGER(b);
+        glDeleteBuffers(1, &b);
+    }
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, bind_buffer) {
+    INIT_ARG();
+    CHECK_INTEGER(target);
+    OPT_INTEGER(buf, 0);
+    glBindBuffer(target, buf);
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, buffer_data) {
+    INIT_ARG();
+    CHECK_INTEGER(target);
     CHECK_INTEGER(size);
-    CHECK_INTEGER(type);
-    GET_BOOLEAN(normalized);
-    CHECK_INTEGER(stride);
-    CHECK_INTEGER(offset);
-    glVertexAttribPointer(attrib, size, type, normalized, stride, (void*)offset);
+    const char* data = lua_touserdata(L, arg++);
+    CHECK_INTEGER(usage);
+    glBufferData(target, size, data, usage);
     return 0;
 }
 
-static MODULE_FUNCTION(gl, bind_vertex_array) {
+static MODULE_FUNCTION(gl, buffer_sub_data) {
     INIT_ARG();
-    OPT_INTEGER(vao, 0);
-    #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-    glBindVertexArray(vao);
-#endif
+    CHECK_INTEGER(target);
+    CHECK_INTEGER(start);
+    CHECK_INTEGER(size);
+    CHECK_LUDATA(const void*, data);
+    glBufferSubData(target, start, size, data);
     return 0;
 }
 
@@ -926,37 +908,32 @@ static MODULE_FUNCTION(gl, tex_image2d) {
     return 0;
 }
 
+static MODULE_FUNCTION(gl, setup) {
+#ifndef USE_GLES2
+    INIT_ARG();
+    if (lua_type(L, arg) == LUA_TLIGHTUSERDATA) {
+        gladLoadGLLoader(lua_touserdata(L, arg));
+        return 0;
+    } else gladLoadGL();
+#endif
+    return 0;
+}
+
+static MODULE_FUNCTION(gl, get_string) {
+    INIT_ARG();
+    CHECK_INTEGER(pname);
+    PUSH_STRING((const char*)glGetString(pname));
+    return 1;
+}
+
 int luaopen_gl(lua_State* L) {
     BEGIN_REG(reg)
-        REG_FIELD(gl, clear),
-        REG_FIELD(gl, clear_color),
-        REG_FIELD(gl, enable),
-        REG_FIELD(gl, disable),
-        REG_FIELD(gl, blend_func),
-        REG_FIELD(gl, blend_equation),
-        REG_FIELD(gl, draw_arrays),
-        REG_FIELD(gl, draw_elements),
-        REG_FIELD(gl, create_program),
-        REG_FIELD(gl, delete_program),
-        REG_FIELD(gl, use_program),
-        REG_FIELD(gl, attach_shader),
-        REG_FIELD(gl, link_program),
-        REG_FIELD(gl, get_programiv),
-        REG_FIELD(gl, get_program_info_log),
-        REG_FIELD(gl, get_uniform_location),
-        REG_FIELD(gl, get_attrib_location),
-        REG_FIELD(gl, uniform_matrix4fv),
-        REG_FIELD(gl, gen_framebuffers),
-        REG_FIELD(gl, delete_framebuffers),
-        REG_FIELD(gl, bind_framebuffer),
-        REG_FIELD(gl, framebuffer_texture2d),
-        REG_FIELD(gl, gen_buffers),
-        REG_FIELD(gl, delete_buffers),
-        REG_FIELD(gl, bind_buffer),
-        REG_FIELD(gl, buffer_data),
-        REG_FIELD(gl, buffer_sub_data),
-        REG_FIELD(gl, setup),
-        REG_FIELD(gl, get_string),
+        REG_FIELD(gl, gen_vertex_arrays),
+        REG_FIELD(gl, delete_vertex_arrays),
+        REG_FIELD(gl, enable_vertex_attrib_array),
+        REG_FIELD(gl, disable_vertex_attrib_array),
+        REG_FIELD(gl, vertex_attrib_pointer),
+        REG_FIELD(gl, bind_vertex_array),
         REG_FIELD(gl, create_shader),
         REG_FIELD(gl, delete_shader),
         REG_FIELD(gl, shader_source),
@@ -979,18 +956,41 @@ int luaopen_gl(lua_State* L) {
         REG_FIELD(gl, uniform2iv),
         REG_FIELD(gl, uniform3iv),
         REG_FIELD(gl, uniform4iv),
-        REG_FIELD(gl, gen_vertex_arrays),
-        REG_FIELD(gl, delete_vertex_arrays),
-        REG_FIELD(gl, enable_vertex_attrib_array),
-        REG_FIELD(gl, disable_vertex_attrib_array),
-        REG_FIELD(gl, vertex_attrib_pointer),
-        REG_FIELD(gl, bind_vertex_array),
+        REG_FIELD(gl, create_program),
+        REG_FIELD(gl, delete_program),
+        REG_FIELD(gl, use_program),
+        REG_FIELD(gl, attach_shader),
+        REG_FIELD(gl, link_program),
+        REG_FIELD(gl, get_programiv),
+        REG_FIELD(gl, get_program_info_log),
+        REG_FIELD(gl, get_uniform_location),
+        REG_FIELD(gl, get_attrib_location),
+        REG_FIELD(gl, uniform_matrix4fv),
+        REG_FIELD(gl, clear),
+        REG_FIELD(gl, clear_color),
+        REG_FIELD(gl, enable),
+        REG_FIELD(gl, disable),
+        REG_FIELD(gl, blend_func),
+        REG_FIELD(gl, blend_equation),
+        REG_FIELD(gl, draw_arrays),
+        REG_FIELD(gl, draw_elements),
+        REG_FIELD(gl, gen_framebuffers),
+        REG_FIELD(gl, delete_framebuffers),
+        REG_FIELD(gl, bind_framebuffer),
+        REG_FIELD(gl, framebuffer_texture2d),
+        REG_FIELD(gl, gen_buffers),
+        REG_FIELD(gl, delete_buffers),
+        REG_FIELD(gl, bind_buffer),
+        REG_FIELD(gl, buffer_data),
+        REG_FIELD(gl, buffer_sub_data),
         REG_FIELD(gl, gen_textures),
         REG_FIELD(gl, delete_textures),
         REG_FIELD(gl, bind_texture),
         REG_FIELD(gl, tex_parameteri),
         REG_FIELD(gl, tex_parameterf),
         REG_FIELD(gl, tex_image2d),
+        REG_FIELD(gl, setup),
+        REG_FIELD(gl, get_string),
     END_REG()
     luaL_newlib(L, reg);
     LOAD_ENUM(gl_Enums);
