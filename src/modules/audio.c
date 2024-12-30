@@ -491,6 +491,7 @@ static MODULE_FUNCTION(AudioSystem, update) {
         }
         i++;
     }
+    return 0;
 }
 
 static MODULE_FUNCTION(AudioSystem, pause_device) {
