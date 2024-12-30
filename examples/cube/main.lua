@@ -18,6 +18,7 @@ if not window then
 end
 local ctx = sdl.create_gl_context(window)
 gl.setup()
+print(profile.major, profile.minor)
 local event = sdl.create_event()
 print(sdl.get_keyboard_state, sdl.create_event)
 local keys = sdl.get_keyboard_state()
@@ -27,7 +28,6 @@ print(gl.get_string(gl.VERSION))
 local current = sdl.get_ticks()
 print(sdl, sdl.get_ticks)
 local last = sdl.get_ticks()
-
 local buf = gl.gen_buffers(1)
 local index = gl.gen_buffers(1)
 local vert = gl.create_shader(gl.VERTEX_SHADER)
@@ -62,6 +62,8 @@ gl.attach_shader(prog, frag)
 gl.link_program(prog)
 
 gl.use_program(prog)
+
+
 
 -- Set world matrix
 local loc = gl.get_uniform_location(prog, 'world')

@@ -1,19 +1,17 @@
-require('plugins').setup()
-local sdl = require('selSDL')
 sdl.init(sdl.INIT_EVERYTHING)
-sdl.glSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
-sdl.glSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
-sdl.glSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
-local window = sdl.Window.create("SDL2 Test", sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED, 640, 380, {sdl.WINDOW_SHOWN, sdl.WINDOW_OPENGL})
+sdl.gl_set_attribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
+sdl.gl_set_attribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
+sdl.gl_set_attribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
+local window = sdl.create_window("SDL2 Test", sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED, 640, 380, sdl.WINDOW_SHOWN | sdl.WINDOW_OPENGL)
 -- local render = sdl.Renderer.create(window)
-local ctx = sdl.GLContext.create(window)
+local ctx = sdl.create_gl_context(window)
 gl.setup()
-local event = sdl.Event.create()
+local event = sdl.create_event()
 
-local current = sdl.getTicks()
-local last = sdl.getTicks()
+local current = sdl.get_ticks()
+local last = sdl.get_ticks()
 
-function createOrtho(left, right, bottom, top, near, far)
+function create_ortho(left, right, bottom, top, near, far)
     local m = {
         0, 0, 0, 0,
         0, 0, 0, 0,
@@ -34,7 +32,7 @@ local buf = gl.gen_buffers(1)
 local vert = gl.create_shader(gl.VERTEX_SHADER)
 local frag = gl.create_shader(gl.FRAGMENT_SHADER)
 
-vert:source([[
+gl.shader_source(vert, [[
 #version 120
 attribute vec2 position;
 attribute vec3 color;
@@ -51,7 +49,7 @@ void main() {
     v_texcoord = texcoord;
     }
 ]])
-frag:source([[
+gl.shader_source(frag, [[
 #version 120
 varying vec3 v_color;
 varying vec2 v_texcoord;
@@ -62,100 +60,104 @@ void main() {
     gl_FragColor = texture2D(u_tex, v_texcoord) * vec4(v_color, 1);
 }
 ]])
-vert:compile()
-frag:compile()
+gl.compile_shader(vert)
+gl.compile_shader(frag)
 
 local prog = gl.create_program()
-prog:attachShader(vert, frag)
-prog:link()
+gl.attach_shader(prog, vert)
+gl.attach_shader(prog, frag)
+gl.link_program(prog)
 
 gl.use_program(prog)
-local loc = prog:getUniformLocation('world')
+local loc = gl.get_uniform_location(prog, 'world')
 print(loc)
-gl.uniformMatrix4fv(loc, 1, false, createOrtho(0, 640, 380, 0, -1, 1))
+local m = linmath.mat4x4.alloc()
+print(m, m.identity, linmath.mat4x4.identity)
+m:identity()
+m:ortho(0, 640, 380, 0, -1, 1)
+gl.uniform_matrix4fv(loc, 1, false, m)
 -- gl.uniformMatrix4fv(loc, 1, false, {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1})
 gl.use_program()
 
 
-vert:destroy()
-frag:destroy()
+gl.delete_shader(vert)
+gl.delete_shader(frag)
 -- print(selene.fs, selene.image, selene.data)
 -- for i,v in pairs(selene) do
 --     print(i, v)
 -- end
 local xx = 0
-local data = selene.Data.create(4 * 7 * 3)
-data:writeFloats(0, 320, 0, 1, 0, 1, 0.5, 0)
-data:writeFloats(28, 640, 380, 0, 1, 1, 1, 1)
-data:writeFloats(56, 0, 380, 1, 1, 0, 0, 1)
+local data = selene.create_data(4 * 7 * 3)
+data:write_floats(0, 320, 0, 1, 0, 1, 0.5, 0)
+data:write_floats(28, 640, 380, 0, 1, 1, 1, 1)
+data:write_floats(56, 0, 380, 1, 1, 0, 0, 1)
 
 -- data:writeFloats(0, 0, 0.5, 1, 0, 1, 0.5, 0)
 -- data:writeFloats(28, 0.5, -0.5, 0, 1, 1, 0, 1)
 -- data:writeFloats(56, -0.5, -0.5, 1, 1, 0, 1, 1)
 
-local vao = gl.VertexArray.create()
+local vao = gl.gen_vertex_arrays(1)
 
-vao:bind()
-gl.Buffer.bind(gl.ARRAY_BUFFER, buf)
-gl.Buffer.data(gl.ARRAY_BUFFER, gl.STATIC_DRAW, data:getSize(), data)
+gl.bind_vertex_array(vao)
+gl.bind_buffer(gl.ARRAY_BUFFER, buf)
+gl.buffer_data(gl.ARRAY_BUFFER, data:size(), data:root(), gl.STATIC_DRAW)
 
-gl.VertexArray.enable(0)
-gl.VertexArray.enable(1)
-gl.VertexArray.enable(2)
-gl.VertexArray.attribPointer(0, 2, gl.FLOAT, gl.FALSE, 7*4, 0)
-gl.VertexArray.attribPointer(1, 3, gl.FLOAT, gl.FALSE, 7*4, 2*4)
-gl.VertexArray.attribPointer(2, 2, gl.FLOAT, gl.FALSE, 7*4, 5*4)
+gl.enable_vertex_attrib_array(0)
+gl.enable_vertex_attrib_array(1)
+gl.enable_vertex_attrib_array(2)
+gl.vertex_attrib_pointer(0, 2, gl.FLOAT, false, 7*4, 0)
+gl.vertex_attrib_pointer(1, 3, gl.FLOAT, false, 7*4, 2*4)
+gl.vertex_attrib_pointer(2, 2, gl.FLOAT, false, 7*4, 5*4)
 
-gl.Buffer.bind(gl.ARRAY_BUFFER)
-vao.bind()
+gl.bind_buffer(gl.ARRAY_BUFFER)
+gl.bind_vertex_array()
 
-local img_data = {selene.image.load('tuiteiro.jpg')}
+local img_data = image.from_file('tuiteiro.jpg')
 print(img_data[1], img_data[2], img_data[3])
 
-local tex = gl.Texture.create()
-gl.Texture.bind(gl.TEXTURE_2D, tex)
-gl.Texture.parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+local tex = gl.gen_textures(1)
+gl.bind_texture(gl.TEXTURE_2D, tex)
+gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 -- gl.Texture.paremeteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-gl.Texture.image2D(gl.TEXTURE_2D, gl.RGBA, img_data[2], img_data[3], gl.RGBA, gl.UNSIGNED_BYTE, img_data[1])
-gl.Texture.bind(gl.TEXTURE_2D)
+gl.tex_image2d(gl.TEXTURE_2D, 0, gl.RGBA, img_data.width, img_data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, img_data.data:root())
+gl.bind_texture(gl.TEXTURE_2D)
 
-selene.setStep(
+selene.set_step(
 function()
     while event:poll() do
-        if event:getType() == sdl.QUIT then selene.setRunning(false) end
-        if event:getType() == sdl.WINDOWEVENT then
-            if event:windowEvent() == sdl.WINDOWEVENT_CLOSE then selene.setRunning(false) end
+        if event:get_type() == sdl.QUIT then selene.set_running(false) end
+        if event:get_type() == sdl.WINDOWEVENT then
+            if event:window_event() == sdl.WINDOWEVENT_CLOSE then selene.set_running(false) end
         end
     end
     last = current
-    current = sdl.getTicks()
+    current = sdl.get_ticks()
     local delta = (current - last) / 1000
-    gl.clearColor(0.3, 0.3, 0.4, 1.0)
+    gl.clear_color(0.3, 0.3, 0.4, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
 
-    gl.Texture.bind(gl.TEXTURE_2D, tex)
-    gl.Program.use(prog)
-    vao:bind()
-    gl.drawArrays(gl.TRIANGLES, 0, 3)
-    vao.bind()
-    gl.Program.use()
-    gl.Texture.bind(gl.TEXTURE_2D)
+    gl.bind_texture(gl.TEXTURE_2D, tex)
+    gl.use_program(prog)
+    gl.bind_vertex_array(vao)
+    gl.draw_arrays(gl.TRIANGLES, 0, 3)
+    gl.bind_vertex_array()
+    gl.use_program()
+    gl.bind_texture(gl.TEXTURE_2D)
 
     -- render:setColor(75, 75, 125, 255)
     -- render:clear()
     -- render:present()
-    window:glSwap()
+    window:gl_swap()
 end
 )
 
 
-selene.setQuit(
+selene.set_quit(
 function()
-    tex:destroy()
-    buf:destroy()
-    prog:destroy()
-    vao:destroy()
-
+    gl.delete_textures(tex)
+    gl.delete_buffers(buf)
+    gl.delete_program(prog)
+    gl.delete_vertex_arrays(vao)
     -- render:destroy()
     ctx:destroy()
     window:destroy()
