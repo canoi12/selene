@@ -7,7 +7,7 @@ local fs = {}
 function fs.exists(path) end
 
 --- @param path string
---- @return Data
+--- @return selene.Data
 function fs.read(path) end
 
 --- @param path string
