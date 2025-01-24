@@ -1,5 +1,4 @@
-#include <platforms.h>
-#include <selene.h>
+#include "runners/default.c"
 
 static int main_symbol_test(int a) { return -1; }
 
