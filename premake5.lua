@@ -10,6 +10,11 @@ else
     _PLUGINS_DIR = _OPTIONS['plugins-dir']
 end
 
+if _OPTIONS['shared-lib'] then
+    print(_OPTIONS['shared-lib'])
+    _OPTIONS['lua-shared'] = ''
+end
+
 workspace "selene"
     language "C"
     configurations {"Debug", "Release"}
