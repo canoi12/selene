@@ -5,7 +5,7 @@
 #define OS_ANDROID 1
 #elif defined(__EMSCRIPTEN__) // Emscripten
 #define OS_EMSCRIPTEN 1
-#elif defined(_WIN32) || defined(_WIN64) // Windows
+#elif defined(WIN32) || defined(_WIN32) || defined(_WIN64) // Windows
 #define OS_WIN 1
 #elif defined(__APPLE__) // MacOSX
 #define OS_APPLE 1

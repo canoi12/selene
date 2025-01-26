@@ -1,7 +1,7 @@
 #ifndef SELENE_H_
 #define SELENE_H_
 
-#define SELENE_VERSION "0.2.0"
+#define SELENE_VERSION "0.2.1"
 
 #include <platforms.h>
 #include <common.h>
@@ -53,6 +53,14 @@ static const char* selene_init_script =
 #endif
 
 extern int selene_running;
+
+#if USE_JIT
+#define lua_rawlen lua_objlen
+extern void lua_rawsetp(lua_State* L, int idx, void* p);
+extern int lua_rawgetp(lua_State* L, int idx, const void* p);
+extern void luaL_requiref (lua_State *L, const char *modname,
+                               lua_CFunction openf, int glb);
+#endif
 
 typedef unsigned int Data;
 
