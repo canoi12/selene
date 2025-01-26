@@ -82,6 +82,9 @@ luaL_Reg reg[] = {
 int selene_main(int argc, char **argv) {
   lua_State *L = luaL_newstate();
   luaL_openlibs(L);
+#if USE_JIT
+    luaopen_ffi(L);
+#endif
   luaL_requiref(L, "selene", luaopen_selene, 1);
   lua_pushcfunction(L, reg[0].func);
   lua_setfield(L, -2, reg[0].name);

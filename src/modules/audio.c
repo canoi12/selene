@@ -115,9 +115,10 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
     else
         return luaL_error(L, "Unsupported audio format: %s\n", path);
     out->format = format;
+#if defined(OS_ANDROID)
     char* data = NULL;
     size_t data_size;
-#if defined(OS_ANDROID)
+
     SDL_RWops* fp = SDL_RWFromFile(path, "rb");
     data_size = SDL_RWsize(fp);
     data = (char*)malloc(data_size);
@@ -187,7 +188,7 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
         default: break;
     }
 #if defined(OS_ANDROID)
-    dec->audio_data = data;
+    out->audio_data = data;
 #endif
     return 1;
 }

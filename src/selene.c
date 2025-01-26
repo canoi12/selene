@@ -5,6 +5,31 @@
 extern int luaopen_plugins(lua_State *L);
 #endif
 
+#if USE_JIT
+void lua_rawsetp(lua_State* L, int idx, void* p) {
+    int value = (int)p;
+    lua_rawseti(L, idx, value);
+}
+int lua_rawgetp(lua_State* L, int idx, const void* p) {
+    int value = (int)p;
+    lua_rawgeti(L, idx, value);
+}
+void luaL_requiref (lua_State *L, const char *modname,
+                               lua_CFunction openf, int glb) {
+  lua_pushcfunction(L, openf);
+  lua_pushstring(L, modname);  /* argument to open function */
+  lua_call(L, 1, 1);  /* open module */
+  lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED");
+  lua_pushvalue(L, -2);  /* make copy of module (call result) */
+  lua_setfield(L, -2, modname);  /* _LOADED[modname] = module */
+  lua_pop(L, 1);  /* remove _LOADED table */
+  if (glb) {
+    lua_pushvalue(L, -1);  /* copy of 'mod' */
+    lua_setglobal(L, modname);  /* _G[modname] = module */
+  }
+}
+#endif
+
 int selene_running = 0;
 
 // Type Modules
@@ -341,7 +366,11 @@ int luaopen_selene(lua_State *L) {
 
 #ifndef SELENE_NO_SDL
   lua_getglobal(L, "package");
+#if USE_JIT
+  lua_getfield(L, -1, "loaders");
+#else
   lua_getfield(L, -1, "searchers");
+#endif
   lua_pushcfunction(L, l_load_from_sdl_rwops);
   lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
   lua_pop(L, 2);
