@@ -1,14 +1,17 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 project(selene VERSION 0.2.1 LANGUAGES C)
 include(CheckLibraryExists)
+include(CheckIncludeFile)
 
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Set build type")
 
 if (DEFINED MSVC AND DEFINED CMAKE_GENERATOR_PLATFORM)
-    if (${CMAKE_GENERATOR_PLATFORM} STREQUAL "Win32")
-    set(CMAKE_SYSTEM_PROCESSOR "x86")
+    if ("${CMAKE_GENERATOR_PLATFORM}" STREQUAL "")
+        set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    elseif ("${CMAKE_GENERATOR_PLATFORM}" STREQUAL "Win32")
+        set(CMAKE_SYSTEM_PROCESSOR "x86")
     else ()
-    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_GENERATOR_PLATFORM}")
+        set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_GENERATOR_PLATFORM}")
     endif()
 endif ()
 
@@ -114,7 +117,7 @@ elseif (DEFINED MINGW)
     set(SDL2_DIR src/third/SDL2/MINGW/cmake)
 endif ()
 
-if (${SDL2_DIR})
+if (DEFINED SDL2_DIR)
     find_package(SDL2 REQUIRED)
 endif ()
 
@@ -143,11 +146,20 @@ endif ()
 
 if (NOT DEFINED MSVC)
     check_library_exists("-l${LUA_LIB};" luaL_newstate "${CMAKE_LIBRARY_PATH}" HAS_LUA)
+    check_include_file("lua.h" HAS_LUAH)
+    if (NOT HAS_LUAH)
+        include_directories("${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}/source/src")
+    endif ()
 else ()
     check_library_exists("${LUA_LIB}.lib;" luaL_newstate "${CMAKE_LIBRARY_PATH}" HAS_LUA)
     check_library_exists("lua51.lib;" luaL_newstate "${CMAKE_LIBRARY_PATH}" HAS_LUA51)
 endif()
 message("Has Lua: ${HAS_LUA} - ${LUA_LIB}")
+if (NOT HAS_LUA)
+    set(LUA_FROM_SOURCE TRUE)
+    message("Include lua CMake")
+    add_subdirectory("${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}")
+endif ()
 # find_library(LUALIB NAMES ${LUA_LIB} PATHS "${CMAKE_LIBRARY_PATH}" NO_DEFAULT_PATH)
 # message("${LUALIB}")
 if (${HAS_SDL2_2})
@@ -163,42 +175,45 @@ elseif ("${HAS_SDL2}" STREQUAL "")
     set(SDL2_INCLUDE_DIRS src/third/SDL2/source/include)
     set(SDL2_LIBRARIES SDL2::SDL2 SDL2::SDL2main)
 endif()
-
+message("Include: ${SDL2_INCLUDE_DIRS}")
 include_directories(${SDL2_INCLUDE_DIRS})
 
 ## Static Library
 add_library(${PROJECT_NAME} STATIC ${SELENE_SOURCES})
 if (NOT DEFINED MSVC)
-target_link_libraries(${PROJECT_NAME} m)
+    target_link_libraries(${PROJECT_NAME} m)
 endif ()
 if (NOT DEFINED WIN32)
-target_link_libraries(${PROJECT_NAME} dl)
+    target_link_libraries(${PROJECT_NAME} dl)
 endif ()
 
 set(LUA_LIB_EXT "${CMAKE_SHARED_LIBRARY_SUFFIX}")
 set(LUA_LIB_TYPE "SHARED")
 if ((DEFINED WIN32) OR (DEFINED EMSCRIPTEN))
-set(LUA_LIB_EXT "${CMAKE_STATIC_LIBRARY_SUFFIX}")
-set(LUA_LIB_TYPE "STATIC")
+    set(LUA_LIB_EXT "${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(LUA_LIB_TYPE "STATIC")
 endif ()
 
 ## Imported Shared Lib (Lua)
-add_library(${LUA_LIB} ${LUA_LIB_TYPE} IMPORTED)
-if (DEFINED WIN32)
-    message("${CMAKE_LIBRARY_PATH}/${CMAKE_STATIC_LIBRARY_PREFIX}${LUA_LIB}${LUA_LIB_EXT}")
-    set_target_properties(${LUA_LIB} PROPERTIES
-        IMPORTED_LOCATION "${CMAKE_LIBRARY_PATH}/${CMAKE_STATIC_LIBRARY_PREFIX}${LUA_LIB}${LUA_LIB_EXT}"
-    )
-    if (${HAS_LUA51})
-        set_target_properties(lua51 PROPERTIES
-            IMPORTED_LOCATION "${CMAKE_LIBRARY_PATH}/lua51${LUA_LIB_EXT}"
+if (NOT LUA_FROM_SOURCE)
+    message("Import Library ${LUA_LIB}")
+    add_library(${LUA_LIB} ${LUA_LIB_TYPE} IMPORTED)
+    if (DEFINED WIN32)
+        message("${CMAKE_LIBRARY_PATH}/${CMAKE_STATIC_LIBRARY_PREFIX}${LUA_LIB}${LUA_LIB_EXT}")
+        set_target_properties(${LUA_LIB} PROPERTIES
+            IMPORTED_LOCATION "${CMAKE_LIBRARY_PATH}/${CMAKE_STATIC_LIBRARY_PREFIX}${LUA_LIB}${LUA_LIB_EXT}"
+        )
+        if (${HAS_LUA51})
+            set_target_properties(lua51 PROPERTIES
+                IMPORTED_LOCATION "${CMAKE_LIBRARY_PATH}/lua51${LUA_LIB_EXT}"
+            )
+        endif ()
+    else ()
+        message("${CMAKE_LIBRARY_PATH}/lib${LUA_LIB}${LUA_LIB_EXT}")
+        set_target_properties(${LUA_LIB} PROPERTIES
+            IMPORTED_LOCATION "${CMAKE_LIBRARY_PATH}/lib${LUA_LIB}${LUA_LIB_EXT}"
         )
     endif ()
-else ()
-    message("${CMAKE_LIBRARY_PATH}/lib${LUA_LIB}${LUA_LIB_EXT}")
-    set_target_properties(${LUA_LIB} PROPERTIES
-        IMPORTED_LOCATION "${CMAKE_LIBRARY_PATH}/lib${LUA_LIB}${LUA_LIB_EXT}"
-    )
 endif ()
 
 ## Shared Library
