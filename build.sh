@@ -154,17 +154,21 @@ build_lua() {
     'aarch64_android' ) aarch64_android ;;
     'i386_android' ) i386_android ;;
     'x86_64_android' ) x86_64_android ;;
-    # Emscripten
-    'wasm32_emscripten' ) wasm32_emscripten ;;
-    # MINGW
-    'i686_mingw' ) i686_mingw ;;
-    'x86_64_mingw' ) x86_64_mingw ;;
     # All androids
     'android' )
         armv7_android
         aarch64_android
         i386_android
         x86_64_android ;;
+    # Emscripten
+    'wasm32_emscripten' ) wasm32_emscripten ;;
+    # MINGW
+    'i686_mingw' ) i686_mingw ;;
+    'x86_64_mingw' ) x86_64_mingw ;;
+    # All MinGW
+    'mingw' )
+        i686_mingw
+        x86_64_mingw ;;
     'all' )
         # Linux
         i686_linux
