@@ -9,7 +9,7 @@ file(GLOB LUA_SOURCES source/src/*.c)
 list(REMOVE_ITEM LUA_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/src/lua.c)
 list(REMOVE_ITEM LUA_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/src/luac.c)
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
+if (${CMAKE_CROSSCOMPILING})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 endif ()
 
@@ -36,7 +36,6 @@ add_library(${PROJECT_NAME}Shared SHARED ${LUA_SOURCES})
 if (NOT DEFINED MSVC)
 target_link_libraries(${PROJECT_NAME}Shared m)
 endif ()
-
 set_target_properties(${PROJECT_NAME}Shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     target_compile_definitions(${PROJECT_NAME}Shared PRIVATE -DLUA_BUILD_AS_DLL)
