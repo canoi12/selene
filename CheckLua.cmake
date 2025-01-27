@@ -31,6 +31,3 @@ if (LUA_INCLUDE_DIR)
 else ()
     include_directories("${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}/include")
 endif ()
-
-# set(LUA_LIBRARIES ${LUA_TARGET_NAME})
-# set(LUA_INCLUDE_DIRS ${LUA_INCLUDE_DIR})

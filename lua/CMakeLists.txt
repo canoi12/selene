@@ -40,8 +40,6 @@ endif ()
 set_target_properties(${PROJECT_NAME}Shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     target_compile_definitions(${PROJECT_NAME}Shared PRIVATE -DLUA_BUILD_AS_DLL)
-    set_target_properties(${PROJECT_NAME}Shared PROPERTIES PREFIX "")
-    set_target_properties(${PROJECT_NAME}Shared PROPERTIES SUFFIX ".dll")
 endif ()
 
 add_executable(lua ${CMAKE_CURRENT_SOURCE_DIR}/source/src/lua.c)
