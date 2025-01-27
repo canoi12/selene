@@ -67,7 +67,7 @@ newoption {
     trigger = 'lua-dir',
     value = 'PATH',
     description = 'Set the path to the Lua directory to use in compilation',
-    default = 'lua/lua' .. _OPTIONS['lua-version']
+    default = 'lua/lua' .. _OPTIONS['lua-version'] .. '/source'
 }
 
 newoption {
