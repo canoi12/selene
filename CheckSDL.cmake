@@ -37,6 +37,6 @@ if ((NOT SDL2_FOUND AND SDL2_Lib) AND NOT TARGET SDL2::SDL2)
         set (SDL2_LIBRARIES ${SDL2_LIBRARIES} SDL2::Main)
     endif ()
 elseif (NOT SDL2_Lib AND NOT SDL2_FOUND)
-    add_subdirectory(src/third/SDL2/SDL)
+    add_subdirectory(src/third/SDL2/source)
 endif ()
 
