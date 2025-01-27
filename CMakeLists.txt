@@ -105,7 +105,7 @@ set(LUA_VERSION "5.4" CACHE STRING "Set the lua version to use")
 set(LUA_LIB "lua${LUA_VERSION}")
 
 message("Lua Lib Path: ${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}/${triple}${LIB_PLATFORM}/lib/")
-set(CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}/dist/${triple}${LIB_PLATFORM}/lib")
+set(CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/dist/${triple}${LIB_PLATFORM}/lib")
 
 if (${LUA_VERSION} STREQUAL "jit")
 message("Using Lua JIT")
@@ -114,7 +114,7 @@ endif ()
 
 file(GLOB SELENE_SOURCES src/Data.c src/selene.c src/modules/*.c src/third/glad/src/glad.c)
 
-include_directories(include/ src/third/ src/third/glad/include "lua/lua${LUA_VERSION}/dist/include")
+include_directories(include/ src/third/ src/third/glad/include "lua/lua${LUA_VERSION}/include")
 
 if (DEFINED MSVC)
     set(SDL2_DIR src/third/SDL2/MSVC/cmake)
