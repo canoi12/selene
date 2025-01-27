@@ -104,8 +104,9 @@ set(LUA_VERSION "5.4" CACHE STRING "Set the lua version to use")
 # endif ()
 set(LUA_LIB "lua${LUA_VERSION}")
 
-message("Lua Lib Path: ${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}/${triple}${LIB_PLATFORM}/lib/")
+# message("Lua Lib Path: ${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}/${triple}${LIB_PLATFORM}/lib/")
 set(CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/dist/${triple}${LIB_PLATFORM}/lib")
+message("Lua Lib Path: ${CMAKE_LIBRARY_PATH}")
 
 if (${LUA_VERSION} STREQUAL "jit")
 message("Using Lua JIT")
