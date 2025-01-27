@@ -6,7 +6,8 @@ set(triple x86_64-w64-mingw32)
 set(CMAKE_SYSROOT /usr/${triple})
 
 set(CMAKE_C_COMPILER ${triple}-gcc)
-set(CMAKE_CXX_COMPILER ${triple}-g++)
+# set(CMAKE_CXX_COMPILER ${triple}-g++)
+set(CMAKE_RC_COMPILER ${triple}-windres)
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
