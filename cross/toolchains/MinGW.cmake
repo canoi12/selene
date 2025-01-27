@@ -3,7 +3,7 @@ set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
 set(triple x86_64-w64-mingw32)
 
-set(CMAKE_SYSROOT /usr/${triple})
+# set(CMAKE_SYSROOT /usr/${triple})
 
 set(CMAKE_C_COMPILER ${triple}-gcc)
 # set(CMAKE_CXX_COMPILER ${triple}-g++)

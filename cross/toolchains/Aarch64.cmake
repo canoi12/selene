@@ -4,7 +4,7 @@ set(CMAKE_CROSSCOMPILING true)
 
 set(triple "aarch64-linux-gnu")
 
-set(CMAKE_FIND_ROOT_PATH "/usr/${triple}")
+# set(CMAKE_FIND_ROOT_PATH "/usr/${triple}")
 # set(CMAKE_SYSROOT "/usr/${triple}")
 
 set(CMAKE_C_COMPILER ${triple}-gcc)
