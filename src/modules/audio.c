@@ -118,7 +118,6 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
 #if defined(OS_ANDROID)
     char* data = NULL;
     size_t data_size;
-
     SDL_RWops* fp = SDL_RWFromFile(path, "rb");
     data_size = SDL_RWsize(fp);
     data = (char*)malloc(data_size);
@@ -137,8 +136,8 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
             out->info.bit_depth = out->wav.bitsPerSample;
             out->info.sample_rate = out->wav.sampleRate;
             out->info.channels = out->wav.channels;
-            out->info.size = out->wav.dataChunkDataSize;
-            out->info.frame_count = out->wav.totalPCMFrameCount;
+            out->info.size = (int)out->wav.dataChunkDataSize;
+            out->info.frame_count = (int)out->wav.totalPCMFrameCount;
         }
         break;
         case SELENE_OGG_FORMAT: {
@@ -166,7 +165,7 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
             // out->info.bit_depth = out->mp3.bit;
             out->info.sample_rate = out->mp3.sampleRate;
             out->info.channels = out->mp3.channels;
-            out->info.size = out->mp3.dataSize;
+            out->info.size = (int)out->mp3.dataSize;
             out->info.frame_count = out->mp3.pcmFramesRemainingInMP3Frame;
         }
         break;
@@ -182,7 +181,7 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
             out->info.sample_rate = out->flac->sampleRate;
             out->info.channels = out->flac->channels;
             out->info.size = out->flac->maxBlockSizeInPCMFrames;
-            out->info.frame_count = out->flac->totalPCMFrameCount;
+            out->info.frame_count = (int)out->flac->totalPCMFrameCount;
         }
         break;
         default: break;
@@ -275,19 +274,19 @@ static MODULE_FUNCTION(AudioDecoder, read_s16) {
 int s_AudioDecoder_read_s16(AudioDecoder* self, int len, short* data) {
     switch (self->format) {
         case SELENE_WAV_FORMAT: {
-            return drwav_read_pcm_frames_s16(&(self->wav), len, data);
+            return (int)drwav_read_pcm_frames_s16(&(self->wav), len, data);
         }
         break;
         case SELENE_OGG_FORMAT: {
-            return stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, data, len);
+            return (int)stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, data, len);
         }
         break;
         case SELENE_MP3_FORMAT: {
-            return drmp3_read_pcm_frames_s16(&(self->mp3), len, data);
+            return (int)drmp3_read_pcm_frames_s16(&(self->mp3), len, data);
         }
         break;
         case SELENE_FLAC_FORMAT: {
-            return drflac_read_pcm_frames_s16(self->flac, len, data);
+            return (int)drflac_read_pcm_frames_s16(self->flac, len, data);
         }
         break;
         default:
@@ -308,19 +307,19 @@ static MODULE_FUNCTION(AudioDecoder, read_f32) {
 int s_AudioDecoder_read_f32(AudioDecoder* self, int len, float* data) {
     switch (self->format) {
         case SELENE_WAV_FORMAT: {
-            return drwav_read_pcm_frames_f32(&(self->wav), len, data);
+            return (int)drwav_read_pcm_frames_f32(&(self->wav), len, data);
         }
         break;
         case SELENE_OGG_FORMAT: {
-            return stb_vorbis_get_samples_float_interleaved(self->ogg, self->info.channels, data, len);
+            return (int)stb_vorbis_get_samples_float_interleaved(self->ogg, self->info.channels, data, len);
         }
         break;
         case SELENE_MP3_FORMAT: {
-            return drmp3_read_pcm_frames_f32(&(self->mp3), len, data);
+            return (int)drmp3_read_pcm_frames_f32(&(self->mp3), len, data);
         }
         break;
         case SELENE_FLAC_FORMAT: {
-            return drflac_read_pcm_frames_f32(self->flac, len, data);
+            return (int)drflac_read_pcm_frames_f32(self->flac, len, data);
         }
         break;
         default:
@@ -332,14 +331,14 @@ static MODULE_FUNCTION(AudioDecoder, get_chunk) {
     CHECK_META(AudioDecoder);
     CHECK_UDATA(Data, data);
     OPT_INTEGER(len, data[0]);
-    int frame_count;
+    size_t frame_count;
     switch (self->format) {
         case SELENE_WAV_FORMAT: {
             frame_count = drwav_read_pcm_frames_s16(&(self->wav), len, (drwav_int16*)(&data[1]));
         }
         break;
         case SELENE_OGG_FORMAT: {
-            frame_count = stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, (short*)(&data[1]), len);
+            frame_count = (size_t)stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, (short*)(&data[1]), len);
         }
         break;
         case SELENE_MP3_FORMAT: {
@@ -418,7 +417,7 @@ static MODULE_FUNCTION(AudioSystem, play) {
         if (!buffer->stream) {
             buffer->playing = 1;
             buffer->loop = loop;
-            buffer->volume = SDL_MIX_MAXVOLUME * volume;
+            buffer->volume = (int)((float)SDL_MIX_MAXVOLUME * volume);
             self->buffer_pool[i].playing = 1;
             if (dec) {
                 buffer->decoder = dec;
@@ -510,7 +509,7 @@ static MODULE_FUNCTION(AudioSystem, set_volume) {
         return luaL_error(L, "invalid sound instance");
     CHECK_NUMBER(float, volume);
     struct AudioBuffer* buf = &(self->buffer_pool[sound]);
-    buf->volume = SDL_MIX_MAXVOLUME * volume;
+    buf->volume = (int)((float)SDL_MIX_MAXVOLUME * volume);
     return 0;
 }
 
@@ -559,7 +558,7 @@ static MODULE_FUNCTION(audio, load_data) {
     size_t len;
     CHECK_LSTRING(path, &len);
     AudioDecoder dec;
-    int res = s_AudioDecoder_init(L, path, len, &dec);
+    int res = s_AudioDecoder_init(L, path, (int)len, &dec);
     if (res <= 0) {
         return res;
     }
@@ -604,12 +603,12 @@ static MODULE_FUNCTION(audio, load_data) {
     }
     size_t size = SDL_AudioStreamAvailable(stream);
     NEW_UDATA(AudioData, data);
-    data->size = size;
+    data->size = (int)size;
     data->data = malloc(size);
     data->info.sample_rate = freq;
     data->info.channels = channels;
     data->info.format = audio_format;
-    int read = SDL_AudioStreamGet(stream, data->data, size);
+    int read = SDL_AudioStreamGet(stream, data->data, (int)size);
     if (read < 0) {
         return luaL_error(L, "Failed to read audio stream: %s", SDL_GetError());
     }
@@ -626,7 +625,7 @@ static MODULE_FUNCTION(audio, load_decoder) {
     CHECK_LSTRING(path, &len);
 
     AudioDecoder out;
-    int res = s_AudioDecoder_init(L, path, len, &out);
+    int res = s_AudioDecoder_init(L, path, (int)len, &out);
     if (res <= 0) {
         return res;
     }
@@ -637,14 +636,12 @@ static MODULE_FUNCTION(audio, load_decoder) {
 }
 
 static MODULE_FUNCTION(audio, create_system) {
-    int freq, format, channels, samples;
+    int freq = SELENE_AUDIO_SAMPLE_RATE;
+    int format = SELENE_AUDIO_FORMAT;
+    int channels = SELENE_AUDIO_CHANNELS;
+    int samples = SELENE_AUDIO_SAMPLES;
     INIT_ARG();
-    if (lua_type(L, arg) != LUA_TTABLE) {
-        freq = SELENE_AUDIO_SAMPLE_RATE;
-        format = SELENE_AUDIO_FORMAT;
-        channels = SELENE_AUDIO_CHANNELS;
-        samples = SELENE_AUDIO_SAMPLES;
-    } else {
+    if (lua_type(L, arg) == LUA_TTABLE) {
         lua_getfield(L, arg, "sample_rate");
         freq = (int)luaL_optinteger(L, -1, freq);
         lua_pop(L, 1);
