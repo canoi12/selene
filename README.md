@@ -73,7 +73,16 @@ I put the [premake5](https://premake.github.io/) scripts on the `scripts/` folde
 
 ### SDL2
 
-I'm generally using the folder `src/third/SDL2`
+By default the CMake script checks for SDL dists in the `src/third/SDL2` folder.
+
+- MINGW
+- MSVC
+- source (for source code)
+
+But you can specify the paths with:
+
+- -DSDL_PRECOMP_DIR=\[Precompiled dir\] (SDL provides that for MINGW and MSVC)
+- -DSDL_SOURCE_DIR=\[SDL source directory\]
 
 ### Linux
 
@@ -107,13 +116,41 @@ cmake -B build -DSDL_PRECOMP_DIR=[Path to SDL2 MSVC dev dist, callbacks to src/t
 
 ### Cross Compiling
 
+On linux you can use the CMake Toolchains to cross compile between architectures.
+
+```
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=[toolchain file]
+cmake --build build
+```
+
 #### Toolchains
 
-On Linux you can also use CMake Toolchains to cross platform between architectures. You find them in the `cross/toolchains` folder, and you can edit them or create new ones as you need. To cross compile for MinGW, for example:
+You can find the toolchains in the `cross/toolchains` folder, and you can edit them or create new ones as you need. To cross compile for MinGW, for example:
 
 ```
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/MinGW.cmake -DSDL_PRECOMP_DIR=[Path to SDL2 MinGW dev dist]
 cmake --build build
 ```
 
-And the processes are very similar to Emscripten and Android builds. I'll make a detailed guide later.
+And the process is very similar to Emscripten and Android builds.
+
+#### Emscripten
+
+Download the Emscripten SDK, set `EMSDK_ROOT_DIR` and run:
+
+```
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/Emscripten.cmake
+cmake --build build
+```
+
+#### Android
+
+Setup the Android SDK and NDK, set `NDK_HOME` and run:
+
+```
+cmake -B build \
+    -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/Android.cmake \
+    -DANDROID_ABI=[armeabi-v7a, arm64-v8a, x86, x86_64] \
+    -DANDROID_PLATFORM=android-*[21, 22, ...]
+cmake --build build
+```
