@@ -3,3 +3,4 @@ dist/
 compile_commands.json
 src/third/SDL2/
 .cache/
+.tmp/

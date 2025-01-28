@@ -67,25 +67,17 @@ end)
 
 ## Building
 
-First you need to install [premake5](https://premake.github.io/) on your system.
+First you need to install [CMake](https://cmake.org/) on your system.
 
-### Windows
+I put the [premake5](https://premake.github.io/) scripts on the `scripts/` folder, but I don't have plans to update it by know.
 
-For Windows, you will also need to download the [SDL2](https://libsdl.org/) package for development. Making that, simply run on a terminal:
+### SDL2
 
-```
-premake5 vs2019 --sdl-dir={source to SDL folder}
-```
-
-It will generate the Visual Studio project files in the `build/` folder. After that, you can open the `build\selene.sln` solution in Visual Studio, or start the `Developer Command Prompt for VS20**` and run:
-
-```
-msbuild build\selene.sln -p:Configuration=[Release|Debug];Platform=[win32|win64]
-```
+I'm generally using the folder `src/third/SDL2`
 
 ### Linux
 
-For linux the process is very similar. You will need to install the `SDL2` packages for development too, the package is present in the majority of the Linux distros.
+You will need to install the `SDL2` packages for development too, the package is present in the majority of the Linux distros.
 
 In Debian you can install SDL2 with:
 
@@ -93,40 +85,35 @@ In Debian you can install SDL2 with:
 sudo apt install libsdl2-dev
 ```
 
-And then run premake:
+And then run CMake:
 
 ```
-premake5 gmake2
+cmake -B build -DCMAKE_BUILD_TYPE=[Debug|Release]
 ```
 
-It will generate the Makefiles in the `build/` folder, then just run:
+It will generate the build files in the `build/` folder, then just run:
 
 ```
-make -C build/ config=[debug_linux,release_linux]
+cmake --build build
 ```
 
-*Building for MinGW is a very similar process*
+### Windows
 
-### Emscripten
+For Windows, you will also need to download the [SDL2](https://libsdl.org/) package for development. Making that, simply run on a terminal:
 
-You need the module [premake-emscripten](https://github.com/tritao/premake-emscripten) for premake5. Put in the same directory of the premake5 binary and rename the module folder to `emscripten`. After that, execute this in the selene source directory:
+```
+cmake -B build -DSDL_PRECOMP_DIR=[Path to SDL2 MSVC dev dist, callbacks to src/third/SDL2/MSVC]
+```
 
-`premake5 gmake2 --emscripten`
+### Cross Compiling
 
-And run the Makefile with:
+#### Toolchains
 
-`make -C build config=[release_emscripten|debug_emscripten]`
+On Linux you can also use CMake Toolchains to cross platform between architectures. You find them in the `cross/toolchains` folder, and you can edit them or create new ones as you need. To cross compile for MinGW, for example:
 
-Notice that you will need to setup the EMSDK too, https://emscripten.org/.
+```
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/MinGW.cmake -DSDL_PRECOMP_DIR=[Path to SDL2 MinGW dev dist]
+cmake --build build
+```
 
-#### Packaging for Emscripten
-
-In the release distribution of selene for Emscripten, the index.html searches for a `game.js` file.
-It can be generated using the file packaging tools of the EMSDK itself. I create a script for premake5 called `gen_gamejs.lua` that can help with that.
-One you have the EMSDK variable properly setted on your system, it should work. You can use like this:
-
-`premake5 build --file=gen_gamejs.lua --project-dir=[path to your project] --out-dir=build/bin/emscripten/Release/`
-
-### Android
-
-TODO
+And the processes are very similar to Emscripten and Android builds. I'll make a detailed guide later.
