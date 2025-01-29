@@ -69,7 +69,7 @@ end)
 
 First you need to install [CMake](https://cmake.org/) on your system.
 
-I put the [premake5](https://premake.github.io/) scripts on the `scripts/` folder, but I don't have plans to update it by know.
+I put the [premake5](https://premake.github.io/) scripts on the `scripts/` folder, but I don't have plans to update it by now.
 
 ### SDL2
 
