@@ -49,6 +49,24 @@ generate_apk() {
     cd ..
 
     cp $TMPDIR/app/build/outputs/apk/release/*.apk "$OUTDIR/com.selene.app.apk"
+
+    rm -r $TMPDIR
+}
+
+copy_windows() {
+    if [ ! -d "$OUTDIR/windows" ]; then
+        mkdir -p "$OUTDIR/windows"
+        mkdir -p "$OUTDIR/windows/x64"
+        mkdir -p "$OUTDIR/windows/x86"
+    fi
+
+    cp "$BUILDSDIR/x86-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x86/"
+    cp "$BUILDSDIR/x86-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x86/"
+    cp "$BUILDSDIR/x86-windows-msvc/v143/bin/SDL2.dll" "$OUTDIR/windows/x86/"
+
+    cp "$BUILDSDIR/x64-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x64/"
+    cp "$BUILDSDIR/x64-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x64/"
+    cp "$BUILDSDIR/x64-windows-msvc/v143/bin/SDL2.dll" "$OUTDIR/windows/x64/"
 }
 
 aarch64_linux() {
@@ -76,6 +94,7 @@ generate_dist() {
     'powerpc64_linux' ) powerpc64_linux ;;
     # Android
     'android' ) generate_apk ;;
+    'windows' ) copy_windows ;;
     'all' )
         # Linux
         i686_linux
@@ -83,7 +102,9 @@ generate_dist() {
         aarch64_linux
         powerpc64_linux
         # Android
-        generate_apk ;;
+        generate_apk
+        # Windows
+        copy_windows ;;
     esac
 }
 
