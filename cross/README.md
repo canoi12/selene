@@ -58,6 +58,8 @@ android_sdk/cmdline-tools/latest/bin/sdkmanager --install "ndk;{your ndk version
 
 To see the other packages run `android_sdk/cmdline-tools/latest/bin/sdkmanager --list` and consult https://developer.android.com/tools/sdkmanager.
 
+For the numbers relatives to each platform, consult: https://apilevels.com/
+
 ## Emscripten
 
 The emscripten generated selene.html searches for a `game.js` file, you can generate one based on your project with:
