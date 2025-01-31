@@ -5,12 +5,13 @@ rm -rf build/
 BUILD_TYPE="Release"
 BUILD_TYPE_ARG="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
 TOOLCHAIN_PREFIX=cross/toolchains
+OUTDIR=builds
 
 copy_files() {
-    mkdir -p dist/$2/bin
-    mkdir -p dist/$2/lib
-    cp build/$BUILD_TYPE/$1/bin/* dist/$2/bin/
-    cp build/$BUILD_TYPE/$1/lib/* dist/$2/lib/
+    mkdir -p $OUTDIR/$2/bin
+    mkdir -p $OUTDIR/$2/lib
+    cp build/$BUILD_TYPE/$1/bin/* $OUTDIR/$2/bin/
+    cp build/$BUILD_TYPE/$1/lib/* $OUTDIR/$2/lib/
 }
 
 i686_linux() {
@@ -62,7 +63,7 @@ x86_64_mingw() {
 }
 
 wasm32_emscripten() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Emscripten.cmake
+    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Emscripten.cmake -DCMAKE_FIND_DEBUG_MODE=ON
     cmake --build build --verbose
     copy_files "Emscripten" "wasm32-unknown-emscripten"
 
@@ -78,10 +79,10 @@ armv7_android() {
 
     cmake --build build
 
-    mkdir -p dist/armv7-linux-android/android-21/bin
-    mkdir -p dist/armv7-linux-android/android-21/lib
-    cp build/Release/Android/bin/* dist/armv7-linux-android/android-21/bin
-    cp build/Release/Android/lib/* dist/armv7-linux-android/android-21/lib
+    mkdir -p $OUTDIR/armv7-linux-android/android-21/bin
+    mkdir -p $OUTDIR/armv7-linux-android/android-21/lib
+    cp build/Release/Android/bin/* $OUTDIR/armv7-linux-android/android-21/bin
+    cp build/Release/Android/lib/* $OUTDIR/armv7-linux-android/android-21/lib
 
     rm -rf build/
 }
@@ -91,14 +92,15 @@ aarch64_android() {
     $BUILD_TYPE_ARG \
     -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Android.cmake \
     -DANDROID_ABI=arm64-v8a \
-    -DANDROID_PLATFORM=android-21
+    -DANDROID_PLATFORM=android-21 \
+    # -DCMAKE_FIND_DEBUG_MODE=ON
 
     cmake --build build
 
-    mkdir -p dist/aarch64-linux-android/android-21/bin
-    mkdir -p dist/aarch64-linux-android/android-21/lib
-    cp build/Release/Android/bin/* dist/aarch64-linux-android/android-21/bin
-    cp build/Release/Android/lib/* dist/aarch64-linux-android/android-21/lib
+    mkdir -p $OUTDIR/aarch64-linux-android/android-21/bin
+    mkdir -p $OUTDIR/aarch64-linux-android/android-21/lib
+    cp build/Release/Android/bin/* $OUTDIR/aarch64-linux-android/android-21/bin
+    cp build/Release/Android/lib/* $OUTDIR/aarch64-linux-android/android-21/lib
 
     rm -rf build/
 }
@@ -112,10 +114,10 @@ i386_android() {
 
     cmake --build build
 
-    mkdir -p dist/i386-linux-android/android-21/bin
-    mkdir -p dist/i386-linux-android/android-21/lib
-    cp build/Release/Android/bin/* dist/i386-linux-android/android-21/bin
-    cp build/Release/Android/lib/* dist/i386-linux-android/android-21/lib
+    mkdir -p $OUTDIR/i386-linux-android/android-21/bin
+    mkdir -p $OUTDIR/i386-linux-android/android-21/lib
+    cp build/Release/Android/bin/* $OUTDIR/i386-linux-android/android-21/bin
+    cp build/Release/Android/lib/* $OUTDIR/i386-linux-android/android-21/lib
 
     rm -rf build/
 }
@@ -129,10 +131,10 @@ x86_64_android() {
 
     cmake --build build
 
-    mkdir -p dist/x86_64-linux-android/android-21/bin
-    mkdir -p dist/x86_64-linux-android/android-21/lib
-    cp build/Release/Android/bin/* dist/x86_64-linux-android/android-21/bin
-    cp build/Release/Android/lib/* dist/x86_64-linux-android/android-21/lib
+    mkdir -p $OUTDIR/x86_64-linux-android/android-21/bin
+    mkdir -p $OUTDIR/x86_64-linux-android/android-21/lib
+    cp build/Release/Android/bin/* $OUTDIR/x86_64-linux-android/android-21/bin
+    cp build/Release/Android/lib/* $OUTDIR/x86_64-linux-android/android-21/lib
 
     rm -rf build/
 }

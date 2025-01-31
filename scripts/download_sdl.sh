@@ -8,7 +8,7 @@ if [ ! -d "$SDL_SOURCE_DIR/source" ]; then
         mkdir -p $SDL_SOURCE_DIR
     fi
     if [ ! -f $SDL_FILE ]; then
-        wget "$SDL_FILE"
+        wget "$SDL_REPO_LINK"
     fi
     tar -xvf $SDL_FILE -C "$SDL_SOURCE_DIR"
     mv "$SDL_SOURCE_DIR/$SDL_FILENAME" "$SDL_SOURCE_DIR/source"
