@@ -5,9 +5,15 @@ file(REAL_PATH "$ENV{NDK_HOME}/build/cmake/android.toolchain.cmake" ANDROID_TOOL
 
 include("${ANDROID_TOOLCHAIN_FILE}")
 
-message("Android: ${ANDROID} ${ANDROID_TOOLCHAIN_FILE}")
-if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "armv7-a")
-set(triple "armv7-linux-android")
-elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-set(triple "x86_64-linux-android")
-endif()
+if ("${ANDROID_ABI}" STREQUAL "arm64-v8a")
+    set(triple "aarch64-linux-android")
+elseif ("${ANDROID_ABI}" STREQUAL "armeabi-v7a")
+    set(triple "armv7-linux-android")
+elseif ("${ANDROID_ABI}" STREQUAL "x86")
+    set(triple "i386-linux-android")
+elseif ("${ANDROID_ABI}" STREQUAL "x86_64")
+    set(triple "x86_64-linux-android")
+endif ()
+
+# set(CMAKE_PREFIX_PATH "")
+# set(CMAKE_SYSROOT "")
