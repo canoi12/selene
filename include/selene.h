@@ -16,45 +16,7 @@
     #define SELENE_API
 #endif
 
-static const char* selene_init_script =
-"selene.set_running(true)\n"
-#if defined(OS_EMSCRIPTEN)
-"selene.__exec = './'\n"
-"selene.__dir = './'\n"
-#else
-"selene.__exec = selene.get_exec_path()\n"
-"local path = selene.__exec\n"
-"if path then\n"
-#if defined(__linux__)
-    "package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path\n"
-    "package.cpath = path .. '/?.so;' .. package.cpath\n"
-#endif
-    "selene.__dir = './'\n"
-    "if selene.args[2] and selene.args[3] then\n"
-    "   if selene.args[2] == '-d' then\n"
-    "       package.path = selene.args[3] .. '/?.lua;' .. package.path\n"
-    "       selene.__dir = selene.args[3]\n"
-    "   end\n"
-    "end\n"
-"end\n"
-#endif
-#if 1
-"local status, err = pcall(function() require('main') end)\n"
-"if not status then\n"
-"   selene.set_running(false)\n"
-"   error(debug.traceback(err, 1), 2)"
-"end";
-#else
-"require('plugins').setup()\n"
-"local status, err = pcall(function() require('cube') end)\n"
-"if not status then\n"
-"   error(err)\n"
-"end";
-#endif
-
-extern int selene_running;
-
-#if USE_JIT
+#if SELENE_USE_JIT
 #define lua_rawlen lua_objlen
 extern void lua_rawsetp(lua_State* L, int idx, void* p);
 extern int lua_rawgetp(lua_State* L, int idx, const void* p);
@@ -75,7 +37,7 @@ enum {
     SELENE_PIXEL_BGR,
     SELENE_PIXEL_BGRA
 };
-#endif
+#endif/* SELENE_NO_IMAGE */
 
 #ifndef SELENE_NO_AUDIO
 
@@ -114,7 +76,7 @@ struct AudioInfo {
     int size;
     int frame_count;
 };
-#endif
+#endif/* SELENE_NO_AUDIO */
 
 #ifndef SELENE_NO_FONT
 typedef struct {
@@ -123,30 +85,16 @@ typedef struct {
     int bw, bh;
     int tx;
 } FontGlyph;
-#endif
+#endif /* SELENE_NO_FONT */
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
 /**
  * Open selene lib
  */
 SELENE_API int luaopen_selene(lua_State* L);
-
-#if !defined(SELENE_NO_STEP_FUNC)
-/**
- * Run selene step function callback (thrown an error if none set)
- */
-SELENE_API void selene_run_step(lua_State* L);
-#endif
-#if !defined(SELENE_NO_QUIT_FUNC)
-/**
- * Run selene quit function callback
- */
-SELENE_API void selene_run_quit(lua_State* L);
-#endif
-
-SELENE_API int selene_main(int argc, char** argv);
 
 #if defined(__cplusplus)
 }

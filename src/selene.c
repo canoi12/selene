@@ -1,11 +1,7 @@
 #include <selene.h>
 #include <lua_helper.h>
 
-#ifdef SELENE_PLUGINS_PRELOAD
-extern int luaopen_plugins(lua_State *L);
-#endif
-
-#if USE_JIT
+#if SELENE_USE_JIT
 void lua_rawsetp(lua_State* L, int idx, void* p) {
     int value = (int)p;
     lua_rawseti(L, idx, value);
@@ -29,8 +25,6 @@ void luaL_requiref (lua_State *L, const char *modname,
   }
 }
 #endif
-
-int selene_running = 0;
 
 // Type Modules
 extern int luaopen_Data(lua_State *L);
@@ -256,11 +250,6 @@ static void setup_extended_libs(lua_State *L) {
   lua_pop(L, 1);
 }
 
-static int l_selene_get_version(lua_State *L) {
-  PUSH_STRING(SELENE_VERSION);
-  return 1;
-}
-
 static int l_selene_create_data(lua_State* L) {
     INIT_ARG();
     size_t size = luaL_checkinteger(L, arg++);
@@ -343,30 +332,22 @@ static int l_selene_cube_data(lua_State* L) {
     return 1;
 }
 
-static int l_selene_set_running(lua_State *L) {
-  INIT_ARG();
-  CHECK_BOOLEAN(running);
-  selene_running = running;
-  return 0;
-}
-
-
 int luaopen_selene(lua_State *L) {
   luaL_Reg reg[] = {
-    {"get_version", l_selene_get_version},
     {"create_data", l_selene_create_data},
     {"cube_data", l_selene_cube_data},
-    {"set_running", l_selene_set_running},
     {"get_exec_path", l_selene_get_exec_path},
     {NULL, NULL}
   };
   luaL_newlib(L, reg);
   // LOAD_MODULE(AudioDecoder);
+  lua_pushstring(L, SELENE_VERSION);
+  lua_setfield(L, -2, "version");
   LOAD_MODULE(Data);
 
 #ifndef SELENE_NO_SDL
   lua_getglobal(L, "package");
-#if USE_JIT
+#if SELENE_USE_JIT
   lua_getfield(L, -1, "loaders");
 #else
   lua_getfield(L, -1, "searchers");
@@ -382,14 +363,6 @@ int luaopen_selene(lua_State *L) {
     luaL_requiref(L, _mod_regs[i].name, _mod_regs[i].func, 1);
     lua_pop(L, 1);
   }
-
-#ifdef SELENE_PLUGINS_PRELOAD
-  lua_getglobal(L, "package");
-  lua_getfield(L, -1, "preload");
-  lua_pushcfunction(L, luaopen_plugins);
-  lua_setfield(L, -2, "plugins");
-  lua_pop(L, 2);
-#endif
 
   return 1;
 }

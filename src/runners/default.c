@@ -1,6 +1,55 @@
 #include "selene.h"
 #include "lua_helper.h"
 
+void selene_run_step(lua_State* L);
+void selene_run_quit(lua_State* L);
+int l_selene_set_running(lua_State *L);
+
+int selene_running = 0;
+
+static const char* s_init_script =
+  "selene.set_running(true)\n"
+  #if defined(OS_EMSCRIPTEN)
+  "selene.__exec = './'\n"
+  "selene.__dir = './'\n"
+  #else
+  "selene.__exec = selene.get_exec_path()\n"
+  "local path = selene.__exec\n"
+  "if path then\n"
+  #if defined(__linux__)
+      "package.path = path .. '?.lua;' .. path .. '?/init.lua;' .. package.path\n"
+      "package.cpath = path .. '/?.so;' .. package.cpath\n"
+  #endif
+      "selene.__dir = './'\n"
+      "if selene.args[2] and selene.args[3] then\n"
+      "   if selene.args[2] == '-d' then\n"
+      "       package.path = selene.args[3] .. '/?.lua;' .. package.path\n"
+      "       selene.__dir = selene.args[3]\n"
+      "   end\n"
+      "end\n"
+  "end\n"
+  #endif
+  #if 1
+  "local status, err = pcall(function() require('main') end)\n"
+  "if not status then\n"
+  "   selene.set_running(false)\n"
+  "   error(debug.traceback(err, 1), 2)"
+  "end";
+#else
+"require('plugins').setup()\n"
+"local status, err = pcall(function() require('cube') end)\n"
+"if not status then\n"
+"   error(err)\n"
+"end";
+#endif
+
+int l_selene_set_running(lua_State *L) {
+  INIT_ARG();
+  CHECK_BOOLEAN(running);
+  selene_running = running;
+  return 0;
+}
+
 #if !defined(SELENE_NO_STEP_FUNC)
 static int l_selene_set_step(lua_State *L) {
   INIT_ARG();
@@ -21,7 +70,6 @@ static int l_selene_set_quit(lua_State *L) {
   return 0;
 }
 #endif
-
 
 #if !defined(SELENE_NO_STEP_FUNC)
 void selene_run_step(lua_State *L) {
@@ -76,6 +124,7 @@ luaL_Reg reg[] = {
 #if !defined(SELENE_NO_QUIT_FUNC)
     {"set_quit", l_selene_set_quit},
 #endif
+    {"set_running", l_selene_set_running},
     {NULL, NULL}
 };
 
@@ -86,10 +135,10 @@ int selene_main(int argc, char **argv) {
     luaopen_ffi(L);
 #endif
   luaL_requiref(L, "selene", luaopen_selene, 1);
-  lua_pushcfunction(L, reg[0].func);
-  lua_setfield(L, -2, reg[0].name);
-  lua_pushcfunction(L, reg[1].func);
-  lua_setfield(L, -2, reg[1].name);
+  for (int i = 0; reg[i].name; i++) {
+    lua_pushcfunction(L, reg[i].func);
+    lua_setfield(L, -2, reg[i].name);
+  }
   // Setup args
   lua_newtable(L);
   for (int i = 0; i < argc; i++) {
@@ -98,7 +147,7 @@ int selene_main(int argc, char **argv) {
   }
   lua_setfield(L, -2, "args");
   // Run init script
-  if (luaL_dostring(L, selene_init_script) != LUA_OK) {
+  if (luaL_dostring(L, s_init_script) != LUA_OK) {
 #ifndef SELENE_NO_SDL
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                  "[selene] failed to load main.lua: %s",
