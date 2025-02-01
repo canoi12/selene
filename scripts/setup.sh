@@ -39,8 +39,8 @@ setup_android() {
 }
 
 setup_emscripten() {
-    if [ ! -d "$CACHE_DIR/emsdk"]; then
-        git clone "https://github.com/emscripten-core/emsdk.git" $CACHE_DIR/emsdk
+    if [ ! -d "$CACHE_DIR/emsdk" ]; then
+        git clone "https://github.com/emscripten-core/emsdk.git" "$CACHE_DIR/emsdk"
     fi
     cd $CACHE_DIR/emsdk
     ./emsdk install latest
