@@ -73,3 +73,42 @@ jobs:
         with:
           name: macos-binaries
           path: build/
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libsdl2-dev
+          sudo apt-get install openjdk-17-jre openjdk-17-jdk
+
+          bash scripts/download_sdl.sh source
+          bash scripts/setup.sh android
+
+      - name: Build project
+        run: |
+          bash scripts/build.sh android
+
+  build-emscripten:
+    runs-on: ubuntu-latest
+    env:
+      EMSDK_ROOT_DIR: '.cache/emsdk'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git
+
+          bash scripts/download_sdl.sh source
+          bash scripts/setup.sh emscripten
+
+      - name: Build project
+        run: |
+          bash scripts/build.sh emscripten
