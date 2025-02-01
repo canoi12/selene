@@ -1,15 +1,9 @@
 include(CheckLibraryExists)
-message("Host System Name: ${CMAKE_HOST_SYSTEM_NAME}")
-message("Host System Architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
-message("Building for ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR} target")
-message("WIN32: ${WIN32}")
-message("MSVC: ${MSVC}")
-
 file(GLOB LUA_SOURCES source/src/*.c)
 list(REMOVE_ITEM LUA_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/src/lua.c)
 list(REMOVE_ITEM LUA_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/source/src/luac.c)
 
-if (${CMAKE_CROSSCOMPILING})
+if (DEFINED LINUX OR DEFINED MINGW)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 endif ()
 

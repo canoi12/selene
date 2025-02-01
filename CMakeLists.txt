@@ -35,6 +35,8 @@ message("Building for ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR} target")
 message("WIN32: ${WIN32}")
 message("MSVC: ${MSVC}")
 message("MINGW: ${MINGW}")
+message("LINUX: ${LINUX}")
+message("DARWIN: ${DARWIN}")
 message("CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 
 message("Static: ${CMAKE_STATIC_LIBRARY_SUFFIX} Shared: ${CMAKE_SHARED_LIBRARY_SUFFIX}")
