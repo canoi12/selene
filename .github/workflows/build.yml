@@ -76,6 +76,8 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    env:
+      NDK_HOME: '.cache/AndroidSDK/ndk/25.2.9519653'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -85,7 +87,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libsdl2-dev
           sudo apt-get install openjdk-17-jre openjdk-17-jdk
-
           bash scripts/download_sdl.sh source
           bash scripts/setup.sh android
 
@@ -105,8 +106,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake git
-
-          bash scripts/download_sdl.sh source
           bash scripts/setup.sh emscripten
 
       - name: Build project
