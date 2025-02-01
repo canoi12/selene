@@ -108,6 +108,8 @@ jobs:
           sudo apt-get install -y build-essential cmake git
           bash scripts/setup.sh emscripten
 
+          echo "${EMSDK_ROOT_DIR}" >> $GITHUB_PATH
+
       - name: Build project
         run: |
           bash scripts/build.sh emscripten
