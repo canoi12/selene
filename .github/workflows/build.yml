@@ -18,6 +18,12 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-binaries
+          path: build/
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -41,6 +47,12 @@ jobs:
           cmake -S . -B build -DSDL_PRECOMP_DIR=$env:SDL2_DIR -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-binaries
+          path: build/Release/
+
   build-macos:
     runs-on: macos-latest
     steps:
@@ -55,3 +67,9 @@ jobs:
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-binaries
+          path: build/
