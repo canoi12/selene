@@ -1,0 +1,57 @@
+name: Build Multiplatform
+on: [push]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libsdl2-dev
+
+      - name: Build project
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install CMake
+        run: |
+          Invoke-WebRequest -Uri https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-windows-x86_64.msi -OutFile cmake.msi
+          Start-Process msiexec -ArgumentList '/i cmake.msi /quiet /norestart' -Wait
+          Remove-Item cmake.msi
+
+      - name: Download SDL2
+        run: |
+          Invoke-WebRequest -Uri https://www.libsdl.org/release/SDL2-devel-2.30.11-VC.zip -OutFile SDL2.zip
+          Expand-Archive -Path SDL2.zip -DestinationPath SDL2
+          echo "SDL2_DIR=$env:GITHUB_WORKSPACE\SDL2\SDL2-2.30.11" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build project
+        run: |
+          cmake -S . -B build -DSDL_PRECOMP_DIR=$env:SDL2_DIR -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          brew install cmake sdl2
+
+      - name: Build project
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
