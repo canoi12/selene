@@ -1,7 +1,7 @@
 #/usr/bin/bash
 
 OUTDIR=dist
-TMPDIR=dist_tmp
+TMPDIR="temp"
 BUILDSDIR=builds/
 APPIMAGETOOL="./appimagetool-x86_64.AppImage"
 
@@ -33,22 +33,22 @@ generate_appimage() {
     * ) echo "Invalid architecture" ;;
     esac
 
-    ARCH=$ARCH $APPIMAGETOOL "$TMPDIR/AppImage" "$OUTDIR/Selene-$ARCH.AppImage"
+    ARCH=$ARCH $APPIMAGETOOL "$TMPDIR/AppImage" "$OUTDIR/Selene_v0.2.1-$ARCH.AppImage"
 
     rm -r $TMPDIR
 }
 
 generate_apk() {
-    rm -r $TMPDIR/
+    rm -rf $TMPDIR/
     mkdir $TMPDIR/
 
-    cp -r cross/android/template/* $TMPDIR/
+    cp -r cross/android/* $TMPDIR/
     cd $TMPDIR
     ./gradlew build
 
     cd ..
 
-    cp $TMPDIR/app/build/outputs/apk/release/*.apk "$OUTDIR/com.selene.app.apk"
+    cp $TMPDIR/app/build/outputs/apk/release/*.apk "$OUTDIR/selene_v0.2.1.apk"
 
     rm -r $TMPDIR
 }
@@ -60,13 +60,26 @@ copy_windows() {
         mkdir -p "$OUTDIR/windows/x86"
     fi
 
-    cp "$BUILDSDIR/x86-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x86/"
+    cp "$BUILDSDIR/x86-windows-msvc/v143/lib/lua5.4.dll" "$OUTDIR/windows/x86/"
     cp "$BUILDSDIR/x86-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x86/"
-    cp "$BUILDSDIR/x86-windows-msvc/v143/bin/SDL2.dll" "$OUTDIR/windows/x86/"
+    # cp "$BUILDSDIR/x86-windows-msvc/v143/bin/SDL2.dll" "$OUTDIR/windows/x86/"
+    cp ".cache/SDL2/win32/x86/SDL2.dll" "$OUTDIR/windows/x86/"
+    cp ".cache/SDL2/win32/x86/README-SDL.txt" "$OUTDIR/windows/x86/"
 
-    cp "$BUILDSDIR/x64-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x64/"
+    cp "$BUILDSDIR/x64-windows-msvc/v143/lib/lua5.4.dll" "$OUTDIR/windows/x64/"
     cp "$BUILDSDIR/x64-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x64/"
-    cp "$BUILDSDIR/x64-windows-msvc/v143/bin/SDL2.dll" "$OUTDIR/windows/x64/"
+    cp ".cache/SDL2/win32/x64/SDL2.dll" "$OUTDIR/windows/x64/"
+    cp ".cache/SDL2/win32/x64/README-SDL.txt" "$OUTDIR/windows/x64/"
+}
+
+copy_emscripten() {
+    if [ ! -d "$OUTDIR/emscripten" ]; then
+        mkdir -p "$OUTDIR/emscripten"
+    fi
+
+    cp "$BUILDSDIR/wasm32-unknown-emscripten/bin/selene.html" "$OUTDIR/emscripten/index.html"
+    cp "$BUILDSDIR/wasm32-unknown-emscripten/bin/selene.js" "$OUTDIR/emscripten/"
+    cp "$BUILDSDIR/wasm32-unknown-emscripten/bin/selene.wasm" "$OUTDIR/emscripten/"
 }
 
 aarch64_linux() {
@@ -85,27 +98,13 @@ x86_64_linux() {
     generate_appimage "x86_64-linux-gnu"
 }
 
-generate_dist() {
-    case $1 in
-    # Linux
-    'i686_linux' ) i686_linux ;;
-    'x86_64_linux' ) x86_64_linux ;;
-    'aarch64_linux' ) aarch64_linux ;;
-    'powerpc64_linux' ) powerpc64_linux ;;
-    # Android
-    'android' ) generate_apk ;;
-    'windows' ) copy_windows ;;
-    'all' )
-        # Linux
-        i686_linux
-        x86_64_linux
-        aarch64_linux
-        powerpc64_linux
-        # Android
-        generate_apk
-        # Windows
+case $1 in
+    "emscripten" )
+        copy_emscripten ;;
+    "linux" )
+        x86_64_linux ;;
+    "windows" )
         copy_windows ;;
-    esac
-}
-
-generate_dist $1
+    "android" )
+        generate_apk ;;
+esac

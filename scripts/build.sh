@@ -8,187 +8,128 @@ TOOLCHAIN_PREFIX=cross/toolchains
 OUTDIR=builds
 
 copy_files() {
-    mkdir -p $OUTDIR/$2/bin
-    mkdir -p $OUTDIR/$2/lib
-    cp build/$BUILD_TYPE/$1/bin/* $OUTDIR/$2/bin/
-    cp build/$BUILD_TYPE/$1/lib/* $OUTDIR/$2/lib/
+    mkdir -p $OUTDIR/$1/bin
+    mkdir -p $OUTDIR/$1/lib
+    cp build/$BUILD_TYPE/bin/* $OUTDIR/$1/bin/
+    cp build/$BUILD_TYPE/lib/* $OUTDIR/$1/lib/
 }
 
-i686_linux() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/i686.cmake
+build_default() {
+    cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE
     cmake --build build
-    copy_files "Linux" "i686-linux-gnu"
-
-    rm -rf build/
 }
 
-x86_64_linux() {
-    cmake -B build $BUILD_TYPE_ARG
-    cmake --build build
-    copy_files "Linux" "x86_64-linux-gnu"
-
-    rm -rf build/
-}
-
-aarch64_linux() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Aarch64.cmake
-    cmake --build build
-    copy_files "Linux" "aarch64-linux-gnu"
-
-    rm -rf build/
-}
-
-powerpc64_linux() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Powerpc64.cmake
-    cmake --build build
-    copy_files "Linux" "powerpc64-linux-gnu"
-
-    rm -rf build/
-}
-
-i686_mingw() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/MinGW-i686.cmake
-    cmake --build build
-    copy_files "Windows" "i686-w64-mingw32"
-
-    rm -rf build/
-}
-
-x86_64_mingw() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/MinGW.cmake
-    cmake --build build
-    copy_files "Windows" "x86_64-w64-mingw32"
-
-    rm -rf build/
-}
-
-wasm32_emscripten() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Emscripten.cmake -DCMAKE_FIND_DEBUG_MODE=ON
-    cmake --build build --verbose
-    copy_files "Emscripten" "wasm32-unknown-emscripten"
-
-    rm -rf build/
-}
-
-armv7_android() {
-    cmake -B build \
-    $BUILD_TYPE_ARG \
-    -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Android.cmake \
-    -DANDROID_ABI=armeabi-v7a \
-    -DANDROID_PLATFORM=android-21
-
-    cmake --build build
-
-    mkdir -p $OUTDIR/armv7-linux-android/android-21/bin
-    mkdir -p $OUTDIR/armv7-linux-android/android-21/lib
-    cp build/Release/Android/bin/* $OUTDIR/armv7-linux-android/android-21/bin
-    cp build/Release/Android/lib/* $OUTDIR/armv7-linux-android/android-21/lib
-
-    rm -rf build/
-}
-
-aarch64_android() {
-    cmake -B build \
-    $BUILD_TYPE_ARG \
-    -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Android.cmake \
-    -DANDROID_ABI=arm64-v8a \
-    -DANDROID_PLATFORM=android-21 \
-    # -DCMAKE_FIND_DEBUG_MODE=ON
-
-    cmake --build build
-
-    mkdir -p $OUTDIR/aarch64-linux-android/android-21/bin
-    mkdir -p $OUTDIR/aarch64-linux-android/android-21/lib
-    cp build/Release/Android/bin/* $OUTDIR/aarch64-linux-android/android-21/bin
-    cp build/Release/Android/lib/* $OUTDIR/aarch64-linux-android/android-21/lib
-
-    rm -rf build/
-}
-
-i386_android() {
-    cmake -B build \
-    $BUILD_TYPE_ARG \
-    -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Android.cmake \
-    -DANDROID_ABI=x86 \
-    -DANDROID_PLATFORM=android-21
-
-    cmake --build build
-
-    mkdir -p $OUTDIR/i386-linux-android/android-21/bin
-    mkdir -p $OUTDIR/i386-linux-android/android-21/lib
-    cp build/Release/Android/bin/* $OUTDIR/i386-linux-android/android-21/bin
-    cp build/Release/Android/lib/* $OUTDIR/i386-linux-android/android-21/lib
-
-    rm -rf build/
-}
-
-x86_64_android() {
-    cmake -B build \
-    $BUILD_TYPE_ARG \
-    -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Android.cmake \
-    -DANDROID_ABI=x86_64 \
-    -DANDROID_PLATFORM=android-21
-
-    cmake --build build
-
-    mkdir -p $OUTDIR/x86_64-linux-android/android-21/bin
-    mkdir -p $OUTDIR/x86_64-linux-android/android-21/lib
-    cp build/Release/Android/bin/* $OUTDIR/x86_64-linux-android/android-21/bin
-    cp build/Release/Android/lib/* $OUTDIR/x86_64-linux-android/android-21/lib
-
-    rm -rf build/
-}
-
-build_lua() {
+build_cross_linux() {
+    TOOLCHAIN_FILE=""
+    TRIPLE=""
     case $1 in
-    # Linux
-    'i686_linux' ) i686_linux ;;
-    'x86_64_linux' ) x86_64_linux ;;
-    'aarch64_linux' ) aarch64_linux ;;
-    'powerpc64_linux' ) powerpc64_linux ;;
-    # All linux
-    'linux' )
-        i686_linux
-        x86_64_linux
-        aarch64_linux
-        powerpc64_linux ;;
-    # Android
-    'armv7_android' ) armv7_android ;;
-    'aarch64_android' ) aarch64_android ;;
-    'i386_android' ) i386_android ;;
-    'x86_64_android' ) x86_64_android ;;
-    # All androids
-    'android' )
-        armv7_android
-        aarch64_android
-        i386_android
-        x86_64_android ;;
-    # Emscripten
-    'wasm32_emscripten' ) wasm32_emscripten ;;
-    # MINGW
-    'i686_mingw' ) i686_mingw ;;
-    'x86_64_mingw' ) x86_64_mingw ;;
-    # All MinGW
-    'mingw' )
-        i686_mingw
-        x86_64_mingw ;;
-    'all' )
-        # Linux
-        i686_linux
-        x86_64_linux
-        aarch64_linux
-        powerpc64_linux
-        # Android
-        armv7_android
-        aarch64_android
-        i386_android
-        x86_64_android
-        # Emscripten
-        wasm32_emscripten
-        # MINGW
-        i686_mingw
-        x86_64_mingw ;;
+        "i686" )
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=cross/toolchains/i686.cmake"
+            TRIPLE="i686-linux-gnu" ;;
+        "aarch64" )
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=cross/toolchains/Aarch64.cmake"
+            TRIPLE="aarch64-linux-gnu" ;;
+        "powerpc64" )
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=cross/toolchains/Powerpc64.cmake"
+            TRIPLE="powerpc64-linux-gnu" ;;
     esac
+
+    cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE $TOOLCHAIN_FILE
+    cmake --build build
+
+    copy_files $TRIPLE
+    rm -rf build
 }
 
-build_lua $1
+build_linux() {
+    build_default
+    copy_files "x86_64-linux-gnu"
+    rm -rf build
+}
+
+build_mingw() {
+    TOOLCHAIN_FILE=""
+    TRIPLE=""
+    case $1 in
+        "i686" )
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/MinGW-i686.cmake"
+            TRIPLE="i686-w64-mingw32" ;;
+        * )
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/MinGW.cmake"
+            TRIPLE="x86_64-w64-mingw32" ;;
+    esac
+
+    cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE $TOOLCHAIN_FILE
+    cmake --build build
+
+    copy_files $TRIPLE
+
+    rm -rf build
+}
+
+build_android() {
+    ANDROID_ABI=""
+    ANDROID_PLATFORM=""
+    ANDROID_ARCH=$1
+
+    case $1 in
+        "armv7" )
+            ANDROID_ABI="armeabi-v7a" ;;
+        "aarch64" )
+            ANDROID_ABI="arm64-v8a" ;;
+        "i386" )
+            ANDROID_ABI="x86" ;;
+        "x86_64" )
+            ANDROID_ABI="x86_64" ;;
+        * )
+            ANDROID_ABI="x86_64"
+            ANDROID_ARCH="aarch64" ;;
+    esac
+
+    case $2 in
+        "android-*" )
+            ANDROID_PLATFORM=$2 ;;
+        * )
+            ANDROID_PLATFORM="android-21" ;;
+    esac
+
+
+    cmake -B build \
+    $BUILD_TYPE_ARG \
+    -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Android.cmake \
+    -DANDROID_ABI=$ANDROID_ABI \
+    -DANDROID_PLATFORM=$ANDROID_PLATFORM
+
+    cmake --build build
+
+    mkdir -p $OUTDIR/$ANDROID_ARCH-linux-android/$ANDROID_PLATFORM/bin
+    mkdir -p $OUTDIR/$ANDROID_ARCH-linux-android/$ANDROID_PLATFORM/lib
+    cp build/$BUILD_TYPE/bin/* $OUTDIR/$ANDROID_ARCH-linux-android/$ANDROID_PLATFORM/bin
+    cp build/$BUILD_TYPE/lib/* $OUTDIR/$ANDROID_ARCH-linux-android/$ANDROID_PLATFORM/lib
+
+    rm -rf build/
+}
+
+build_emscripten() {
+    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Emscripten.cmake
+    cmake --build build --verbose
+    copy_files "wasm32-unknown-emscripten"
+
+    rm -rf build/
+}
+
+case $1 in
+    "emscripten" )
+        build_emscripten ;;
+    "cross" )
+        build_cross_linux $2 ;;
+    "android" )
+        build_android $2 $3 ;;
+    "mingw" )
+        build_mingw $2 ;;
+    "linux" )
+        build_linux ;;
+    * )
+        build_default
+        copy_files "default" ;;
+esac
