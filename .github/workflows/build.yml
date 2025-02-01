@@ -77,7 +77,7 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     env:
-      NDK_HOME: '.cache/AndroidSDK/ndk/25.2.9519653'
+      NDK_HOME: '$env:GITHUB_WORKSPACE/.cache/AndroidSDK/ndk/25.2.9519653'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -97,7 +97,7 @@ jobs:
   build-emscripten:
     runs-on: ubuntu-latest
     env:
-      EMSDK_ROOT_DIR: '.cache/emsdk'
+      EMSDK_ROOT_DIR: '$env:GITHUB_WORKSPACE/.cache/emsdk'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
