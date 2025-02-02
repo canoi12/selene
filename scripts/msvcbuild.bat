@@ -15,8 +15,8 @@ goto :eof
     cmake --build build --config %BUILD_TYPE%
     if not exist "%CD%\%OUT_DIR%\x64-windows-msvc\v143\bin" mkdir "%CD%\%OUT_DIR%\x64-windows-msvc\v143\bin"
     if not exist "%CD%\%OUT_DIR%\x64-windows-msvc\v143\lib" mkdir "%CD%\%OUT_DIR%\x64-windows-msvc\v143\lib"
-    copy "%CD%\build\%BUILD_TYPE%\Windows\bin\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x64-windows-msvc\v143\bin\"
-    copy "%CD%\build\%BUILD_TYPE%\Windows\lib\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x64-windows-msvc\v143\lib\"
+    copy "%CD%\build\bin\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x64-windows-msvc\v143\bin\"
+    copy "%CD%\build\lib\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x64-windows-msvc\v143\lib\"
     rmdir /s /q build
     goto :eof
 
@@ -25,8 +25,8 @@ goto :eof
     cmake --build build --config %BUILD_TYPE%
     if not exist "%CD%\%OUT_DIR%\x86-windows-msvc\v143\bin" mkdir "%CD%\%OUT_DIR%\x86-windows-msvc\v143\bin"
     if not exist "%CD%\%OUT_DIR%\x86-windows-msvc\v143\lib" mkdir "%CD%\%OUT_DIR%\x86-windows-msvc\v143\lib"
-    copy "%CD%\build\%BUILD_TYPE%\Windows\bin\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x86-windows-msvc\v143\bin\"
-    copy "%CD%\build\%BUILD_TYPE%\Windows\lib\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x86-windows-msvc\v143\lib\"
+    copy "%CD%\build\bin\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x86-windows-msvc\v143\bin\"
+    copy "%CD%\build\lib\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x86-windows-msvc\v143\lib\"
     rmdir /s /q build
     goto :eof
 

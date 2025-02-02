@@ -93,13 +93,14 @@ build_android() {
             ANDROID_PLATFORM="android-21" ;;
     esac
 
-
+    echo "Generating files"
     cmake -B build \
     $BUILD_TYPE_ARG \
-    -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Android.cmake \
+    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/25.2.9519653/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=$ANDROID_ABI \
-    -DANDROID_PLATFORM=$ANDROID_PLATFORM
+    -DANDROID_PLATFORM=$ANDROID_PLATFORM \
 
+    echo "Building project"
     cmake --build build
 
     mkdir -p $OUTDIR/$ANDROID_ARCH-linux-android/$ANDROID_PLATFORM/bin
@@ -111,7 +112,7 @@ build_android() {
 }
 
 build_emscripten() {
-    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Emscripten.cmake
+    cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=.cache/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
     cmake --build build --verbose
     copy_files "wasm32-unknown-emscripten"
 

@@ -60,13 +60,13 @@ copy_windows() {
         mkdir -p "$OUTDIR/windows/x86"
     fi
 
-    cp "$BUILDSDIR/x86-windows-msvc/v143/lib/lua5.4.dll" "$OUTDIR/windows/x86/"
+    cp "$BUILDSDIR/x86-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x86/"
     cp "$BUILDSDIR/x86-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x86/"
     # cp "$BUILDSDIR/x86-windows-msvc/v143/bin/SDL2.dll" "$OUTDIR/windows/x86/"
     cp ".cache/SDL2/win32/x86/SDL2.dll" "$OUTDIR/windows/x86/"
     cp ".cache/SDL2/win32/x86/README-SDL.txt" "$OUTDIR/windows/x86/"
 
-    cp "$BUILDSDIR/x64-windows-msvc/v143/lib/lua5.4.dll" "$OUTDIR/windows/x64/"
+    cp "$BUILDSDIR/x64-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x64/"
     cp "$BUILDSDIR/x64-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x64/"
     cp ".cache/SDL2/win32/x64/SDL2.dll" "$OUTDIR/windows/x64/"
     cp ".cache/SDL2/win32/x64/README-SDL.txt" "$OUTDIR/windows/x64/"
