@@ -8,14 +8,14 @@ int l_selene_set_running(lua_State *L);
 static int main_symbol_test(int a) { return -1; }
 
 static const char* s_boot_script =
-    "local status, err = pcall(function() require('main') end)\n"
-    "if not status then\n"
-    "   runner.set_running(false)\n"
-    "   error(debug.traceback(err, 1), 2)"
-    "else\n"
-    "   runner.set_running(true)\n"
-    "   runner.run()\n"
-    "end";
+"local status, err = pcall(function() require('main') end)\n"
+"if not status then\n"
+"   runner.set_running(false)\n"
+"   error(debug.traceback(err, 1), 2)\n"
+"else\n"
+"   runner.set_running(true)\n"
+"   runner.run()\n"
+"end";
 
 int selene_main(int argc, char** argv) {
     lua_State* L = luaL_newstate();
