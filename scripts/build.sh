@@ -4,7 +4,7 @@ rm -rf build/
 
 BUILD_TYPE="Release"
 BUILD_TYPE_ARG="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
-TOOLCHAIN_PREFIX=cmake/toolchains
+TOOLCHAINS_PREFIX=cmake/toolchains
 OUTDIR=builds
 
 copy_files() {
@@ -24,13 +24,13 @@ build_cross_linux() {
     TRIPLE=""
     case $1 in
         "i686" )
-            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/i686.cmake"
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAINS_PREFIX/i686.cmake"
             TRIPLE="i686-linux-gnu" ;;
         "aarch64" )
-            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Aarch64.cmake"
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAINS_PREFIX/Aarch64.cmake"
             TRIPLE="aarch64-linux-gnu" ;;
         "powerpc64" )
-            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/Powerpc64.cmake"
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAINS_PREFIX/Powerpc64.cmake"
             TRIPLE="powerpc64-linux-gnu" ;;
     esac
 
@@ -52,10 +52,10 @@ build_mingw() {
     TRIPLE=""
     case $1 in
         "i686" )
-            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/MinGW-i686.cmake"
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAINS_PREFIX/MinGW-i686.cmake"
             TRIPLE="i686-w64-mingw32" ;;
         * )
-            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_PREFIX/MinGW.cmake"
+            TOOLCHAIN_FILE="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAINS_PREFIX/MinGW.cmake"
             TRIPLE="x86_64-w64-mingw32" ;;
     esac
 
