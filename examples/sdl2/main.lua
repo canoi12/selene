@@ -25,13 +25,13 @@ render:set_blend_mode(sdl.BLENDMODE_BLEND)
 image:set_blend_mode(sdl.BLENDMODE_BLEND)
 print(render.set_blend_mode, image.set_blend_mode)
 local str = ""
-selene.set_step(
+runner.set_step(
 function()
     while event:poll() do
         local ev = event:get_type()
-        if event:get_type() == sdl.QUIT then selene.set_running(false) end
+        if event:get_type() == sdl.QUIT then runner.set_running(false) end
         if event:get_type() == sdl.WINDOWEVENT then
-            if event:window_event() == sdl.WINDOWEVENT_CLOSE then selene.set_running(false) end
+            if event:window_event() == sdl.WINDOWEVENT_CLOSE then runner.set_running(false) end
         end
         if ev == sdl.KEYUP then
             local scan = event:keyboard_event()
@@ -65,7 +65,7 @@ function()
 end
 )
 
-selene.set_quit(
+runner.set_quit(
 function ()
     image:destroy()
     render:destroy()

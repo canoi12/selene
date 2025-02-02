@@ -15,13 +15,13 @@ print(dec)
 
 audio_system:play(dec, true, 0.1)
 
-selene.set_step(function()
+runner.set_step(function()
     audio_system:update()
     while event:poll() do
         local t = event:get_type()
-        if t == sdl.QUIT then selene.set_running(false) end
+        if t == sdl.QUIT then runner.set_running(false) end
         if t == sdl.WINDOWEVENT then
-            if t == sdl.WINDOWEVENT_CLOSE then selene.set_running(false) end
+            if t == sdl.WINDOWEVENT_CLOSE then runner.set_running(false) end
         end
         if t == sdl.KEYUP then
             local keyev = {event:keyboard_event()}
@@ -34,7 +34,7 @@ selene.set_step(function()
     render:clear()
     render:present()
 end)
-selene.set_quit(function()
+runner.set_quit(function()
     audio_system:close()
     render:destroy()
     window:destroy()

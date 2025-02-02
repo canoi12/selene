@@ -146,12 +146,12 @@ local positions = {
 
 local mult = 1
 
-selene.set_step(
+runner.set_step(
 function()
     while event:poll() do
-        if event:get_type() == sdl.QUIT then selene.set_running(false) end
+        if event:get_type() == sdl.QUIT then runner.set_running(false) end
         if event:get_type() == sdl.WINDOWEVENT then
-            if event:window_event() == sdl.WINDOWEVENT_CLOSE then selene.set_running(false) end
+            if event:window_event() == sdl.WINDOWEVENT_CLOSE then runner.set_running(false) end
         end
         if event:get_type() == sdl.KEYDOWN then
             local code = event:keyboard_event()
@@ -210,7 +210,7 @@ end
 )
 
 
-selene.set_quit(
+runner.set_quit(
 function()
     gl.delete_buffers(buf, index)
     gl.delete_program(prog)

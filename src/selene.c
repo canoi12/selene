@@ -48,145 +48,146 @@ extern int luaopen_font(lua_State* L);
 #ifndef SELENE_NO_SDL
 extern int luaopen_sdl(lua_State *L);
 #endif
-
+extern int luaopen_runner(lua_State *L);
 
 #ifndef SELENE_NO_SDL
 static int l_load_from_sdl_rwops(lua_State *L) {
-  const char *module_name = luaL_checkstring(L, 1);
-  size_t len = strlen(module_name);
-  char path[256];
-  strcpy(path, module_name);
-  for (int i = 0; i < len; i++) {
-    if (path[i] == '.')
-      path[i] = '/';
-  }
-  strcat(path, ".lua");
-#if DEBUG && defined(OS_ANDROID)
-  __android_log_print(ANDROID_LOG_DEBUG, "selene", "[%s] load file: %s",
-                      module_name, path);
-#endif
-  SDL_RWops *rw = SDL_RWFromFile(path, "r");
-  if (!rw) {
+    const char *module_name = luaL_checkstring(L, 1);
+    size_t len = strlen(module_name);
+    char path[256];
     strcpy(path, module_name);
     for (int i = 0; i < len; i++) {
-      if (path[i] == '.')
-        path[i] = '/';
+        if (path[i] == '.')
+            path[i] = '/';
     }
-    strcat(path, "/init.lua");
-    rw = SDL_RWFromFile(path, "r");
+    strcat(path, ".lua");
+#if DEBUG && defined(OS_ANDROID)
+    __android_log_print(ANDROID_LOG_DEBUG, "selene", "[%s] load file: %s",
+                        module_name, path);
+#endif
+    SDL_RWops *rw = SDL_RWFromFile(path, "r");
     if (!rw) {
-      lua_pushfstring(L, "[selene] RWops: failed to open module: %s", module_name);
-      return 1;
+        strcpy(path, module_name);
+        for (int i = 0; i < len; i++) {
+            if (path[i] == '.')
+                path[i] = '/';
+        }
+        strcat(path, "/init.lua");
+        rw = SDL_RWFromFile(path, "r");
+        if (!rw) {
+            lua_pushfstring(L, "[selene] RWops: failed to open module: %s", module_name);
+            return 1;
+        }
     }
-  }
-  size_t size = SDL_RWsize(rw);
-  char *content = malloc(size);
-  SDL_RWread(rw, content, 1, size);
-  if (luaL_loadbuffer(L, content, size, path) != LUA_OK) {
+    size_t size = SDL_RWsize(rw);
+    char *content = malloc(size);
+    SDL_RWread(rw, content, 1, size);
+    if (luaL_loadbuffer(L, content, size, path) != LUA_OK) {
+        free((void *)content);
+        lua_pushfstring(L, "[selene] failed to parse Lua file: %s", path);
+        return 1;
+    }
     free((void *)content);
-    lua_pushfstring(L, "[selene] failed to parse Lua file: %s", path);
     return 1;
-  }
-  free((void *)content);
-  return 1;
 }
 #endif
 
 luaL_Reg _mod_regs[] = {
 #ifndef SELENE_NO_AUDIO
-  {"audio", luaopen_audio},
+    {"audio", luaopen_audio},
 #endif
-  {"fs", luaopen_fs},
+    {"fs", luaopen_fs},
 #ifndef SELENE_NO_GL
-  {"gl", luaopen_gl},
+    {"gl", luaopen_gl},
 #endif
-  {"linmath", luaopen_linmath},
+    {"linmath", luaopen_linmath},
 #ifndef SELENE_NO_JSON
-  {"json", luaopen_json},
+    {"json", luaopen_json},
 #endif
 #ifndef SELENE_NO_FONT
-  {"font", luaopen_font},
+    {"font", luaopen_font},
 #endif
 #ifndef SELENE_NO_IMAGE
-  {"image", luaopen_image},
+    {"image", luaopen_image},
 #endif
 #ifndef SELENE_NO_SDL
-  {"sdl", luaopen_sdl},
+    {"sdl", luaopen_sdl},
 #endif
-  {NULL, NULL}
+    {"runner", luaopen_runner},
+    {NULL, NULL}
 };
 
 static int l_string_utf8codepoint(lua_State *L) {
-  INIT_ARG();
-  CHECK_STRING(str);
-  CHECK_INTEGER(pos);
-  uint8_t *p = (uint8_t *)str + pos - 1;
-  if (*p < 0x80) {
-    PUSH_INTEGER(*p);
-    PUSH_INTEGER(1);
-    return 2;
-  }
-  int codepoint = *p;
-  int size = 1;
+    INIT_ARG();
+    CHECK_STRING(str);
+    CHECK_INTEGER(pos);
+    uint8_t *p = (uint8_t *)str + pos - 1;
+    if (*p < 0x80) {
+        PUSH_INTEGER(*p);
+        PUSH_INTEGER(1);
+        return 2;
+    }
+    int codepoint = *p;
+    int size = 1;
 
-  switch (codepoint & 0xf0) {
-  case 0xf0:
-    codepoint = ((p[0] & 0x07) << 18) | ((p[1] & 0x3f) << 12) |
-                ((p[2] & 0x3f) << 6) | ((p[3] & 0x3f));
-    size = 4;
+    switch (codepoint & 0xf0) {
+    case 0xf0:
+        codepoint = ((p[0] & 0x07) << 18) | ((p[1] & 0x3f) << 12) |
+                    ((p[2] & 0x3f) << 6) | ((p[3] & 0x3f));
+        size = 4;
     break;
-  case 0xe0: {
-    codepoint = ((p[0] & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | ((p[2] & 0x3f));
-    size = 3;
+    case 0xe0: {
+        codepoint = ((p[0] & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | ((p[2] & 0x3f));
+        size = 3;
     break;
-  }
-  case 0xc0:
-  case 0xd0: {
-    codepoint = ((p[0] & 0x1f) << 6) | ((p[1] & 0x3f));
-    size = 2;
+    }
+    case 0xc0:
+    case 0xd0: {
+        codepoint = ((p[0] & 0x1f) << 6) | ((p[1] & 0x3f));
+        size = 2;
     break;
-  }
-  default:
-    codepoint = -1;
-  }
-  if (codepoint > SELENE_MAX_UNICODE)
-    codepoint = -1;
-  PUSH_INTEGER(codepoint);
-  PUSH_INTEGER(size);
-  return 2;
+    }
+    default:
+        codepoint = -1;
+    }
+    if (codepoint > SELENE_MAX_UNICODE)
+        codepoint = -1;
+    PUSH_INTEGER(codepoint);
+    PUSH_INTEGER(size);
+    return 2;
 }
 
 static int l_selene_get_exec_path(lua_State *L) {
-  char path[1024];
+    char path[1024];
 #ifndef SELENE_NO_SDL
-  PUSH_STRING(SDL_GetBasePath());
+    PUSH_STRING(SDL_GetBasePath());
 #else
 #if defined(_WIN32)
-  GetModuleFileNameA(NULL, path, 1024);
-  int index = 0;
-  char *p = path + strlen(path);
-  while (*p != '\\') {
-    p--;
-  }
-  p[1] = '\0';
-  lua_pushstring(L, path);
+    GetModuleFileNameA(NULL, path, 1024);
+    int index = 0;
+    char *p = path + strlen(path);
+    while (*p != '\\') {
+        p--;
+    }
+    p[1] = '\0';
+    lua_pushstring(L, path);
 #elif defined(__unix__) && !defined(__EMSCRIPTEN__)
 #if defined(__linux__)
-  const char *proc = "/proc/self/exe";
+    const char *proc = "/proc/self/exe";
 #elif defined(__FreeBSD__)
-  const char *proc = "/proc/curproc/file";
+    const char *proc = "/proc/curproc/file";
 #else
-  const char *proc = "/proc/self/path/a.out";
+    const char *proc = "/proc/self/path/a.out";
 #endif
-  size_t len = readlink(proc, path, 1024);
-  char *p = path + len;
-  while (*p != '/') {
-    p--;
-  }
-  p[1] = '\0';
-  lua_pushstring(L, path);
+    size_t len = readlink(proc, path, 1024);
+    char *p = path + len;
+    while (*p != '/') {
+        p--;
+    }
+    p[1] = '\0';
+    lua_pushstring(L, path);
 #else
-  lua_pushnil(L);
+    lua_pushnil(L);
 #endif
 #endif
   return 1;
@@ -194,62 +195,71 @@ static int l_selene_get_exec_path(lua_State *L) {
 
 static int l_os_host(lua_State *L) {
 #if defined(OS_WIN)
-  lua_pushstring(L, "windows");
+    lua_pushstring(L, "windows");
 #elif defined(OS_LINUX)
-  lua_pushstring(L, "linux");
+    lua_pushstring(L, "linux");
 #elif defined(OS_OSX)
-  lua_pushstring(L, "macosx");
+    lua_pushstring(L, "macosx");
 #elif defined(OS_EMSCRIPTEN)
-  lua_pushstring(L, "emscripten");
+    lua_pushstring(L, "emscripten");
 #elif defined(OS_ANDROID)
-  lua_pushstring(L, "android");
+    lua_pushstring(L, "android");
 #elif defined(OS_BSD)
-  lua_pushstring(L, "bsd");
+    lua_pushstring(L, "bsd");
 #elif defined(OS_NSWITCH)
-  lua_pushstring(L, "switch");
+    lua_pushstring(L, "switch");
 #elif defined(OS_PS4)
-  lua_pushstring(L, "ps4");
+    lua_pushstring(L, "ps4");
 #elif defined(OS_PS5)
-  lua_pushstring(L, "ps5");
+    lua_pushstring(L, "ps5");
 #elif defined(OS_XBONE)
-  lua_pushstring(L, "xbone");
+    lua_pushstring(L, "xbone");
 #elif defined(OS_XB360)
-  lua_pushstring(L, "xb360");
+    lua_pushstring(L, "xb360");
 #else
-  lua_pushstring(L, "unknown");
+    lua_pushstring(L, "unknown");
 #endif
-  return 1;
+    return 1;
 }
 
 static int l_os_arch(lua_State *L) {
 #if defined(ARCH_x86)
-  lua_pushstring(L, "x86");
+    lua_pushstring(L, "x86");
 #elif defined(ARCH_X64)
-  lua_pushstring(L, "x64");
+    lua_pushstring(L, "x64");
 #elif defined(ARCH_ARM)
-  lua_pushstring(L, "arm");
+    lua_pushstring(L, "arm");
 #else
-  lua_pushnil(L);
+    lua_pushnil(L);
 #endif
-  return 1;
+    return 1;
 }
 
 static void setup_extended_libs(lua_State *L) {
-  /* String */
-  lua_getglobal(L, "string");
-  lua_pushcfunction(L, l_string_utf8codepoint);
-  lua_setfield(L, -2, "utf8codepoint");
-  lua_pop(L, 1);
+      /* String */
+      lua_getglobal(L, "string");
+      lua_pushcfunction(L, l_string_utf8codepoint);
+      lua_setfield(L, -2, "utf8codepoint");
+      lua_pop(L, 1);
 
-  /* OS */
-  lua_getglobal(L, "os");
-  lua_pushcfunction(L, l_os_host);
-  lua_setfield(L, -2, "host");
-  lua_pushcfunction(L, l_os_arch);
-  lua_setfield(L, -2, "arch");
-  lua_pop(L, 1);
+      /* OS */
+      lua_getglobal(L, "os");
+      lua_pushcfunction(L, l_os_host);
+      lua_setfield(L, -2, "host");
+      lua_pushcfunction(L, l_os_arch);
+      lua_setfield(L, -2, "arch");
+      lua_pop(L, 1);
 }
 
+/**
+ * Selene
+ * /
+
+/**
+ * Create a new Data userdata type
+ * @param L Lua context
+ * @return Data userdata
+ */
 static int l_selene_create_data(lua_State* L) {
     INIT_ARG();
     size_t size = luaL_checkinteger(L, arg++);
@@ -332,38 +342,56 @@ static int l_selene_cube_data(lua_State* L) {
     return 1;
 }
 
+/**
+ * Open and setup the selene module
+ * @param L Lua context
+ * @return Selene library
+ */
 int luaopen_selene(lua_State *L) {
-  luaL_Reg reg[] = {
-    {"create_data", l_selene_create_data},
-    {"cube_data", l_selene_cube_data},
-    {"get_exec_path", l_selene_get_exec_path},
-    {NULL, NULL}
-  };
-  luaL_newlib(L, reg);
-  // LOAD_MODULE(AudioDecoder);
-  lua_pushstring(L, SELENE_VERSION);
-  lua_setfield(L, -2, "version");
-  LOAD_MODULE(Data);
+    luaL_Reg reg[] = {
+      {"create_data", l_selene_create_data},
+      {"cube_data", l_selene_cube_data},
+      {"get_exec_path", l_selene_get_exec_path},
+      {NULL, NULL}
+    };
+    luaL_newlib(L, reg);
+    // LOAD_MODULE(AudioDecoder);
+    lua_pushstring(L, SELENE_VERSION);
+    lua_setfield(L, -2, "__version");
+    LOAD_MODULE(Data);
 
 #ifndef SELENE_NO_SDL
-  lua_getglobal(L, "package");
-#if SELENE_USE_JIT
-  lua_getfield(L, -1, "loaders");
+    #ifndef OS_EMSCRIPTEN
+        lua_pushstring(L, SDL_GetBasePath());
+    #else
+        lua_pushstring(L, "./");
+    #endif
 #else
-  lua_getfield(L, -1, "searchers");
+    lua_pushstring(L, "./");
 #endif
-  lua_pushcfunction(L, l_load_from_sdl_rwops);
-  lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
-  lua_pop(L, 2);
+    lua_setfield(L, -2, "__exec");
+    lua_pushstring(L, "./");
+    lua_setfield(L, -2, "__dir");
+
+#ifndef SELENE_NO_SDL
+    lua_getglobal(L, "package");
+#if SELENE_USE_JIT
+    lua_getfield(L, -1, "loaders");
+#else
+    lua_getfield(L, -1, "searchers");
+#endif
+    lua_pushcfunction(L, l_load_from_sdl_rwops);
+    lua_rawseti(L, -2, (lua_Integer)lua_rawlen(L, -2) + 1);
+    lua_pop(L, 2);
 #endif
 
-  setup_extended_libs(L);
-  int i;
-  for (i = 0; _mod_regs[i].name != NULL; i++) {
-    luaL_requiref(L, _mod_regs[i].name, _mod_regs[i].func, 1);
-    lua_pop(L, 1);
-  }
+    setup_extended_libs(L);
+    int i;
+    for (i = 0; _mod_regs[i].name != NULL; i++) {
+        luaL_requiref(L, _mod_regs[i].name, _mod_regs[i].func, 1);
+        lua_pop(L, 1);
+    }
 
-  return 1;
+    return 1;
 }
 
