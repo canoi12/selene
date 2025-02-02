@@ -1,19 +1,21 @@
 #ifndef SELENE_H_
 #define SELENE_H_
 
-#define SELENE_VERSION "0.2.1"
+#define SELENE_VERSION "0.3.0"
 
 #include <platforms.h>
 #include <common.h>
 
-#if defined(BUILD_LIB_AS_DLL)
-    #if defined(OS_WIN)
-        #define SELENE_API __declspec(dllexport)
+#ifndef SELENE_API
+    #if defined(BUILD_LIB_AS_DLL)
+        #if defined(OS_WIN)
+            #define SELENE_API __declspec(dllexport)
+        #else
+            #define SELENE_API extern
+        #endif
     #else
-        #define SELENE_API extern
+        #define SELENE_API
     #endif
-#else
-    #define SELENE_API
 #endif
 
 #if SELENE_USE_JIT

@@ -4,6 +4,7 @@ OUTDIR=dist
 TMPDIR="temp"
 BUILDSDIR=builds/
 APPIMAGETOOL="./appimagetool-x86_64.AppImage"
+SELENE_VERSION="0.3.0"
 
 if [ ! -d $BUILDSDIR ]; then
     ./scripts/build.sh
@@ -33,7 +34,7 @@ generate_appimage() {
     * ) echo "Invalid architecture" ;;
     esac
 
-    ARCH=$ARCH $APPIMAGETOOL "$TMPDIR/AppImage" "$OUTDIR/Selene_v0.2.1-$ARCH.AppImage"
+    ARCH=$ARCH $APPIMAGETOOL "$TMPDIR/AppImage" "$OUTDIR/Selene_v$SELENE_VERSION-$ARCH.AppImage"
 
     rm -r $TMPDIR
 }
@@ -48,7 +49,7 @@ generate_apk() {
 
     cd ..
 
-    cp $TMPDIR/app/build/outputs/apk/release/*.apk "$OUTDIR/selene_v0.2.1.apk"
+    cp $TMPDIR/app/build/outputs/apk/release/*.apk "$OUTDIR/selene_v$SELENE_VERSION.apk"
 
     rm -r $TMPDIR
 }
