@@ -96,7 +96,7 @@ build_android() {
     echo "Generating files"
     cmake -B build \
     $BUILD_TYPE_ARG \
-    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/25.2.9519653/build/cmake/android.toolchain.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE=".cache/AndroidSDK/ndk/25.2.9519653/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=$ANDROID_ABI \
     -DANDROID_PLATFORM=$ANDROID_PLATFORM \
 
