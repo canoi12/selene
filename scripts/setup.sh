@@ -22,7 +22,7 @@ setup_android() {
 
     SDK_MANAGER="$OUTDIR/cmdline-tools/latest/bin/sdkmanager"
     if [ ! -d "$OUTDIR/platform-tools" ]; then
-        $SDK_MANAGER "platform-tools"
+        echo "y" | $SDK_MANAGER "platform-tools"
     fi
 
     if [ ! -d "$OUTDIR/platforms/android-$ANDROID_PLATFORM" ]; then
@@ -30,11 +30,11 @@ setup_android() {
     fi
 
     if [ ! -d "$OUTDIR/ndk/$NDK_VERSION" ]; then
-        $SDK_MANAGER --install "ndk;$NDK_VERSION"
+        echo "y" | $SDK_MANAGER --install "ndk;$NDK_VERSION"
     fi
 
     if [ ! -d "$OUTDIR/build-tools" ]; then
-        $SDK_MANAGER --install "build-tools;$BUILD_TOOLS_VERSION"
+        echo "y" | $SDK_MANAGER --install "build-tools;$BUILD_TOOLS_VERSION"
     fi
 }
 
