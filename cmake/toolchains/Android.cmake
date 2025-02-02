@@ -1,7 +1,8 @@
-if ("$ENV{NDK_HOME}" STREQUAL "")
-    message(FATAL_ERROR "NDK_HOME must be set")
+if ("$ENV{ANDROID_HOME}" STREQUAL "")
+    message(FATAL_ERROR "ANDROID_HOME must be set")
 endif ()
-file(REAL_PATH "$ENV{NDK_HOME}/build/cmake/android.toolchain.cmake" ANDROID_TOOLCHAIN_FILE BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
+file(REAL_PATH "$ENV{ANDROID_HOME}/ndk/${CMAKE_ANDROID_NDK_VERSION}/build/cmake/android.toolchain.cmake" ANDROID_TOOLCHAIN_FILE BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
+message("Found ${ANDROID_TOOLCHAIN_FILE}")
 
 include("${ANDROID_TOOLCHAIN_FILE}")
 

@@ -69,7 +69,7 @@ else ()
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif ()
 
-include(CheckTriple.cmake)
+include("cmake/CheckTriple.cmake")
 
 if (DEFINED EMSCRIPTEN)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
@@ -112,12 +112,12 @@ if (NOT ANDROID)
     find_package(OpenGL REQUIRED)
 endif ()
 if (NOT DEFINED EMSCRIPTEN)
-    include("CheckSDL.cmake")
+    include("cmake/CheckSDL.cmake")
 else()
     find_package(SDL2 REQUIRED)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -sUSE_SDL=2")
 endif ()
-include("CheckLua.cmake")
+include("cmake/CheckLua.cmake")
 
 include_directories(${SDL2_INCLUDE_DIRS})
 
