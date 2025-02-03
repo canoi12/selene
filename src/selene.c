@@ -55,7 +55,6 @@ extern int luaopen_font(lua_State* L);
 #ifndef SELENE_NO_SDL
 extern int luaopen_sdl(lua_State *L);
 #endif
-extern int luaopen_runner(lua_State *L);
 
 #ifndef SELENE_NO_SDL
 static int l_load_from_sdl_rwops(lua_State *L) {
@@ -153,7 +152,6 @@ luaL_Reg _mod_regs[] = {
 #ifndef SELENE_NO_SDL
     {"sdl", luaopen_sdl},
 #endif
-    {"runner", luaopen_runner},
     {NULL, NULL}
 };
 
