@@ -26,6 +26,13 @@ void luaL_requiref (lua_State *L, const char *modname,
 }
 #endif
 
+static int l_selene_is_running_ref = LUA_NOREF;
+static int selene_is_running = 0;
+static int l_selene_step_callback_ref = LUA_NOREF;
+static int l_selene_quit_callback_ref = LUA_NOREF;
+
+extern int l_setup_extended_libs(lua_State* L);
+
 // Type Modules
 extern int luaopen_Data(lua_State *L);
 
@@ -92,6 +99,39 @@ static int l_load_from_sdl_rwops(lua_State *L) {
 }
 #endif
 
+char path[512];
+static const char* s_get_exec_path() {
+#if defined(_WIN32)
+    GetModuleFileNameA(NULL, path, 512);
+    int index = 0;
+    char *p = path + strlen(path);
+    while (*p != '\\') {
+        p--;
+    }
+    p[1] = '\0';
+    return path;
+#elif defined(__unix__) && !defined(__EMSCRIPTEN__)
+#if defined(__linux__)
+    const char *proc = "/proc/self/exe";
+#elif defined(__FreeBSD__)
+    const char *proc = "/proc/curproc/file";
+#else
+    const char *proc = "/proc/self/path/a.out";
+#endif
+    size_t len = readlink(proc, path, 1024);
+    char *p = path + len;
+    while (*p != '/') {
+        p--;
+    }
+    p[1] = '\0';
+    return path;
+    // lua_pushstring(L, path);
+#else
+    // lua_pushnil(L);
+#endif
+    return "./";
+}
+
 luaL_Reg _mod_regs[] = {
 #ifndef SELENE_NO_AUDIO
     {"audio", luaopen_audio},
@@ -116,140 +156,6 @@ luaL_Reg _mod_regs[] = {
     {"runner", luaopen_runner},
     {NULL, NULL}
 };
-
-static int l_string_utf8codepoint(lua_State *L) {
-    INIT_ARG();
-    CHECK_STRING(str);
-    CHECK_INTEGER(pos);
-    uint8_t *p = (uint8_t *)str + pos - 1;
-    if (*p < 0x80) {
-        PUSH_INTEGER(*p);
-        PUSH_INTEGER(1);
-        return 2;
-    }
-    int codepoint = *p;
-    int size = 1;
-
-    switch (codepoint & 0xf0) {
-    case 0xf0:
-        codepoint = ((p[0] & 0x07) << 18) | ((p[1] & 0x3f) << 12) |
-                    ((p[2] & 0x3f) << 6) | ((p[3] & 0x3f));
-        size = 4;
-    break;
-    case 0xe0: {
-        codepoint = ((p[0] & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | ((p[2] & 0x3f));
-        size = 3;
-    break;
-    }
-    case 0xc0:
-    case 0xd0: {
-        codepoint = ((p[0] & 0x1f) << 6) | ((p[1] & 0x3f));
-        size = 2;
-    break;
-    }
-    default:
-        codepoint = -1;
-    }
-    if (codepoint > SELENE_MAX_UNICODE)
-        codepoint = -1;
-    PUSH_INTEGER(codepoint);
-    PUSH_INTEGER(size);
-    return 2;
-}
-
-static int l_selene_get_exec_path(lua_State *L) {
-    char path[1024];
-#ifndef SELENE_NO_SDL
-    PUSH_STRING(SDL_GetBasePath());
-#else
-#if defined(_WIN32)
-    GetModuleFileNameA(NULL, path, 1024);
-    int index = 0;
-    char *p = path + strlen(path);
-    while (*p != '\\') {
-        p--;
-    }
-    p[1] = '\0';
-    lua_pushstring(L, path);
-#elif defined(__unix__) && !defined(__EMSCRIPTEN__)
-#if defined(__linux__)
-    const char *proc = "/proc/self/exe";
-#elif defined(__FreeBSD__)
-    const char *proc = "/proc/curproc/file";
-#else
-    const char *proc = "/proc/self/path/a.out";
-#endif
-    size_t len = readlink(proc, path, 1024);
-    char *p = path + len;
-    while (*p != '/') {
-        p--;
-    }
-    p[1] = '\0';
-    lua_pushstring(L, path);
-#else
-    lua_pushnil(L);
-#endif
-#endif
-  return 1;
-}
-
-static int l_os_host(lua_State *L) {
-#if defined(OS_WIN)
-    lua_pushstring(L, "windows");
-#elif defined(OS_LINUX)
-    lua_pushstring(L, "linux");
-#elif defined(OS_OSX)
-    lua_pushstring(L, "macosx");
-#elif defined(OS_EMSCRIPTEN)
-    lua_pushstring(L, "emscripten");
-#elif defined(OS_ANDROID)
-    lua_pushstring(L, "android");
-#elif defined(OS_BSD)
-    lua_pushstring(L, "bsd");
-#elif defined(OS_NSWITCH)
-    lua_pushstring(L, "switch");
-#elif defined(OS_PS4)
-    lua_pushstring(L, "ps4");
-#elif defined(OS_PS5)
-    lua_pushstring(L, "ps5");
-#elif defined(OS_XBONE)
-    lua_pushstring(L, "xbone");
-#elif defined(OS_XB360)
-    lua_pushstring(L, "xb360");
-#else
-    lua_pushstring(L, "unknown");
-#endif
-    return 1;
-}
-
-static int l_os_arch(lua_State *L) {
-#if defined(ARCH_x86)
-    lua_pushstring(L, "x86");
-#elif defined(ARCH_X64)
-    lua_pushstring(L, "x64");
-#elif defined(ARCH_ARM)
-    lua_pushstring(L, "arm");
-#else
-    lua_pushnil(L);
-#endif
-    return 1;
-}
-
-static void setup_extended_libs(lua_State *L) {
-      /* String */
-      lua_getglobal(L, "string");
-      lua_pushcfunction(L, l_string_utf8codepoint);
-      lua_setfield(L, -2, "utf8codepoint");
-      lua_pop(L, 1);
-
-      /* OS */
-      lua_getglobal(L, "os");
-      lua_pushcfunction(L, l_os_host);
-      lua_setfield(L, -2, "host");
-      lua_pushcfunction(L, l_os_arch);
-      lua_setfield(L, -2, "arch");
-      lua_pop(L, 1);
-}
 
 /**
  * Selene
@@ -342,6 +248,98 @@ static int l_selene_cube_data(lua_State* L) {
     return 1;
 }
 
+
+/**
+ * Runner functions
+ */
+
+void selene_run_step(lua_State* L) {
+    // lua_rawgetp(L, LUA_REGISTRYINDEX, selene_run_step);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, l_selene_step_callback_ref);
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+#ifndef SELENE_NO_SDL
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "[selene] failed to run step function: %s",
+                     lua_tostring(L, -1));
+#else
+        #if defined(OS_ANDROID)
+        __android_log_print(ANDROID_LOG_ERROR, "selene",
+                            "failed to run step function: %s\n",
+                            lua_tostring(L, -1));
+    #else
+        fprintf(stderr,
+                "[selene] failed to run step function: %s\n",
+                lua_tostring(L, -1));
+    #endif
+#endif
+        selene_is_running = 0;
+    }
+}
+
+void selene_run_quit(lua_State *L) {
+    // lua_rawgetp(L, LUA_REGISTRYINDEX, selene_run_quit);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, l_selene_quit_callback_ref);
+    if (lua_type(L, -1) == LUA_TFUNCTION) {
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+#ifndef SELENE_NO_SDL
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "[selene] failed to call quit callback: %s",
+                         lua_tostring(L, -1));
+#else
+            #if defined(OS_ANDROID)
+            __android_log_print(ANDROID_LOG_ERROR, "selene",
+                                "failed to call quit callback: %s\n",
+                                lua_tostring(L, -1));
+#else
+            fprintf(stderr, "[selene] failed to call quit callback: %s\n",
+                    lua_tostring(L, -1));
+#endif
+#endif
+        }
+    }
+}
+
+static int l_selene_set_running(lua_State* L) {
+    INIT_ARG();
+    CHECK_BOOLEAN(running);
+    selene_is_running = running;
+    return 0;
+}
+
+static int l_selene_set_step(lua_State* L) {
+    INIT_ARG();
+    if (lua_type(L, arg) != LUA_TFUNCTION)
+        return luaL_argerror(L, arg, "must be a function");
+    lua_pushvalue(L, arg);
+    if (l_selene_step_callback_ref == LUA_NOREF) l_selene_step_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    lua_rawseti(L, LUA_REGISTRYINDEX, l_selene_step_callback_ref);
+    return 0;
+}
+
+static int l_selene_set_quit(lua_State* L) {
+    INIT_ARG();
+    if (lua_type(L, arg) != LUA_TFUNCTION)
+        return luaL_argerror(L, arg, "must be a function");
+    lua_pushvalue(L, arg);
+    if (l_selene_quit_callback_ref == LUA_NOREF) l_selene_quit_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    lua_rawseti(L, LUA_REGISTRYINDEX, l_selene_quit_callback_ref);
+    return 0;
+}
+
+static int l_selene_run(lua_State* L) {
+    // Run main loop
+#if defined(OS_EMSCRIPTEN)
+    if (selene_is_running)
+        emscripten_set_main_loop_arg((void (*)(void *))selene_run_step, L, 0,
+                                     selene_is_running);
+#else
+    while (selene_is_running)
+        selene_run_step(L);
+#endif
+    selene_run_quit(L);
+    return 0;
+}
+
 /**
  * Open and setup the selene module
  * @param L Lua context
@@ -351,7 +349,11 @@ int luaopen_selene(lua_State *L) {
     luaL_Reg reg[] = {
       {"create_data", l_selene_create_data},
       {"cube_data", l_selene_cube_data},
-      {"get_exec_path", l_selene_get_exec_path},
+      /* Runner functions */
+      {"set_running", l_selene_set_running},
+      {"set_step", l_selene_set_step},
+      {"set_quit", l_selene_set_quit},
+      {"run", l_selene_run},
       {NULL, NULL}
     };
     luaL_newlib(L, reg);
@@ -367,7 +369,7 @@ int luaopen_selene(lua_State *L) {
         lua_pushstring(L, "./");
     #endif
 #else
-    lua_pushstring(L, "./");
+    lua_pushstring(L, s_get_exec_path());
 #endif
     lua_setfield(L, -2, "__exec");
     lua_pushstring(L, "./");
@@ -385,7 +387,7 @@ int luaopen_selene(lua_State *L) {
     lua_pop(L, 2);
 #endif
 
-    setup_extended_libs(L);
+    l_setup_extended_libs(L);
     int i;
     for (i = 0; _mod_regs[i].name != NULL; i++) {
         luaL_requiref(L, _mod_regs[i].name, _mod_regs[i].func, 1);

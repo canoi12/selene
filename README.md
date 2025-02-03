@@ -132,25 +132,30 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/MinGW.cmake -DSDL_PRECOMP
 cmake --build build
 ```
 
-And the process is very similar to Emscripten and Android builds.
+And the process is very similar to Emscripten and Android builds, you can use the toolchains provided by those SDKs.
 
 #### Emscripten
 
-Download the Emscripten SDK, set `EMSDK_ROOT_DIR` and run:
+Download and setup the Emscripten SDK and run:
 
 ```
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/Emscripten.cmake
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
 cmake --build build
 ```
 
+To a fast emsdk setup run `scripts/setup.sh emscripten`, it will download the SDK to the `.cache/` folder.
+
 #### Android
 
-Setup the Android SDK and NDK, set `NDK_HOME` and run:
+Download and setup the Android SDK and NDK, and run the CMake with the Android toolchain:
 
 ```
 cmake -B build \
-    -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/Android.cmake \
+    -DCMAKE_TOOLCHAIN_FILE=${ANDROID_HOME}/ndk/${NDK_VERSION}/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=[armeabi-v7a, arm64-v8a, x86, x86_64] \
     -DANDROID_PLATFORM=android-*[21, 22, ...]
 cmake --build build
 ```
+
+To a fast Android SDK setup, use `scripts/setup.sh android`, it will download all needed files to `.cache/`.
+In the future I plan to add arg options to control SDK, NDK and platform versions.

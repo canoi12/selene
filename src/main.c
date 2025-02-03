@@ -10,11 +10,11 @@ static int main_symbol_test(int a) { return -1; }
 static const char* s_boot_script =
 "local status, err = pcall(function() require('main') end)\n"
 "if not status then\n"
-"   runner.set_running(false)\n"
-"   error(debug.traceback(err, 1), 2)\n"
+"   selene.set_running(false)\n"
+"   error(err)\n"
 "else\n"
-"   runner.set_running(true)\n"
-"   runner.run()\n"
+"   selene.set_running(true)\n"
+"   selene.run()\n"
 "end";
 
 int selene_main(int argc, char** argv) {
@@ -62,19 +62,29 @@ int selene_main(int argc, char** argv) {
         goto EXIT;
     }
 
-    lua_pushstring(L, s_boot_script);
-    lua_setglobal(L, "_BOOT_SCRIPT");
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "preload");
+    lua_getfield(L, -1, "boot");
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        luaL_loadbuffer(L, s_boot_script, strlen(s_boot_script), "boot.lua");
+        lua_setfield(L, -2, "boot");
+    } else lua_pop(L, 1);
+    lua_pop(L, 2);
 
-    const char* load_boot =
-    "local status = pcall(function() require('boot') end)\n"
-    "if not status then\n"
-    "   package.preload['boot'] = load(_BOOT_SCRIPT, 'boot.lua')\n"
-    "   require('boot')\n"
-    "end";
+    // lua_pushstring(L, s_boot_script);
+    // lua_setglobal(L, "_BOOT_SCRIPT");
 
-    if (luaL_dostring(L, load_boot) != LUA_OK) {
+    // const char* load_boot =
+    // "local status = pcall(function() require('boot') end)\n"
+    // "if not status then\n"
+    // "   package.preload['boot'] = load(_BOOT_SCRIPT, 'boot.lua')\n"
+    // "   require('boot')\n"
+    // "end";
+
+    if (luaL_dostring(L, "require('boot')") != LUA_OK) {
         const char* error = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "selene: Failed to load boot.lua: %s\n", error);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] Failed to load boot.lua: %s\n", error);
     }
 EXIT:
 #if DEBUG

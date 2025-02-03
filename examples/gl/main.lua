@@ -101,12 +101,12 @@ gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 gl.tex_image2d(gl.TEXTURE_2D, 0, gl.RGBA, img_data.width, img_data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, img_data.data:root())
 gl.bind_texture(gl.TEXTURE_2D)
 
-runner.set_step(
+selene.set_step(
 function()
     while event:poll() do
-        if event:get_type() == sdl.QUIT then runner.set_running(false) end
+        if event:get_type() == sdl.QUIT then selene.set_running(false) end
         if event:get_type() == sdl.WINDOWEVENT then
-            if event:window_event() == sdl.WINDOWEVENT_CLOSE then runner.set_running(false) end
+            if event:window_event() == sdl.WINDOWEVENT_CLOSE then selene.set_running(false) end
         end
     end
     last = current
@@ -128,7 +128,7 @@ end
 )
 
 
-runner.set_quit(
+selene.set_quit(
 function()
     gl.delete_textures(tex)
     gl.delete_buffers(buf)
