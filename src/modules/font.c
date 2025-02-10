@@ -115,34 +115,27 @@ static MODULE_FUNCTION(font, from_ttf) {
     CHECK_STRING(path);
     OPT_INTEGER(font_size, 16);
     stbtt_fontinfo info;
-#ifndef SELENE_NO_SDL
-    SDL_RWops* fp = SDL_RWFromFile(path, "rb");
+#if defined(SELENE_USE_SDL3)
+    SDL_IOStream* fp = SDL_IOFromFile(path, "rb");
 #else
-    #if defined(OS_WIN)
-        FILE* fp;
-        fopen_s(&fp, path, "rb");
-    #else
-        FILE* fp = fopen(path, "rb");
-    #endif
+    SDL_RWops* fp = SDL_RWFromFile(path, "rb");    
 #endif
     if (!fp)
         return luaL_error(L, "Failed to open font: %s", path);
-#ifndef SELENE_NO_SDL
-    size_t size = SDL_RWsize(fp);
+#if defined(SELENE_USE_SDL3)
+    size_t size = SDL_GetIOSize(fp);
 #else
-    fseek(fp, 0, SEEK_END);
-    size_t size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
+    size_t size = SDL_RWsize(fp);
 #endif
     void* data = malloc(size);
     if (!data)
         return luaL_error(L, "Failed to alloc memory for font");
-#ifndef SELENE_NO_SDL
+#if defined(SELENE_USE_SDL3)
+    SDL_ReadIO(fp, data, size);
+    SDL_CloseIO(fp);
+#else
     SDL_RWread(fp, data, 1, size);
     SDL_RWclose(fp);
-#else
-    fread(data, size, 1, fp);
-    fclose(fp);
 #endif
 
     if (!stbtt_InitFont(&info, data, 0))

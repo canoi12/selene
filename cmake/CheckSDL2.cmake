@@ -1,5 +1,14 @@
 message("Check For SDL2 lib")
 
+if (DEFINED MSVC)
+    set (SDL_PRECOMP_DIR "${CACHE_DIR}/SDL2/MSVC" CACHE STRING "Set SDL2 dir")
+elseif (DEFINED MINGW)
+    set (SDL_PRECOMP_DIR "${CACHE_DIR}/SDL2/MINGW" CACHE STRING "Set SDL2 dir")
+else ()
+    set (SDL_PRECOMP_DIR "" CACHE STRING "Set SDL2 dir")
+endif ()
+set (SDL_SOURCE_DIR "${CACHE_DIR}/SDL2/source" CACHE STRING "Set SDL2 source dir")
+
 if (NOT "${SDL_PRECOMP_DIR}" STREQUAL "")
 set(SDL2_DIR "${SDL_PRECOMP_DIR}/cmake")
 endif ()

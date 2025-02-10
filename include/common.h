@@ -42,12 +42,22 @@
     #include <SDL2/SDL_opengles2.h>
     #define USE_GLES2 1
 #else
-    #include <SDL.h>
-    #if !defined(OS_ANDROID)
-        #include <SDL_opengl.h>
+    #if defined(SELENE_USE_SDL3)
+        #include <SDL3/SDL.h>
+        #if !defined(OS_ANDROID)
+            #include <SDL3/SDL_opengl.h>
+        #else
+            #include <SDL3/SDL_opengles2.h>
+            #define USE_GLES2 1
+        #endif
     #else
-        #include <SDL_opengles2.h>
-        #define USE_GLES2 1
+        #include <SDL.h>
+        #if !defined(OS_ANDROID)
+            #include <SDL_opengl.h>
+        #else
+            #include <SDL_opengles2.h>
+            #define USE_GLES2 1
+        #endif
     #endif
 #endif
 #endif

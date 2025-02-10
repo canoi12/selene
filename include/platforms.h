@@ -37,7 +37,7 @@
 #endif
 
 #ifdef OS_WIN
-#define SDL_MAIN_HANDLED
+// #define SDL_MAIN_HANDLED
 #include <windows.h>
 #elif defined(OS_EMSCRIPTEN)
 #include <emscripten.h>

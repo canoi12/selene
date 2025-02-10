@@ -10,17 +10,7 @@ static MODULE_FUNCTION(image, from_file) {
     CHECK_STRING(filename);
     OPT_INTEGER(req_comp, 4);
     int w, h, comp;
-#ifndef SELENE_NO_SDL
-    SDL_RWops* fp = SDL_RWFromFile(filename, "rb");
-    size_t data_size = SDL_RWsize(fp);
-    void* dt = malloc(data_size);
-    SDL_RWread(fp, dt, 1, data_size);
-    stbi_uc* pixels = stbi_load_from_memory(dt, data_size, &w, &h, &comp, req_comp);
-    free(dt);
-    SDL_RWclose(fp);
-#else
     stbi_uc* pixels = stbi_load(filename, &w, &h, &comp, req_comp);
-#endif
     if (pixels == NULL) return luaL_error(L, "[selene] failed to load image %s", filename);
     lua_newtable(L);
     const size_t size = w*h*req_comp;

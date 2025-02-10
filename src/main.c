@@ -1,107 +1,46 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-void selene_run_step(lua_State* L);
-void selene_run_quit(lua_State* L);
-int l_selene_set_running(lua_State *L);
+/*extern int selene_init(void** userdata, int argc, char** argv);
+extern int selene_event(void* userdata, SDL_Event* event);
+extern int selene_iterate(void* userdata);
+extern void selene_quit(void* userdata, int result);*/
 
 static int main_symbol_test(int a) { return -1; }
 
-static const char* s_boot_script =
-"local status, err = pcall(function() require('main') end)\n"
-"if not status then\n"
-"   selene.set_running(false)\n"
-"   error(err)\n"
-"else\n"
-"   selene.set_running(true)\n"
-"   selene.run()\n"
-"end";
+#if 1 // !defined(SELENE_USE_SDL3) || defined(OS_ANDROID)
 
-int selene_main(int argc, char** argv) {
-    lua_State* L = luaL_newstate();
-    luaL_openlibs(L);
-#if SELENE_USE_JIT
-    luaopen_ffi(L);
-#endif
-    luaL_requiref(L, "selene", luaopen_selene, 1);
-    lua_newtable(L);
-    for (int i = 1; i < argc; i++) {
-        lua_pushstring(L, argv[i]);
-        lua_rawseti(L, -2, i);
+/*int selene_main(int argc, char** argv) {
+    void* L = NULL;
+    selene_init(&L, argc, argv);
+    // Run main loop
+    if (luaL_dostring(L, "selene.run()") != LUA_OK) {
+        const char* err = lua_tostring(L, -1);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to run selene: %s\n", err);
     }
-    lua_setfield(L, -2, "args");
-#if !defined(OS_WIN) && !defined(OS_EMSCRIPTEN)
-    const char* setup_path =
-        "local path = selene.__exec\n"
-        "if path and path ~= './' then\n"
-        "   package.path = package.path .. ';' .. path .. '/?.lua;' .. path .. '?/init.lua'\n"
-        "end";
-    if (luaL_dostring(L, setup_path) != LUA_OK) {
-        const char* msg = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to run pre-setup: %s\n", msg);
-        goto EXIT;
-    }
-#endif
-
-    const char* handle_args =
-    "local args = selene.args\n"
-    "for i=1,#args do\n"
-    "   if args[i] == '-d' then\n"
-    "       i = i + 1\n"
-    "       selene.__dir = args[i]\n"
-    "       package.path = selene.__dir .. '/?.lua;' .. selene.__dir .. '/?/init.lua;' .. package.path\n"
-    "   elseif args[i] == '-f' then\n"
-    "       i = i + 1\n"
-    "       package.preload['boot'] = loadfile(args[i])\n"
-    "   end\n"
-    "end";
-
-    if (luaL_dostring(L, handle_args) != LUA_OK) {
-        const char* msg = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed handle arguments: %s\n", msg);
-        goto EXIT;
-    }
-
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "preload");
-    lua_getfield(L, -1, "boot");
-    if (lua_isnil(L, -1)) {
-        lua_pop(L, 1);
-        luaL_loadbuffer(L, s_boot_script, strlen(s_boot_script), "boot.lua");
-        lua_setfield(L, -2, "boot");
-    } else lua_pop(L, 1);
-    lua_pop(L, 2);
-
-    // lua_pushstring(L, s_boot_script);
-    // lua_setglobal(L, "_BOOT_SCRIPT");
-
-    // const char* load_boot =
-    // "local status = pcall(function() require('boot') end)\n"
-    // "if not status then\n"
-    // "   package.preload['boot'] = load(_BOOT_SCRIPT, 'boot.lua')\n"
-    // "   require('boot')\n"
-    // "end";
-
-    if (luaL_dostring(L, "require('boot')") != LUA_OK) {
-        const char* error = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] Failed to load boot.lua: %s\n", error);
-    }
-EXIT:
-#if DEBUG
-#ifndef SELENE_NO_SDL
-    SDL_Log("[selene] exiting...");
-#else
-    fprintf(stdout, "[selene] exiting...\n");
-#endif
-#endif
     lua_close(L);
     return 0;
-}
+}*/
+extern int selene_main(int argc, char** argv);
 
-#ifndef OS_ANDROID
-#if defined(MINGW)
-    int SDL_main(int argc, char** argv) { return selene_main(argc, argv); }
-#else
+#if !defined(OS_ANDROID)
     int main(int argc, char** argv) { return selene_main(argc, argv); }
-#endif
+#endif /* OS_ANDROID */
+
+#elif defined(SELENE_USE_SDL3)
+SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
+    lua_State* L = luaL_newstate();
+    *appstate = (void*)L;
+    return selene_init(appstate, argc, argv);
+}
+void SDL_AppQuit(void* appstate, SDL_AppResult result) {
+    selene_quit(appstate, result);
+    lua_close((lua_State*)appstate);
+}
+SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
+    return selene_event(appstate, event);
+}
+SDL_AppResult SDL_AppIterate(void* appstate) {
+    return selene_iterate(appstate);
+}
 #endif

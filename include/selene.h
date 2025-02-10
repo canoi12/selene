@@ -48,7 +48,11 @@ enum {
 #endif
 
 #ifndef SELENE_AUDIO_FORMAT
+#if defined(SELENE_USE_SDL3)
+#define SELENE_AUDIO_FORMAT SDL_AUDIO_S16
+#else
 #define SELENE_AUDIO_FORMAT AUDIO_S16SYS
+#endif
 #endif
 
 #ifndef SELENE_AUDIO_CHANNELS
@@ -89,9 +93,30 @@ typedef struct {
 } FontGlyph;
 #endif /* SELENE_NO_FONT */
 
+typedef struct {
+    int is_running;
+    int initialized_sdl;
+
+    int step_callback_ref;
+    int quit_callback_ref;
+    int event_callback_ref;
+
+    int window_ref;
+    int renderer_ref;
+    int audio_ref;
+} SeleneContext;
+
+extern SeleneContext g_selene_context;
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+/* Implemented in core/core.c */
+SELENE_API int selene_init_callback(void** L, int argc, char** argv);
+SELENE_API int selene_event_callback(lua_State* L, SDL_Event* event);
+SELENE_API int selene_step_callback(lua_State* L);
+SELENE_API int selene_quit_callback(lua_State* L);
 
 /**
  * Open selene lib
