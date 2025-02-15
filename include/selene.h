@@ -95,15 +95,18 @@ typedef struct {
 
 typedef struct {
     int is_running;
-    int initialized_sdl;
 
-    int step_callback_ref;
-    int quit_callback_ref;
-    int event_callback_ref;
+    int l_step_callback_ref;
+    int l_quit_callback_ref;
+    int l_event_callback_ref;
 
-    int window_ref;
-    int renderer_ref;
-    int audio_ref;
+    int l_window_ref;
+    int l_renderer_ref;
+    int l_audio_system_ref;
+
+    void(*pre_step)(lua_State* L);
+    void(*post_step)(lua_State* L);
+    void(*c_quit_callback)(lua_State* L);
 } SeleneContext;
 
 extern SeleneContext g_selene_context;

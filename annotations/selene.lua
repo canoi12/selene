@@ -26,6 +26,10 @@ function selene.create_data(size, copy_data) end
 --- @return {vertices:userdata, indices:userdata, num_vertices:integer, num_indices:integer}
 function selene.cube_data() end
 
+--- Set the event callback
+--- @param func function(string)
+function selene.set_event(func) end
+
 --- Set step callback
 --- @param func function
 function selene.set_step(func) end

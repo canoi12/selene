@@ -14,12 +14,16 @@ static MODULE_FUNCTION(image, from_file) {
     if (pixels == NULL) return luaL_error(L, "[selene] failed to load image %s", filename);
     lua_newtable(L);
     const size_t size = w*h*req_comp;
-    NEW_UDATA_ADD(Data, data, sizeof(Data)+size);
+    // NEW_UDATA_ADD(Data, data, size);
+    Uint8* data = (Uint8*)lua_newuserdata(L, size);
+    luaL_setmetatable(L, "uint8_t[]");
     lua_setfield(L, -2, "data");
-    *data = size;
-    memcpy(&(data[1]), pixels, size);
+    // *data = size;
+    memcpy(data, pixels, size);
     stbi_image_free(pixels);
 
+    lua_pushinteger(L, size);
+    lua_setfield(L, -2, "size");
     lua_pushinteger(L, w);
     lua_setfield(L, -2, "width");
     lua_pushinteger(L, h);

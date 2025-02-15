@@ -1,14 +1,9 @@
-#include "renderer.h"
+#include "../renderer.h"
 
+extern int l_Effect2D__call(lua_State* L);
 
-
-typedef struct Batch2D Batch2D;
-struct Batch2D {
-    int gl_context_ref;
-
-    int clear_flags;
-    float clear_color[4];
-
+typedef struct Batch2D_Data Batch2D_Data;
+struct Batch2D_Data {
     Uint32 vao;
     Uint32 vbo;
     struct {
@@ -19,12 +14,9 @@ struct Batch2D {
 
     int white_texture_ref;
     int default_effect_ref;
-
-    int current_texture_ref;
-    int current_effect_ref;
 };
 
-int l_selene_renderer_Batch2D__call(lua_State* L) {
+int l_renderer_create_Batch2D(lua_State* L) {
     SDL_Window** win = (SDL_Window**)luaL_checkudata(L, 2, "sdlWindow");
     SDL_GLContext ctx = SDL_GL_CreateContext(*win);
     if (!ctx)
@@ -36,22 +28,25 @@ int l_selene_renderer_Batch2D__call(lua_State* L) {
         return luaL_error(L, "Failed to init glad");
 
     *gl_ctx = ctx;
+    int ref = luaL_ref(L, LUA_REGISTRYINDEX);
     
-    Batch2D* self = (Batch2D*)lua_newuserdata(L, sizeof(Batch2D));
-    luaL_setmetatable(L, "Batch2D");
-    self->gl_context_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    NEW_UDATA(Renderer, self);
+    lua_pushvalue(L, -2);
+    self->gl_context_ref = ref;
+    self->internal_data = malloc(sizeof(Batch2D_Data));
     self->clear_flags = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
     glEnable(GL_DEPTH_TEST);
 
-    self->buffer.offset = 0;
-    self->buffer.count = 1024;
-    self->buffer.data = malloc(sizeof(Vertex2D) * self->buffer.count);
+    Batch2D_Data* batch_data = (Batch2D_Data*)self->internal_data;
+    batch_data->buffer.offset = 0;
+    batch_data->buffer.count = 1024;
+    batch_data->buffer.data = malloc(sizeof(Vertex2D) * batch_data->buffer.count);
     /* Initialize VAO and VBO */
-    glGenVertexArrays(1, &self->vao);
-    glGenBuffers(1, &self->vbo);
-    glBindVertexArray(self->vao);
-    glBindBuffer(GL_ARRAY_BUFFER, self->vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * self->buffer.count, NULL, GL_DYNAMIC_DRAW);
+    glGenVertexArrays(1, &batch_data->vao);
+    glGenBuffers(1, &batch_data->vbo);
+    glBindVertexArray(batch_data->vao);
+    glBindBuffer(GL_ARRAY_BUFFER, batch_data->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * batch_data->buffer.count, NULL, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)0);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(3 * sizeof(float)));
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(7 * sizeof(float)));
@@ -78,7 +73,7 @@ int l_selene_renderer_Batch2D__call(lua_State* L) {
     texture->handle = tex;
     texture->width = 1;
     texture->height = 1;
-    self->white_texture_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    batch_data->white_texture_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     
     /* Load default effect */
     lua_pushcfunction(L, l_Effect2D__call);
@@ -88,13 +83,13 @@ int l_selene_renderer_Batch2D__call(lua_State* L) {
         return luaL_error(L, "failed to load default effect: %s", lua_tostring(L, -1));
     }
     
-    self->default_effect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    batch_data->default_effect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
     return 1;
 }
 
-int l_selene_Batch2D_destroy(lua_State* L) {
-    Batch2D* self = (Batch2D*)lua_touserdata(L, 1);
+int l_renderer_Batch2D_destroy(lua_State* L) {
+    CHECK_META(Renderer);
     lua_rawgeti(L, LUA_REGISTRYINDEX, self->gl_context_ref);
     SDL_GLContext* gl_ctx = (SDL_GLContext*)lua_touserdata(L, -1);
 #if defined(SELENE_USE_SDL3)
@@ -104,30 +99,31 @@ int l_selene_Batch2D_destroy(lua_State* L) {
 #endif
     lua_pop(L, 1);
     luaL_unref(L, LUA_REGISTRYINDEX, self->gl_context_ref);
-    glDeleteBuffers(1, &self->vbo);
-    glDeleteVertexArrays(1, &self->vao);
+    Batch2D_Data* bdata = (Batch2D_Data*)self->internal_data;
+    glDeleteBuffers(1, &bdata->vbo);
+    glDeleteVertexArrays(1, &bdata->vao);
 
-    if (self->white_texture_ref != LUA_NOREF) {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_texture_ref);
+    if (bdata->white_texture_ref != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, bdata->white_texture_ref);
         Texture2D* texture = (Texture2D*)lua_touserdata(L, -1);
         glDeleteTextures(1, &texture->handle);
         lua_pop(L, 1);
-        luaL_unref(L, LUA_REGISTRYINDEX, self->current_texture_ref);
+        luaL_unref(L, LUA_REGISTRYINDEX, bdata->white_texture_ref);
     }
 
-    if (self->default_effect_ref != LUA_NOREF) {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, self->default_effect_ref);
+    if (bdata->default_effect_ref != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, bdata->default_effect_ref);
         Effect2D* effect = (Effect2D*)lua_touserdata(L, -1);
         glDeleteProgram(effect->handle);
         lua_pop(L, 1);
-        luaL_unref(L, LUA_REGISTRYINDEX, self->default_effect_ref);
+        luaL_unref(L, LUA_REGISTRYINDEX, bdata->default_effect_ref);
     }
 
     return 0;
 }
 
-int l_selene_Batch2D_clear(lua_State* L) {
-    Batch2D* self = (Batch2D*)luaL_checkudata(L, 1, "Batch2D");
+int l_renderer_Batch2D_clear(lua_State* L) {
+    CHECK_META(Renderer);
     float c[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     for (int i = 2; i < lua_gettop(L); i++) {
         c[i-2] = luaL_checknumber(L, i);
@@ -137,8 +133,9 @@ int l_selene_Batch2D_clear(lua_State* L) {
     return 0;
 }
 
-int l_selene_Batch2D_push_vertex(lua_State* L) {
-    Batch2D* batch = (Batch2D*)luaL_checkudata(L, 1, "Batch2D");
+int l_renderer_Batch2D_push_vertex(lua_State* L) {
+    CHECK_META(Renderer);
+    Batch2D_Data* batch = (Batch2D_Data*)self->internal_data;
     if (batch->buffer.offset + 1 > batch->buffer.count) {
         return luaL_error(L, "buffer overflow");
     }
@@ -158,8 +155,9 @@ int l_selene_Batch2D_push_vertex(lua_State* L) {
     return 0;
 }
 
-int l_selene_Batch2D_push_point(lua_State* L) {
-    Batch2D* batch = (Batch2D*)luaL_checkudata(L, 1, "Batch2D");
+int l_renderer_Batch2D_push_point(lua_State* L) {
+    CHECK_META(Renderer);
+    Batch2D_Data* batch = (Batch2D_Data*)self->internal_data;
     if (batch->buffer.offset + 1 > batch->buffer.count) {
         return luaL_error(L, "buffer overflow");
     }
@@ -172,8 +170,9 @@ int l_selene_Batch2D_push_point(lua_State* L) {
     return 0;
 }
 
-int l_selene_Batch2D_push_triangle(lua_State* L) {
-    Batch2D* batch = (Batch2D*)luaL_checkudata(L, 1, "Batch2D");
+int l_renderer_Batch2D_push_triangle(lua_State* L) {
+    CHECK_META(Renderer);
+    Batch2D_Data* batch = (Batch2D_Data*)self->internal_data;
     if (batch->buffer.offset + 3 > batch->buffer.count) {
         return luaL_error(L, "buffer overflow");
     }
@@ -192,8 +191,9 @@ int l_selene_Batch2D_push_triangle(lua_State* L) {
     return 0;
 }
 
-int l_selene_Batch2D_push_rect(lua_State* L) {
-    Batch2D* batch = (Batch2D*)luaL_checkudata(L, 1, "Batch2D");
+int l_renderer_Batch2D_push_rect(lua_State* L) {
+    CHECK_META(Renderer);
+    Batch2D_Data* batch = (Batch2D_Data*)self->internal_data;
     if (batch->buffer.offset + 6 > batch->buffer.count) {
         return luaL_error(L, "buffer overflow");
     }
@@ -225,25 +225,38 @@ int l_selene_Batch2D_push_rect(lua_State* L) {
     return 0;
 }
 
-int l_selene_Batch2D_open_meta(lua_State* L) {
-    luaL_newmetatable(L, "Batch2D");
-    lua_pushcfunction(L, l_selene_renderer_Batch2D__call);
-    lua_setfield(L, -2, "__call");
+static inline int l_renderer_Batch2D_set_texture(lua_State* L) {
+    CHECK_META(Renderer);
+    if (!lua_isuserdata(L, arg) && !lua_isnil(L, arg))
+        return luaL_argerror(L, arg, "must be a userdata(Texture2D) or nil");
+    TEST_UDATA(Texture2D, tex);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->l_texture_ref);
+    Texture2D* curr_tex = (Texture2D*)lua_touserdata(L, -1);
+    if (tex != curr_tex) {
+        lua_pushvalue(L, 2);
+        lua_rawseti(L, LUA_REGISTRYINDEX, self->l_texture_ref);
+    }
+    lua_pop(L, 1);
+    return 0;
+}
 
-    lua_newtable(L);
-    lua_pushcfunction(L, l_selene_Batch2D_destroy);
-    lua_setfield(L, -2, "destroy");
+static inline int l_renderer_Batch2D_set_effect(lua_State* L) {
+    return 0;
+}
 
-    lua_pushcfunction(L, l_selene_Batch2D_clear);
-    lua_setfield(L, -2, "clear");
-    lua_pushcfunction(L, l_selene_Batch2D_push_vertex);
-    lua_setfield(L, -2, "push_vertex");
-    lua_pushcfunction(L, l_selene_Batch2D_push_point);
-    lua_setfield(L, -2, "push_point");
-    lua_pushcfunction(L, l_selene_Batch2D_push_triangle);
-    lua_setfield(L, -2, "push_triangle");
-    lua_pushcfunction(L, l_selene_Batch2D_push_rect);
-    lua_setfield(L, -2, "push_rect");
-    lua_setfield(L, -2, "__index");
+static inline int l_renderer_Batch2D_set_projection(lua_State* L) { return 0; }
+
+int l_renderer_Batch2D_open_meta(lua_State* L) {
+    luaL_newmetatable(L, "Renderer");
+    const luaL_Reg reg[] = {
+        REG_FIELD(renderer_Batch2D, destroy),
+        REG_FIELD(renderer_Batch2D, clear),
+        REG_FIELD(renderer_Batch2D, push_vertex),
+        REG_FIELD(renderer_Batch2D, push_point),
+        REG_FIELD(renderer_Batch2D, push_triangle),
+        REG_FIELD(renderer_Batch2D, push_rect),
+        {NULL, NULL}
+    };
+    luaL_setfuncs(L, reg, 0);
     return 1;
 }

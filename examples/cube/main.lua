@@ -1,3 +1,9 @@
+local conf = {
+    window = {
+        resizable = true
+    }
+}
+-- selene('Cube Example', '1.0.0', 'org.selene.CubeExample', conf)
 sdl.init(sdl.INIT_EVERYTHING)
 local profile = {
     major = 3,
@@ -89,7 +95,72 @@ gl.use_program()
 gl.delete_shader(vert)
 gl.delete_shader(frag)
 
-local cube = selene.cube_data()
+-- Define vertices for a cube.
+local cube_vertices = {
+    -- front face (z = 0.5)
+    -0.5, -0.5,  0.5,
+     0.5, -0.5,  0.5,
+     0.5,  0.5,  0.5,
+    -0.5,  0.5,  0.5,
+    -- back face (z = -0.5)
+    -0.5, -0.5, -0.5,
+    -0.5,  0.5, -0.5,
+     0.5,  0.5, -0.5,
+     0.5, -0.5, -0.5,
+    -- left face (x = -0.5)
+    -0.5, -0.5, -0.5,
+    -0.5, -0.5,  0.5,
+    -0.5,  0.5,  0.5,
+    -0.5,  0.5, -0.5,
+    -- right face (x = 0.5)
+     0.5, -0.5, -0.5,
+     0.5,  0.5, -0.5,
+     0.5,  0.5,  0.5,
+     0.5, -0.5,  0.5,
+    -- top face (y = 0.5)
+    -0.5,  0.5, -0.5,
+    -0.5,  0.5,  0.5,
+     0.5,  0.5,  0.5,
+     0.5,  0.5, -0.5,
+    -- bottom face (y = -0.5)
+    -0.5, -0.5, -0.5,
+     0.5, -0.5, -0.5,
+     0.5, -0.5,  0.5,
+    -0.5, -0.5,  0.5,
+}
+
+-- Define indices for the cube. Two triangles per face.
+local cube_indices = {
+    0, 1, 2,   0, 2, 3,      -- front face
+    4, 5, 6,   4, 6, 7,      -- back face
+    8, 9, 10,  8, 10, 11,    -- left face
+    12, 13, 14, 12, 14, 15,   -- right face
+    16, 17, 18, 16, 18, 19,   -- top face
+    20, 21, 22, 20, 22, 23,   -- bottom face
+}
+
+-- Package into a cube data table.
+local cube = {
+    vertices = ctypes.float(#cube_vertices),
+    indices = ctypes.uint32(#cube_indices),
+    num_vertices = #cube_vertices / 3,
+    num_indices = #cube_indices,
+}
+
+for i,v in ipairs(cube_vertices) do
+    cube.vertices[i-1] = v
+end
+
+for i,v in ipairs(cube_indices) do
+    cube.indices[i-1] = v
+end
+
+print(ctypes.float.size, ctypes.uint8.size)
+
+-- Print information (optional)
+print("Cube vertices count: ", cube.num_vertices)
+print("Cube indices count: ", cube.num_indices)
+-- cube data
 print(cube.vertices, cube.indices)
 
 local vao = gl.gen_vertex_arrays(1)
@@ -113,9 +184,9 @@ gl.bind_vertex_array()
 gl.bind_buffer(gl.ARRAY_BUFFER)
 gl.bind_buffer(gl.ELEMENT_ARRAY_BUFFER)
 
-local img_data = selene.create_data(4)
-print(img_data, img_data.write_bytes)
-img_data:write_bytes(0, 255, 255, 255, 255)
+local img_data = ctypes.uint8(4)
+print(img_data)
+img_data[0] = {255, 255, 255, 255}
 print('teste')
 local tex = gl.gen_textures(1)
 gl.bind_texture(gl.TEXTURE_2D, tex)
@@ -123,7 +194,7 @@ gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 gl.tex_parameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 -- gl.Texture.paremeteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-gl.tex_image2d(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, img_data:root())
+gl.tex_image2d(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, img_data)
 gl.bind_texture(gl.TEXTURE_2D)
 
 gl.enable(gl.DEPTH_TEST)

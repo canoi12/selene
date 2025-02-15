@@ -3,6 +3,8 @@
 
 #define LUA_STATE_NAME L
 
+#define LUA_META_CLASS(x) #x
+
 #define INIT_ARG()\
 int arg = 1
 

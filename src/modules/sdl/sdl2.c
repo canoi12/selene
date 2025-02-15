@@ -522,7 +522,9 @@ static MODULE_FUNCTION(sdl, gamepad_get_button_from_string) {
 static MODULE_FUNCTION(sdl, create_gl_context) {
     INIT_ARG();
 	CHECK_UDATA(sdlWindow, win);
-	SDL_GLContext* glctx = SDL_GL_CreateContext(*win);
+    fprintf(stderr, "Window: %p %p\n", win, *win);
+	SDL_GLContext glctx = SDL_GL_CreateContext(*win);
+    fprintf(stderr, "GL Context:  %p\n", glctx);
 	if (glctx == NULL)
 		return luaL_error(L, "[selene] failed to create GL Context: %s", SDL_GetError());
 	NEW_UDATA(sdlGLContext, ctx);
@@ -1448,7 +1450,8 @@ MODULE_FUNCTION(sdlGamepad, meta) {
 
 static MODULE_FUNCTION(sdlGLContext, destroy) {
     CHECK_META(sdlGLContext);
-    SDL_GL_DeleteContext(*self);
+    fprintf(stderr, "%p SDL_GL_DeleteContext(%p)\n", self, *self);
+    if (*self) SDL_GL_DeleteContext(*self);
     return 0;
 }
 
@@ -2145,7 +2148,8 @@ MODULE_FUNCTION(sdlTexture, meta) {
 
 static MODULE_FUNCTION(sdlWindow, destroy) {
     CHECK_META(sdlWindow);
-    SDL_DestroyWindow(*self);
+    fprintf(stderr, "sdlWindow: destroy\n");
+    if (*self) SDL_DestroyWindow(*self);
     return 0;
 }
 

@@ -3,28 +3,71 @@
 
 SeleneContext g_selene_context = {
     .is_running = 0,
-    .initialized_sdl = 0,
 
-    .step_callback_ref = LUA_NOREF,
-    .quit_callback_ref = LUA_NOREF,
-    .event_callback_ref = LUA_NOREF,
+    .l_step_callback_ref = LUA_NOREF,
+    .l_quit_callback_ref = LUA_NOREF,
+    .l_event_callback_ref = LUA_NOREF,
 
-    .audio_ref = LUA_NOREF,
-    .window_ref = LUA_NOREF,
-    .renderer_ref = LUA_NOREF,
+    .l_audio_system_ref = LUA_NOREF,
+    .l_window_ref = LUA_NOREF,
+    .l_renderer_ref = LUA_NOREF,
+
+    .pre_step = NULL,
+    .post_step = NULL,
+    .c_quit_callback = NULL
 };
 SeleneContext* s_ctx = &g_selene_context;
 
 extern int l_selene_renderer_Batch2D__call(lua_State* L);
 
+static void pre_step(lua_State* L) {
+
+}
+
+static void post_step(lua_State* L) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
+    SDL_Window** window = (SDL_Window**)lua_touserdata(L, -1);
+    SDL_GL_SwapWindow(*window);
+}
+
+static void destroy_runner(lua_State* L) {
+    if (s_ctx->l_audio_system_ref != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_audio_system_ref);
+        lua_getfield(L, -1, "destroy");
+        lua_pushvalue(L, -2);
+        if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to destroy selene audio system");
+        }
+        lua_pop(L, 1);
+        luaL_unref(L, LUA_REGISTRYINDEX, s_ctx->l_audio_system_ref);
+    }
+    if (s_ctx->l_renderer_ref != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
+        lua_getfield(L, -1, "destroy");
+        lua_pushvalue(L, -2);
+        if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to destroy selene renderer");
+        }
+        lua_pop(L, 1);
+        luaL_unref(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
+    }
+    if (s_ctx->l_window_ref != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
+        SDL_Window** window = (SDL_Window**)lua_touserdata(L, -1);
+        SDL_DestroyWindow(*window);
+        lua_pop(L, 1);
+        luaL_unref(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
+    }
+    SDL_Quit();
+}
+
 static int l_selene__call(lua_State* L) {
     const char* name = luaL_checkstring(L, 2);
     const char* version = luaL_checkstring(L, 3);
     const char* org = luaL_checkstring(L, 4);
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) < 0) {
         return luaL_error(L, "failed to initialize SDL: %s", SDL_GetError());
     }
-    g_selene_context.initialized_sdl = 1;
     SDL_Window* win = SDL_CreateWindow(
         name,
 #if !defined(SELENE_USE_SDL3)
@@ -38,11 +81,17 @@ static int l_selene__call(lua_State* L) {
     SDL_Window** win_ptr = (SDL_Window**)lua_newuserdata(L, sizeof(SDL_Window*));
     luaL_setmetatable(L, "sdlWindow");
     *win_ptr = win;
-    g_selene_context.window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    g_selene_context.l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     /*if (luaL_dostring(L, "selene.renderer.Batch2D()") != LUA_OK) {
         return luaL_error(L, "failed to create renderer: %s", SDL_GetError());
     }*/
-   l_selene_renderer_Batch2D__call(L);
+//    l_selene_renderer_Batch2D__call(L);
+    lua_pushcfunction(L, l_selene_renderer_Batch2D__call);
+    lua_pushinteger(L, 0);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_window_ref);
+    if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
+        return luaL_error(L, "failed to create Batch2D renderer");
+    }
 /*#if defined(SELENE_USE_SDL3)
     SDL_Renderer* r = SDL_CreateRenderer(win, "opengl");
 #else
@@ -53,7 +102,10 @@ static int l_selene__call(lua_State* L) {
     SDL_Renderer** r_ptr = (SDL_Renderer**)lua_newuserdata(L, sizeof(SDL_Renderer*));
     luaL_setmetatable(L, "sdlRenderer");
     *r_ptr = r;*/
-    g_selene_context.renderer_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    g_selene_context.l_renderer_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    g_selene_context.c_quit_callback = destroy_runner;
+    g_selene_context.pre_step = pre_step;
+    g_selene_context.post_step = post_step;
     return 0;
 }
 
@@ -79,10 +131,7 @@ extern int l_setup_extended_libs(lua_State* L);
 // Type Modules
 extern int luaopen_Data(lua_State *L);
 
-// Library Modules
-#ifndef SELENE_NO_AUDIO
-extern int luaopen_audio(lua_State* L);
-#endif
+// Global Modules
 extern int luaopen_fs(lua_State *L);
 extern int luaopen_gl(lua_State *L);
 extern int luaopen_linmath(lua_State *L);
@@ -98,11 +147,9 @@ extern int luaopen_font(lua_State* L);
 #ifndef SELENE_NO_SDL
 extern int luaopen_sdl(lua_State *L);
 #endif
+extern int luaopen_ctypes(lua_State *L);
 
-luaL_Reg _mod_regs[] = {
-#ifndef SELENE_NO_AUDIO
-    {"audio", luaopen_audio},
-#endif
+static const luaL_Reg _global_modules_reg[] = {
     {"fs", luaopen_fs},
 #ifndef SELENE_NO_GL
     {"gl", luaopen_gl},
@@ -118,8 +165,23 @@ luaL_Reg _mod_regs[] = {
     {"image", luaopen_image},
 #endif
 #ifndef SELENE_NO_SDL
-    // {"sdl", luaopen_sdl},
+    {"sdl", luaopen_sdl},
 #endif
+    {"ctypes", luaopen_ctypes},
+    {NULL, NULL}
+};
+
+
+// Selene Modules
+#ifndef SELENE_NO_AUDIO
+extern int luaopen_audio(lua_State* L);
+#endif
+extern int luaopen_renderer(lua_State* L);
+
+
+static const luaL_Reg _selene_modules_reg[] = {
+    {"audio", luaopen_audio},
+    {"renderer", luaopen_renderer},
     {NULL, NULL}
 };
 
@@ -204,8 +266,8 @@ static int l_selene_set_event(lua_State* L) {
     if (!lua_isfunction(L, arg))
         return luaL_argerror(L, arg, "must be a function");
     lua_pushvalue(L, arg);
-    if (s_ctx->event_callback_ref == LUA_NOREF) s_ctx->event_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    else lua_rawseti(L, LUA_REGISTRYINDEX, s_ctx->event_callback_ref);
+    if (s_ctx->l_event_callback_ref == LUA_NOREF) s_ctx->l_event_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    else lua_rawseti(L, LUA_REGISTRYINDEX, s_ctx->l_event_callback_ref);
     return 0;
 }
 
@@ -214,8 +276,8 @@ static int l_selene_set_step(lua_State* L) {
     if (!lua_isfunction(L, arg))
         return luaL_argerror(L, arg, "must be a function");
     lua_pushvalue(L, arg);
-    if (s_ctx->step_callback_ref == LUA_NOREF) s_ctx->step_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    else lua_rawseti(L, LUA_REGISTRYINDEX, s_ctx->step_callback_ref);
+    if (s_ctx->l_step_callback_ref == LUA_NOREF) s_ctx->l_step_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    else lua_rawseti(L, LUA_REGISTRYINDEX, s_ctx->l_step_callback_ref);
     return 0;
 }
 
@@ -224,12 +286,12 @@ static int l_selene_set_quit(lua_State* L) {
     if (lua_type(L, arg) != LUA_TFUNCTION)
         return luaL_argerror(L, arg, "must be a function");
     lua_pushvalue(L, arg);
-    if (s_ctx->quit_callback_ref == LUA_NOREF) s_ctx->quit_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    else lua_rawseti(L, LUA_REGISTRYINDEX, s_ctx->quit_callback_ref);
+    if (s_ctx->l_quit_callback_ref == LUA_NOREF) s_ctx->l_quit_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    else lua_rawseti(L, LUA_REGISTRYINDEX, s_ctx->l_quit_callback_ref);
     return 0;
 }
 
-extern int luaopen_renderer(lua_State* L);
+extern int selene_open_enums(lua_State* L);
 
 /**
  * Open and setup the selene module
@@ -246,12 +308,16 @@ int luaopen_selene(lua_State *L) {
       {NULL, NULL}
     };
     luaL_newlib(L, reg);
+    selene_open_enums(L);
     // LOAD_MODULE(AudioDecoder);
     lua_pushstring(L, SELENE_VERSION);
     lua_setfield(L, -2, "__version");
     LOAD_MODULE(Data);
-    luaL_requiref(L, "renderer", luaopen_renderer, 0);
-    lua_setfield(L, -2, "renderer");
+    int i;
+    for (i = 0; _selene_modules_reg[i].name != NULL; i++) {
+        luaL_requiref(L, _selene_modules_reg[i].name, _selene_modules_reg[i].func, 0);
+        lua_setfield(L, -2, _selene_modules_reg[i].name);
+    }
 
 #ifndef OS_EMSCRIPTEN
     lua_pushstring(L, SDL_GetBasePath());
@@ -275,9 +341,8 @@ int luaopen_selene(lua_State *L) {
 
 
     l_setup_extended_libs(L);
-    int i;
-    for (i = 0; _mod_regs[i].name != NULL; i++) {
-        luaL_requiref(L, _mod_regs[i].name, _mod_regs[i].func, 1);
+    for (i = 0; _global_modules_reg[i].name != NULL; i++) {
+        luaL_requiref(L, _global_modules_reg[i].name, _global_modules_reg[i].func, 1);
         lua_pop(L, 1);
     }
 
