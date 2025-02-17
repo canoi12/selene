@@ -105,7 +105,11 @@ if (${LUA_VERSION} STREQUAL "jit")
     add_definitions(-DSELENE_USE_JIT)
 endif ()
 
-file(GLOB SELENE_SOURCES src/Data.c src/core/*.c src/core/renderer/*.c src/core/audio/*.c src/extended_libs.c src/modules/*.c src/third/glad/src/glad.c)
+file(GLOB SELENE_SOURCES 
+    src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c
+    src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c
+    src/modules/*.c src/third/glad/src/glad.c
+)
 # list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/modules/sdl2.c)
 
 include_directories(include/ src/third/ src/third/glad/include)

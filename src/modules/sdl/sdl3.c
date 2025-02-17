@@ -3,16 +3,14 @@
 #if defined(SELENE_USE_SDL3)
 
 BEGIN_ENUM(sdl3_Enums)
-    ENUM_FIELD(INIT_EVERYTHING, SDL_),
     ENUM_FIELD(INIT_AUDIO, SDL_),
     ENUM_FIELD(INIT_VIDEO, SDL_),
     ENUM_FIELD(INIT_JOYSTICK, SDL_),
-    ENUM_FIELD(INIT_GAMECONTROLLER, SDL_),
+    ENUM_FIELD(INIT_GAMEPAD, SDL_),
     ENUM_FIELD(INIT_EVENTS, SDL_),
-    ENUM_FIELD(INIT_TIMER, SDL_),
+    ENUM_FIELD(INIT_CAMERA, SDL_),
     ENUM_FIELD(INIT_SENSOR, SDL_),
-    ENUM_FIELD(INIT_NOPARACHUTE, SDL_),
-END_ENUM
+END_ENUM()
 
 
 static int l_sdl3_init(lua_State* L) {
@@ -38,15 +36,14 @@ static int l_sdl3_set_error(lua_State* L) {
 }
 
 static int l_sdl3_get_version(lua_State* L) {
-    SDL_version version;
-    SDL_GetVersion(&version);
-    lua_pushinteger(L, version.major);
-    lua_pushinteger(L, version.minor);
-    lua_pushinteger(L, version.patch);
+    int version = SDL_GetVersion();
+    lua_pushinteger(L, SDL_VERSIONNUM_MAJOR(version));
+    lua_pushinteger(L, SDL_VERSIONNUM_MINOR(version));
+    lua_pushinteger(L, SDL_VERSIONNUM_MICRO(version));
     return 3;
 }
 
-int luaopen_sdl3(lua_State* L) {
+int luaopen_sdl(lua_State* L) {
     luaL_Reg reg[] = {
         {"init", l_sdl3_init},
         {"quit", l_sdl3_quit},
@@ -56,6 +53,8 @@ int luaopen_sdl3(lua_State* L) {
         {NULL, NULL}
     };
     luaL_newlib(L, reg);
+    luaL_newmetatable(L, "sdlWindow");
+    lua_setfield(L, -2, "Window");
     return 1;
 }
 #endif

@@ -23,7 +23,11 @@ struct AudioSystem {
     struct AudioBuffer* buffer_pool;
     int pool_count;
     void* aux_data;
+#if defined(SELENE_USE_SDL3)
+    SDL_Mutex* audio_mutex;
+#else
     SDL_mutex* audio_mutex;
+#endif
     int audio_format;
 };
 
