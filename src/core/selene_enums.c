@@ -2,6 +2,7 @@
 #include "lua_helper.h"
 
 static const struct { const char* name; int value; } selene_Enums_reg[] = {
+#if 0
     {"KEY_UNKNOWN", SDL_SCANCODE_UNKNOWN},
 
     /**
@@ -346,11 +347,16 @@ static const struct { const char* name; int value; } selene_Enums_reg[] = {
     {"KEY_KBDILLUMTOGGLE", SDL_SCANCODE_KBDILLUMTOGGLE},
     {"KEY_KBDILLUMDOWN", SDL_SCANCODE_KBDILLUMDOWN},
     {"KEY_KBDILLUMUP", SDL_SCANCODE_KBDILLUMUP},
+#if defined(SELENE_USE_SDL3)
+    {"KEY_EJECT", SDL_SCANCODE_MEDIA_EJECT},
+#else
     {"KEY_EJECT", SDL_SCANCODE_EJECT},
+#endif
     {"KEY_SLEEP", SDL_SCANCODE_SLEEP},           /**< SC System Sleep */
-
+#if !defined(SELENE_USE_SDL3)
     {"KEY_APP1", SDL_SCANCODE_APP1},
     {"KEY_APP2", SDL_SCANCODE_APP2},
+#endif
 
     /* @} *//* Walther keys */
 
@@ -360,9 +366,16 @@ static const struct { const char* name; int value; } selene_Enums_reg[] = {
      *  These values are mapped from usage page 0x0C (USB consumer page).
      */
     /* @{ */
-
+#if defined(SELENE_USE_SDL3)
+    {"KEY_AUDIOREWIND", SDL_SCANCODE_MEDIA_REWIND},
+#else
     {"KEY_AUDIOREWIND", SDL_SCANCODE_AUDIOREWIND},
+#endif
+#if defined(SELENE_USE_SDL3)
+    {"KEY_AUDIOFASTFORWARD", SDL_SCANCODE_MEDIA_FAST_FORWARD},
+#else
     {"KEY_AUDIOFASTFORWARD", SDL_SCANCODE_AUDIOFASTFORWARD},
+#endif
 
     /* @} *//* Usage page 0x0C (additional media keys) */
 
@@ -388,8 +401,13 @@ static const struct { const char* name; int value; } selene_Enums_reg[] = {
 
     /* Add any other keys here. */
 
+#if defined(SELENE_USE_SDL3)
+    {"KEY_COUNT", SDL_SCANCODE_COUNT},
+#else
     {"KEY_COUNT", SDL_NUM_SCANCODES}, /**< not a key, just marks the number of scancodes
                                  for array bounds */
+#endif
+#endif
     {NULL, NULL}
 };
 

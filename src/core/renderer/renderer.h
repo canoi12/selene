@@ -1,18 +1,17 @@
-#ifndef SELENE_RENDERER
-#define SELENE_RENDERER
-
 #include "selene.h"
 #include "lua_helper.h"
 
-typedef struct Batch2D Batch2D;
-typedef struct Render3D Render3D;
-typedef struct RenderDefault RenderDefault;
+#ifndef SELENE_RENDERER_H_
+#define SELENE_RENDERER_H_
 
-const char* pixel_formats[] = { "rgb", "rgba", NULL };
-const int pixel_formats_values[] = { GL_RGB, GL_RGBA };
+extern const char* pixel_formats[];
+extern const int pixel_formats_values[];
 
-const char* texture_filters[] = { "nearest", "linear", NULL };
-const int texture_filters_values[] = { GL_NEAREST, GL_LINEAR };
+extern const char* texture_filters[];
+extern const int texture_filters_values[];
+
+extern const char* draw_modes[];
+extern const int draw_modes_values[];
 
 /**
  * Texture Types
@@ -98,11 +97,15 @@ typedef struct Renderer Renderer;
 struct Renderer {
     int gl_context_ref;
     int clear_flags;
+    int draw_mode;
 
     void* internal_data;
 
     int l_texture_ref;
     int l_effect_ref;
+
+    void(*begin)(Renderer*, lua_State*);
+    void(*end)(Renderer*, lua_State*);
 };
 
 #define TEXTURE2D_CLASS LUA_META_CLASS(Texture2D)
@@ -111,4 +114,4 @@ struct Renderer {
 #define BATCH2D_CLASS LUA_META_CLASS(Batch2D)
 #define EFFECT2D_CLASS LUA_META_CLASS(Effect2D)
 
-#endif /* SELENE_RENDERER */
+#endif /* SELENE_RENDERER_H_ */

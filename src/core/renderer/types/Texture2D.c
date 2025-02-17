@@ -1,10 +1,10 @@
-#include "renderer.h"
+#include "../renderer.h"
 
 /**
  * Texture2D
  */
 
- static inline int l_renderer_Texture2D_create(lua_State* L) {
+ int l_renderer_Texture2D_create(lua_State* L) {
     INIT_ARG();
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);

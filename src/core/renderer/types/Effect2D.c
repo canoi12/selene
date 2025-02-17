@@ -1,4 +1,4 @@
-#include "renderer.h"
+#include "../renderer.h"
 
 const char* c_vertex_header =
 #if defined(USE_GLES2)
@@ -21,7 +21,7 @@ const char* c_vertex_header =
 
 const char* c_vertex_position_default =
 "vec4 position(vec4 pos, mat4 view, mat4 projection) {\n"
-"   return pos;\n"
+"   return projection * view * pos;\n"
 "}\n";
 
 const char* c_vertex_main =
@@ -129,12 +129,61 @@ int l_Effect2D_destroy(lua_State* L) {
     return 0;
 }
 
+static inline int l_Effect2D_get_attrib_location(lua_State* L) {
+    CHECK_META(Effect2D);
+    CHECK_STRING(name);
+    int location = glGetAttribLocation(self->handle, name);
+    lua_pushinteger(L, location);
+    return 1;
+}
+
+static inline int l_Effect2D_get_uniform_location(lua_State* L) {
+    CHECK_META(Effect2D);
+    CHECK_STRING(name);
+    int location = glGetUniformLocation(self->handle, name);
+    lua_pushinteger(L, location);
+    return 1;
+}
+
+static inline int l_Effect2D_matrix_uniform(lua_State* L) {
+    CHECK_META(Effect2D);
+    int location = -1;
+    if (lua_isinteger(L, arg)) location = (int)lua_tointeger(L, arg++);
+    else if (lua_isstring(L, arg)) {
+        CHECK_STRING(name);
+        location = glGetUniformLocation(self->handle, name);
+    } else return luaL_argerror(L, arg, "must be an uniform location or name");
+    float* ptr = NULL;
+    float matrix[16];
+    if (lua_istable(L, arg)) {
+        ptr = matrix;
+        int len = lua_rawlen(L, arg);
+        if (len < 16)
+            return luaL_argerror(L, arg, "table must contain 16 elements");
+        for (int i = 1; i <= len; i++) {
+            lua_rawgeti(L, arg, i);
+            matrix[i-1] = (int)lua_tointeger(L, -1);
+            lua_pop(L, 1);
+        }
+    } else if(lua_isuserdata(L, arg)) {
+        ptr = (float*)lua_touserdata(L, arg);
+    }
+    glUseProgram(self->handle);
+    glUniformMatrix4fv(location, 1, GL_FALSE, ptr);
+    glUseProgram(0);
+    return 0;
+}
+
 int l_Effect2D_open_meta(lua_State* L) {
     luaL_newmetatable(L, "Effect2D");
-    lua_pushcfunction(L, l_Effect2D__call);
-    lua_setfield(L, -2, "__call");
-    lua_pushcfunction(L, l_Effect2D_destroy);
-    lua_setfield(L, -2, "destroy");
+    const luaL_Reg reg[] = {
+        REG_FIELD(Effect2D, destroy),
+        REG_FIELD(Effect2D, get_attrib_location),
+        REG_FIELD(Effect2D, get_uniform_location),
+        REG_FIELD(Effect2D, matrix_uniform),
+        {NULL, NULL}
+    };
+    luaL_setfuncs(L, reg, 0);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     return 0;
