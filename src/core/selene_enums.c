@@ -408,7 +408,7 @@ static const struct { const char* name; int value; } selene_Enums_reg[] = {
                                  for array bounds */
 #endif
 #endif
-    {NULL, NULL}
+    {NULL, 0}
 };
 
 int selene_open_enums(lua_State* L) {
