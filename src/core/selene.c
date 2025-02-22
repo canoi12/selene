@@ -3,6 +3,7 @@
 
 #include "renderer/renderer.h"
 
+static int s_default_event_callback(lua_State *L);
 static int s_default_step_callback(lua_State* L);
 static void s_default_quit_callback(lua_State* L, int status);
 
@@ -17,6 +18,7 @@ SeleneContext g_selene_context = {
     .l_window_ref = LUA_NOREF,
     .l_renderer_ref = LUA_NOREF,
 
+    .c_event_callback = NULL,
     .c_step_callback = s_default_step_callback,
     .c_quit_callback = s_default_quit_callback
 };
@@ -25,7 +27,7 @@ SeleneContext *s_ctx = &g_selene_context;
 extern int l_renderer_create_Batch2D(lua_State *L);
 
 static int s_selene_step_callback(lua_State *L) {
-    int res = s_default_step_callback(L);
+    const int res = s_default_step_callback(L);
     lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
     Renderer *r = (Renderer *)lua_touserdata(L, -1);
     if (r && r->present)
@@ -315,7 +317,7 @@ static int l_selene_set_quit(lua_State *L) {
     return 0;
 }
 
-static inline int l_selene_get_renderer(lua_State *L) {
+static int l_selene_get_renderer(lua_State *L) {
     lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
     return 1;
 }
@@ -332,7 +334,7 @@ int luaopen_selene(lua_State *L) {
         /* Runner functions */
         {"set_running", l_selene_set_running},
         {"set_event", l_selene_set_event},
-        {"set_step", l_selene_set_step},
+        REG_FIELD(selene, set_step),
         REG_FIELD(selene, set_quit),
         REG_FIELD(selene, get_renderer),
         {NULL, NULL}
@@ -380,6 +382,14 @@ int luaopen_selene(lua_State *L) {
     lua_setmetatable(L, -2);
 
     return 1;
+}
+
+int s_default_event_callback(lua_State *L) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        lua_pushvalue(L, -1);
+        // selene_event(L, &event);
+    }
 }
 
 int s_default_step_callback(lua_State* L) {
