@@ -16,7 +16,7 @@ struct Batch2D_Data {
     int default_effect_ref;
 };
 
-static inline void s_draw_and_reset(Renderer* r, lua_State* L) {
+static void s_draw_and_reset(Renderer* r, lua_State* L) {
     if (!r) return;
     Batch2D_Data* data = (Batch2D_Data*)(r->internal_data);
     if (data->buffer.offset == 0) return;
@@ -24,7 +24,20 @@ static inline void s_draw_and_reset(Renderer* r, lua_State* L) {
     SDL_Window** win = (SDL_Window**)lua_touserdata(L, -1);
     lua_pop(L, 1);
     int w, h;
-    SDL_GetWindowSize(*win, &w, &h);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, r->l_framebuffer_ref);
+    Canvas* canvas = (Canvas*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    //fprintf(stdout, "canvas: %d %p\n", r->l_framebuffer_ref, canvas);
+    if (canvas) {
+        glBindFramebuffer(GL_FRAMEBUFFER, canvas->fbo);
+        w = canvas->texture.width;
+        h = canvas->texture.height;
+        //fprintf(stdout, "fbo: %d\n", canvas->fbo);
+    } else {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        SDL_GetWindowSize(*win, &w, &h);
+    }
+    if (r->on_resize) r->on_resize(r, L, w, h);
     glViewport(0, 0, w, h);
     glBindBuffer(GL_ARRAY_BUFFER, data->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, data->buffer.offset * sizeof(Vertex2D), data->buffer.data);
@@ -48,6 +61,7 @@ static inline void s_draw_and_reset(Renderer* r, lua_State* L) {
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     data->buffer.offset = 0;
 }
@@ -112,6 +126,8 @@ int l_renderer_create_Batch2D(lua_State* L) {
     }
     Effect2D* effect = (Effect2D*) lua_touserdata(L, -1);
     batch_data->default_effect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    self->l_framebuffer_ref = LUA_NOREF;
 
     /* Initialize VAO and VBO */
     glGenVertexArrays(1, &batch_data->vao);
@@ -222,9 +238,22 @@ static int l_renderer_Batch2D_clear(lua_State* L) {
         for (int i = 2; i <= lua_gettop(L); i++) {
         c[i-2] = (float)luaL_checknumber(L, i);
     }
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->l_framebuffer_ref);
+    Canvas* canv = (Canvas*)lua_touserdata(L, -1);
+    if (canv) {
+        glBindFramebuffer(GL_FRAMEBUFFER, canv->fbo);
+    }
     glClearColor(c[0], c[1], c[2], c[3]);
     glClear(self->clear_flags);
+    if (canv) glBindFramebuffer(GL_FRAMEBUFFER, 0);
     return 0;
+}
+
+static int l_renderer_Batch2D_get_white(lua_State* L) {
+    CHECK_META(Renderer);
+    Batch2D_Data* bdata = (Batch2D_Data*)self->internal_data;
+    lua_rawgeti(L, LUA_REGISTRYINDEX, bdata->white_texture_ref);
+    return 1;
 }
 
 static int l_renderer_Batch2D_set_draw_mode(lua_State* L) {
@@ -312,17 +341,33 @@ int l_renderer_Batch2D_push_rect(lua_State* L) {
     h = (float)luaL_checknumber(L, 5);
     v[0].x = x;
     v[0].y = y;
+    v[0].u = 0.f;
+    v[0].v = 0.f;
+
     v[1].x = x + w;
     v[1].y = y;
+    v[1].u = 1.f;
+    v[1].v = 0.f;
+
     v[2].x = x + w;
     v[2].y = y + h;
+    v[2].u = 1.f;
+    v[2].v = 1.f;
 
     v[3].x = x;
     v[3].y = y;
+    v[3].u = 0.f;
+    v[3].v = 0.f;
+
     v[4].x = x;
     v[4].y = y + h;
+    v[4].u = 0.f;
+    v[4].v = 1.f;
+
     v[5].x = x + w;
     v[5].y = y + h;
+    v[5].u = 1.f;
+    v[5].v = 1.f;
 
     memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 6);
     batch->buffer.offset += 6;
@@ -330,35 +375,35 @@ int l_renderer_Batch2D_push_rect(lua_State* L) {
 }
 
 static const Vertex2D s_cube_vertices[24] = {
-    {-0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f },
+    { 0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f },
+    { 0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f },
     {-0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
 
-    {-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f },
     {-0.5f,  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f },
+    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f },
 
-    {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    {-0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    {-0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f },
+    {-0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f },
+    {-0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f },
     {-0.5f, 0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
 
-    { 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f },
     { 0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f },
+    { 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f },
 
-    { -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-    { -0.5f, 0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f },
+    { -0.5f, 0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f },
+    { 0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f },
     { 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
 
-    { -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f },
     { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    { -0.5f, -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f },
+    { -0.5f, -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f },
 };
 static const int s_cube_indices[] = {
     0, 1, 2,   0, 2, 3,      //-- front face
@@ -371,7 +416,7 @@ static const int s_cube_indices[] = {
 static int l_renderer_Batch2D_push_cube(lua_State* L) {
     CHECK_META(Renderer);
     Batch2D_Data* batch = (Batch2D_Data*)self->internal_data;
-    if (batch->buffer.offset + 36 > batch->buffer.count) {
+    if ((batch->buffer.offset + 36) > batch->buffer.count) {
         return luaL_error(L, "buffer overflow");
     }
     mat4 m = GLM_MAT4_IDENTITY_INIT;
@@ -421,16 +466,30 @@ static int l_renderer_Batch2D_push_cube(lua_State* L) {
         lua_pop(L, 1);
         glm_scale(m, scale);
     }
+    arg++;
+    int is_white = 0;
+    if (lua_isboolean(L, arg)) {is_white = 1;}
     Vertex2D* bv = batch->buffer.data + batch->buffer.offset;
+    static const vec2 tex_uv[] = {
+        {0.f, 0.f},
+        {1.f, 0.f},
+        {1.f, 1.f},
+        {0.f, 1.f}
+    };
     for (int i = 0; i < 36; i++) {
-        const Vertex2D* v = s_cube_vertices + s_cube_indices[i];
-        vec3 in = {v->x, v->y, v->z};
-        vec3 out;
-        glm_mat4_mulv3(m, in, 1.f, out);
+        const int index = s_cube_indices[i];
+        const Vertex2D* v = s_cube_vertices + index;
+        vec4 out;
+        // vec3 in = {v->x, v->y, v->z};
+        glm_mat4_mulv3(m, (float*)v, 1.f, out);
         memcpy(bv+i, v, sizeof(Vertex2D));
         bv[i].x = out[0];
         bv[i].y = out[1];
         bv[i].z = out[2];
+        if (is_white)
+            bv[i].r = bv[i].g = bv[i].b = bv[i].a = 1.f;
+        //bv[i].u = tex_uv[index%4][0];
+        //bv[i].v = tex_uv[index%4][1];
     }
     batch->buffer.offset += 36;
     return 0;
@@ -440,8 +499,9 @@ static int l_renderer_Batch2D_set_texture(lua_State* L) {
     CHECK_META(Renderer);
     s_draw_and_reset(self, L);
     if (!lua_isuserdata(L, arg) && !lua_isnil(L, arg))
-        return luaL_argerror(L, arg, "must be a Texture2D or nil");
-    TEST_UDATA(Texture2D, tex);
+        return luaL_argerror(L, arg, "must be a Texture2D, Canvas or nil");
+    //TEST_UDATA(Texture2D, tex);
+    Texture2D* tex = (Texture2D*)lua_touserdata(L, arg);
     lua_rawgeti(L, LUA_REGISTRYINDEX, self->l_texture_ref);
     Texture2D* curr_tex = (Texture2D*)lua_touserdata(L, -1);
     if (tex != curr_tex) {
@@ -462,6 +522,30 @@ static int l_renderer_Batch2D_set_effect(lua_State* L) {
     return 0;
 }
 
+static int l_renderer_Batch2D_set_canvas(lua_State* L) {
+    CHECK_META(Renderer);
+    s_draw_and_reset(self, L);
+    if (!lua_isuserdata(L, arg) && !lua_isnil(L, arg))
+        return luaL_argerror(L, arg, "must be an Canvas or nil");
+    lua_pushvalue(L, arg);
+    lua_rawseti(L, LUA_REGISTRYINDEX, self->l_framebuffer_ref);
+    return 0;
+}
+
+static int l_renderer_Batch2D_set_color(lua_State* L) {
+    CHECK_META(Renderer);
+    float c[4] = {1.f, 1.f, 1.f, 1.f};
+    for (int i = 0; i < lua_gettop(L)-1; i++) {
+        c[i] = (float)luaL_checknumber(L, 2+i);
+    }
+    Batch2D_Data* batch = (Batch2D_Data*)self->internal_data;
+    batch->aux_vertex.r = c[0];
+    batch->aux_vertex.g = c[1];
+    batch->aux_vertex.b = c[2];
+    batch->aux_vertex.a = c[3];
+    return 0;
+}
+
 static int l_renderer_Batch2D_set_projection(lua_State* L) { return 0; }
 
 int l_Batch2D_open_meta(lua_State* L) {
@@ -469,13 +553,16 @@ int l_Batch2D_open_meta(lua_State* L) {
     const luaL_Reg reg[] = {
         REG_FIELD(renderer_Batch2D, destroy),
         REG_FIELD(renderer_Batch2D, clear),
+        REG_FIELD(renderer_Batch2D, get_white),
         REG_FIELD(renderer_Batch2D, set_draw_mode),
         REG_FIELD(renderer_Batch2D, push_vertex),
         REG_FIELD(renderer_Batch2D, push_point),
         REG_FIELD(renderer_Batch2D, push_triangle),
         REG_FIELD(renderer_Batch2D, push_rect),
         REG_FIELD(renderer_Batch2D, push_cube),
+        REG_FIELD(renderer_Batch2D, set_color),
         REG_FIELD(renderer_Batch2D, set_texture),
+        REG_FIELD(renderer_Batch2D, set_canvas),
         {NULL, NULL}
     };
     luaL_setfuncs(L, reg, 0);

@@ -1,19 +1,19 @@
 #include "../renderer.h"
 
-static inline int l_Framebuffer_create(lua_State* L) {
+static int l_Framebuffer_create(lua_State* L) {
     Uint32 fbo;
     glGenFramebuffers(1, &fbo);
     return 1;
 }
 
-static inline int l_Framebuffer_destroy(lua_State* L) {
+static int l_Framebuffer_destroy(lua_State* L) {
     CHECK_META(Framebuffer);
     if (self->handle != 0) glDeleteTextures(1, &(self->handle));
     self->handle = 0;
     return 0;
 }
 
-static inline int l_Framebuffer_attach_texture(lua_State* L) {
+static int l_Framebuffer_attach_texture(lua_State* L) {
     CHECK_META(Framebuffer);
     CHECK_UDATA(Texture2D, tex);
     int attachment = luaL_optinteger(L, arg++, 0);
@@ -23,7 +23,7 @@ static inline int l_Framebuffer_attach_texture(lua_State* L) {
     return 0;
 }
 
-static inline int l_Framebuffer_detach_texture(lua_State* L) {
+static int l_Framebuffer_detach_texture(lua_State* L) {
     CHECK_META(Framebuffer);
     int attachment = luaL_optinteger(L, arg++, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, self->handle);

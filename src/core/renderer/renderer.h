@@ -37,6 +37,12 @@ typedef struct {
     Uint32 handle;
 } Framebuffer;
 
+typedef struct {
+    Texture2D texture;
+    Uint32 fbo;
+    Uint32 depth;
+} Canvas;
+
 /**
  * Vertex Types
  */
@@ -103,6 +109,7 @@ struct Renderer {
 
     int l_texture_ref;
     int l_effect_ref;
+    int l_framebuffer_ref;
 
     void(*present)(Renderer*, lua_State*);
     void(*on_resize)(Renderer*, lua_State*, int w, int h);
@@ -110,6 +117,7 @@ struct Renderer {
 
 #define TEXTURE2D_CLASS LUA_META_CLASS(Texture2D)
 #define FRAMEBUFFER_CLASS LUA_META_CLASS(Framebuffer)
+#define CANVAS_CLASS LUA_META_CLASS(Canvas)
 
 #define BATCH2D_CLASS LUA_META_CLASS(Batch2D)
 #define EFFECT2D_CLASS LUA_META_CLASS(Effect2D)
