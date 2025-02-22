@@ -1,9 +1,13 @@
 #include "selene.h"
 #include "lua_helper.h"
 
+#include "renderer/renderer.h"
+
 #define SELENE_APP_CONTINUE 0
 #define SELENE_APP_SUCCESS  1
 #define SELENE_APP_FAILURE  2
+
+static const SeleneContext* selctx = &g_selene_context;
 
 static const char* s_boot_script =
 "local status, err = pcall(function() require('main') end)\n"
@@ -79,23 +83,16 @@ int selene_init(void** userdata, int argc, char** argv) {
 
 int selene_iterate(void* userdata) {
     lua_State* L = (lua_State*)userdata;
-    // fprintf(stderr, "begin renderer: %p\n", g_selene_context.begin_renderer);
-    // SDL_Renderer** renderer = (SDL_Renderer**)lua_touserdata(L, -1);
-    // lua_pop(L, 1);
-    // SDL_SetRenderDrawColorFloat(*renderer, 0.3f, 0.4f, 0.4f, 1.0f);
-    // SDL_RenderClear(*renderer);
-    // glClearColor(0.3f, 0.4f, 0.4f, 1.0f);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    if (g_selene_context.pre_step) g_selene_context.pre_step(L);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_step_callback_ref);
+    if (selctx->pre_step) selctx->pre_step(L);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, selctx->l_step_callback_ref);
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                     "[selene] failed to run step function: %s",
                     lua_tostring(L, -1));
         return SELENE_APP_FAILURE;
     }
-    if (g_selene_context.post_step) g_selene_context.post_step(L);
-    return g_selene_context.is_running ? SELENE_APP_CONTINUE : SELENE_APP_SUCCESS;
+    if (selctx->post_step) selctx->post_step(L);
+    return selctx->is_running ? SELENE_APP_CONTINUE : SELENE_APP_SUCCESS;
 }
 
 #if defined(SELENE_USE_SDL3)
@@ -127,7 +124,7 @@ static int process_event(lua_State* L, SDL_Event* event) {
     return 0;
 }
 #else
-static int process_event(lua_State* L, SDL_Event* event) {
+static inline int process_event(lua_State* L, SDL_Event* event) {
     switch (event->type) {
         case SDL_QUIT: {
             lua_pushstring(L, "quit");
@@ -233,6 +230,10 @@ static int process_event(lua_State* L, SDL_Event* event) {
                     lua_pushstring(L, "window resized");
                     lua_pushinteger(L, event->window.data1);
                     lua_pushinteger(L, event->window.data2);
+                    lua_rawgeti(L, LUA_REGISTRYINDEX, selctx->l_renderer_ref);
+                    Renderer* r = (Renderer*) lua_touserdata(L, -1);
+                    lua_pop(L, 1);
+                    if (r && r->on_resize) r->on_resize(r, L, event->window.data1, event->window.data2);
                     return 3;
                 }
             }
@@ -245,8 +246,8 @@ static int process_event(lua_State* L, SDL_Event* event) {
 
 int selene_event(void* userdata, SDL_Event* event) {
     lua_State* L = (lua_State*)userdata;
-    // SDL_LockMutex(g_selene_context.event_mutex);
-    // fprintf(stderr, "%d event: %d\n", g_selene_context.event_callback_ref, event->type);
+    // SDL_LockMutex(selctx->event_mutex);
+    // fprintf(stderr, "%d event: %d\n", selctx->event_callback_ref, event->type);
     int res = process_event(L, event);
     if (lua_pcall(L, res, 0, 0) != LUA_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -254,14 +255,16 @@ int selene_event(void* userdata, SDL_Event* event) {
                     lua_tostring(L, -1));
         return SELENE_APP_FAILURE;
     }
-    // SDL_UnlockMutex(g_selene_context.event_mutex);
+    // SDL_UnlockMutex(selctx->event_mutex);
     return SELENE_APP_CONTINUE;
 }
 
 void selene_quit(void* userdata, int status) {
     lua_State* L = (lua_State*)userdata;
+#if DEBUG
     fprintf(stderr, "quit: %d\n", status);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_quit_callback_ref);
+#endif
+    lua_rawgeti(L, LUA_REGISTRYINDEX, selctx->l_quit_callback_ref);
     if (lua_isfunction(L, -1)) {
         if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -269,7 +272,7 @@ void selene_quit(void* userdata, int status) {
                         lua_tostring(L, -1));
         }
     } else lua_pop(L, 1);
-    if (g_selene_context.c_quit_callback) g_selene_context.c_quit_callback(L);
+    if (selctx->c_quit_callback) selctx->c_quit_callback(L);
 #if DEBUG
     #ifndef SELENE_NO_SDL
         SDL_Log("[selene] exiting...");
@@ -282,7 +285,7 @@ void selene_quit(void* userdata, int status) {
 static void selene_run_step(void* userdata) {
     lua_State* L = (lua_State*)userdata;
     SDL_Event event;
-    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_event_callback_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, selctx->l_event_callback_ref);
     if (lua_isfunction(L, -1)) {
         while (SDL_PollEvent(&event)) {
             lua_pushvalue(L, -1);
@@ -296,11 +299,11 @@ static void selene_run_step(void* userdata) {
 int selene_main_loop(lua_State* L) {
     // Run main loop
 #if defined(OS_EMSCRIPTEN)
-    if (g_selene_context.is_running)
+    if (selctx->is_running)
         emscripten_set_main_loop_arg((void (*)(void *))selene_run_step, L, 0,
-                                     g_selene_context.is_running);
+                                     selctx->is_running);
 #else
-    while (g_selene_context.is_running)
+    while (selctx->is_running)
         selene_run_step(L);
 #endif
     return 0;

@@ -1,6 +1,6 @@
 #include "../renderer.h"
 
-extern int l_Effect2D__call(lua_State* L);
+extern int l_Effect2D_create(lua_State* L);
 
 typedef struct Batch2D_Data Batch2D_Data;
 struct Batch2D_Data {
@@ -20,10 +20,18 @@ static inline void s_draw_and_reset(Renderer* r, lua_State* L) {
     if (!r) return;
     Batch2D_Data* data = (Batch2D_Data*)(r->internal_data);
     if (data->buffer.offset == 0) return;
+    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_window_ref);
+    SDL_Window** win = (SDL_Window**)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    int w, h;
+    SDL_GetWindowSize(*win, &w, &h);
+    glViewport(0, 0, w, h);
     glBindBuffer(GL_ARRAY_BUFFER, data->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, data->buffer.offset * sizeof(Vertex2D), data->buffer.data);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(data->vao);
+
+    //fprintf(stdout, "Subdata: %d %p\n", data->buffer.offset, data->buffer.data);
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, r->l_effect_ref);
     Effect2D* effect = (Effect2D*)lua_touserdata(L, -1);
@@ -47,6 +55,27 @@ static inline void s_draw_and_reset(Renderer* r, lua_State* L) {
 static void s_Batch2D_begin(Renderer* r, lua_State* L) {}
 static void s_Batch2D_end(Renderer* r, lua_State* L) {
     s_draw_and_reset(r, L);
+}
+static void s_Batch2D_on_resize(Renderer* r, lua_State* L, int w, int h) {
+#if 0
+    float y_fov = DEG2RAD(45);
+    float aspect = (float)w/(float)h;
+    float n = 0.1f;
+    float f = 100.f;
+    glm_perspective(y_fov, aspect, n, f, m);
+#endif
+    glViewport(0, 0, w, h);
+
+    mat4 m;
+    glm_ortho(0, (float)w, (float)h, 0, 0, 1000, m);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, r->l_effect_ref);
+    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    glUseProgram(eff->handle);
+    glUniformMatrix4fv(eff->projection_location, 1, GL_FALSE, m[0]);
+    glUseProgram(0);
+
 }
 
 int l_renderer_create_Batch2D(lua_State* L) {
@@ -74,15 +103,25 @@ int l_renderer_create_Batch2D(lua_State* L) {
     batch_data->buffer.offset = 0;
     batch_data->buffer.count = 1024;
     batch_data->buffer.data = malloc(sizeof(Vertex2D) * batch_data->buffer.count);
+    /* Load default effect */
+    lua_pushcfunction(L, l_Effect2D_create);
+    lua_pushnil(L);
+    lua_pushnil(L);
+    if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
+        return luaL_error(L, "failed to load default effect: %s", lua_tostring(L, -1));
+    }
+    Effect2D* effect = (Effect2D*) lua_touserdata(L, -1);
+    batch_data->default_effect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
     /* Initialize VAO and VBO */
     glGenVertexArrays(1, &batch_data->vao);
     glGenBuffers(1, &batch_data->vbo);
     glBindVertexArray(batch_data->vao);
     glBindBuffer(GL_ARRAY_BUFFER, batch_data->vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * batch_data->buffer.count, NULL, GL_DYNAMIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(3 * sizeof(float)));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(7 * sizeof(float)));
+    glVertexAttribPointer(effect->position_location, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)0);
+    glVertexAttribPointer(effect->color_location, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(effect->texcoord_location, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(7 * sizeof(float)));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
@@ -107,40 +146,38 @@ int l_renderer_create_Batch2D(lua_State* L) {
     texture->width = 1;
     texture->height = 1;
     batch_data->white_texture_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    
-    /* Load default effect */
-    lua_pushcfunction(L, l_Effect2D__call);
-    lua_pushnil(L);
-    lua_pushnil(L);
-    if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
-        return luaL_error(L, "failed to load default effect: %s", lua_tostring(L, -1));
-    }
-    
-    batch_data->default_effect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
     batch_data->aux_vertex = (Vertex2D){0, 0, 0, 1, 1, 1, 1, 0, 0};
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, batch_data->white_texture_ref);
     self->l_texture_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     lua_rawgeti(L, LUA_REGISTRYINDEX, batch_data->default_effect_ref);
     self->l_effect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    glUseProgram(effect->handle);
+    #if 0
+    mat4 a, b;
+    glm_mat4_identity(a);
+    vec3 pos = {128, 64, 13};
+    glm_translate(a, pos);
+    vec3 scale = {32, 64, 32};
+    glm_rotate_y(a, DEG2RAD(45), b);
+    glm_scale(b, scale);
+    //glm_mat4_scale(b, 32);
+    #else
+    mat4 b = GLM_MAT4_IDENTITY_INIT;
+    #endif
+    glUniformMatrix4fv(effect->model_view_location, 1, GL_FALSE, b[0]);
+    glUseProgram(0);
+    s_Batch2D_on_resize(self, L, 640, 380);
 
-    self->begin = NULL;
-    self->end = s_Batch2D_end;
+    self->present = s_Batch2D_end;
+    self->on_resize = s_Batch2D_on_resize;
 
     return 1;
 }
 
 int l_renderer_Batch2D_destroy(lua_State* L) {
     CHECK_META(Renderer);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, self->gl_context_ref);
-    SDL_GLContext* gl_ctx = (SDL_GLContext*)lua_touserdata(L, -1);
-#if defined(SELENE_USE_SDL3)
-    SDL_GL_DestroyContext(*gl_ctx);
-#else
-    SDL_GL_DeleteContext(*gl_ctx);
-#endif
-    lua_pop(L, 1);
-    luaL_unref(L, LUA_REGISTRYINDEX, self->gl_context_ref);
     Batch2D_Data* bdata = (Batch2D_Data*)self->internal_data;
     glDeleteBuffers(1, &bdata->vbo);
     glDeleteVertexArrays(1, &bdata->vao);
@@ -160,6 +197,20 @@ int l_renderer_Batch2D_destroy(lua_State* L) {
         lua_pop(L, 1);
         luaL_unref(L, LUA_REGISTRYINDEX, bdata->default_effect_ref);
     }
+
+    if (bdata->buffer.data) {
+        free(bdata->buffer.data);
+    }
+    free(bdata);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->gl_context_ref);
+    SDL_GLContext* gl_ctx = (SDL_GLContext*)lua_touserdata(L, -1);
+#if defined(SELENE_USE_SDL3)
+    SDL_GL_DestroyContext(*gl_ctx);
+#else
+    SDL_GL_DeleteContext(*gl_ctx);
+#endif
+    lua_pop(L, 1);
+    luaL_unref(L, LUA_REGISTRYINDEX, self->gl_context_ref);
 
     return 0;
 }
@@ -192,14 +243,16 @@ int l_renderer_Batch2D_push_vertex(lua_State* L) {
     }
     Vertex2D v;
     memcpy(&(v), &(batch->aux_vertex), sizeof(Vertex2D));
-    v.x = (float)luaL_checknumber(L, 2);
-    v.y = (float)luaL_checknumber(L, 3);
-    v.r = (float)luaL_checknumber(L, 4);
-    v.g = (float)luaL_checknumber(L, 5);
-    v.b = (float)luaL_checknumber(L, 6);
-    v.a = (float)luaL_checknumber(L, 7);
-    v.u = (float)luaL_checknumber(L, 8);
-    v.v = (float)luaL_checknumber(L, 9);
+    v.x = (float)luaL_checknumber(L, arg++);
+    v.y = (float)luaL_checknumber(L, arg++);
+    v.z = (float)luaL_checknumber(L, arg++);
+    v.r = (float)luaL_checknumber(L, arg++);
+    v.g = (float)luaL_checknumber(L, arg++);
+    v.b = (float)luaL_checknumber(L, arg++);
+    v.a = (float)luaL_checknumber(L, arg++);
+    v.u = (float)luaL_checknumber(L, arg++);
+    v.v = (float)luaL_checknumber(L, arg++);
+    //fprintf(stdout, "%f %f %f %f %f %f %f %f %f\n", v.x, v.y, v.z, v.r, v.g, v.b, v.a, v.u, v.v);
     memcpy(&(batch->buffer.data[batch->buffer.offset]), &v, sizeof(Vertex2D));
     batch->buffer.offset += 1;
     memcpy(&(batch->aux_vertex), &v, sizeof(Vertex2D));
@@ -276,6 +329,113 @@ int l_renderer_Batch2D_push_rect(lua_State* L) {
     return 0;
 }
 
+static const Vertex2D s_cube_vertices[24] = {
+    {-0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+
+    {-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f,  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+
+    {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    {-0.5f, 0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+
+    { 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+
+    { -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { -0.5f, 0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+
+    { -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { -0.5f, -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+};
+static const int s_cube_indices[] = {
+    0, 1, 2,   0, 2, 3,      //-- front face
+    4, 5, 6,   4, 6, 7,      //-- back face
+    8, 9, 10,  8, 10, 11,    //-- left face
+    12, 13, 14, 12, 14, 15,   //-- right face
+    16, 17, 18, 16, 18, 19,   //-- top face
+    20, 21, 22, 20, 22, 23,   //-- bottom face
+};
+static int l_renderer_Batch2D_push_cube(lua_State* L) {
+    CHECK_META(Renderer);
+    Batch2D_Data* batch = (Batch2D_Data*)self->internal_data;
+    if (batch->buffer.offset + 36 > batch->buffer.count) {
+        return luaL_error(L, "buffer overflow");
+    }
+    mat4 m = GLM_MAT4_IDENTITY_INIT;
+    if (lua_istable(L, arg)) {
+        vec3 pos;
+        lua_rawgeti(L, arg, 1);
+        pos[0] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 2);
+        pos[1] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 3);
+        pos[2] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        glm_translate(m, pos);
+
+    }
+    arg++;
+    if (lua_istable(L, arg)) {
+        vec3 rotate;
+        lua_rawgeti(L, arg, 1);
+        rotate[0] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 2);
+        rotate[1] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 3);
+        rotate[2] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        mat4 out;
+        glm_mat4_copy(m, out);
+        glm_rotate_x(out, rotate[0], m);
+        glm_rotate_y(m, rotate[1], out);
+        glm_rotate_z(out, rotate[2], m);
+    }
+    arg++;
+    if (lua_istable(L, arg)) {
+        vec3 scale;
+        lua_rawgeti(L, arg, 1);
+        scale[0] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 2);
+        scale[1] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 3);
+        scale[2] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        glm_scale(m, scale);
+    }
+    Vertex2D* bv = batch->buffer.data + batch->buffer.offset;
+    for (int i = 0; i < 36; i++) {
+        const Vertex2D* v = s_cube_vertices + s_cube_indices[i];
+        vec3 in = {v->x, v->y, v->z};
+        vec3 out;
+        glm_mat4_mulv3(m, in, 1.f, out);
+        memcpy(bv+i, v, sizeof(Vertex2D));
+        bv[i].x = out[0];
+        bv[i].y = out[1];
+        bv[i].z = out[2];
+    }
+    batch->buffer.offset += 36;
+    return 0;
+}
+
 static int l_renderer_Batch2D_set_texture(lua_State* L) {
     CHECK_META(Renderer);
     s_draw_and_reset(self, L);
@@ -314,6 +474,7 @@ int l_Batch2D_open_meta(lua_State* L) {
         REG_FIELD(renderer_Batch2D, push_point),
         REG_FIELD(renderer_Batch2D, push_triangle),
         REG_FIELD(renderer_Batch2D, push_rect),
+        REG_FIELD(renderer_Batch2D, push_cube),
         REG_FIELD(renderer_Batch2D, set_texture),
         {NULL, NULL}
     };

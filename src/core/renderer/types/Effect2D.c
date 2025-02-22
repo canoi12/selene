@@ -56,7 +56,7 @@ const char* c_fragment_main =
 "   fragColor = pixel(v_color, u_texture, v_texcoord);\n"
 "}\n";
 
-int l_Effect2D__call(lua_State* L) {
+int l_Effect2D_create(lua_State* L) {
     const char* position = luaL_optstring(L, 1, c_vertex_position_default);
     const char* pixel = luaL_optstring(L, 2, c_fragment_pixel_default);
 
@@ -177,6 +177,7 @@ static inline int l_Effect2D_matrix_uniform(lua_State* L) {
 int l_Effect2D_open_meta(lua_State* L) {
     luaL_newmetatable(L, "Effect2D");
     const luaL_Reg reg[] = {
+        REG_FIELD(Effect2D, create),
         REG_FIELD(Effect2D, destroy),
         REG_FIELD(Effect2D, get_attrib_location),
         REG_FIELD(Effect2D, get_uniform_location),

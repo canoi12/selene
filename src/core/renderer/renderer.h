@@ -104,8 +104,8 @@ struct Renderer {
     int l_texture_ref;
     int l_effect_ref;
 
-    void(*begin)(Renderer*, lua_State*);
-    void(*end)(Renderer*, lua_State*);
+    void(*present)(Renderer*, lua_State*);
+    void(*on_resize)(Renderer*, lua_State*, int w, int h);
 };
 
 #define TEXTURE2D_CLASS LUA_META_CLASS(Texture2D)
