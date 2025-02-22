@@ -16,14 +16,6 @@ events['key'] = function(key, pressed, repeating)
         audio_system:pause(inst, playing)
     end
 end
-render:set_projection(function(left, top, bottom, right, near, far)
-end)
-
-render:translate()
-render:rotate()
-render:scale()
-render:set_draw_mode('line')
-render:push_triangle()
 
 selene.set_event(function(name, ...)
     if name == 'quit' then selene.set_running(false)
