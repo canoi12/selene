@@ -26,6 +26,10 @@ extern void luaL_requiref (lua_State *L, const char *modname,
                                lua_CFunction openf, int glb);
 #endif
 
+#define SELENE_APP_CONTINUE 0
+#define SELENE_APP_SUCCESS  1
+#define SELENE_APP_FAILURE  2
+
 typedef unsigned int Data;
 
 #ifndef SELENE_NO_IMAGE
@@ -104,9 +108,8 @@ typedef struct {
     int l_renderer_ref;
     int l_audio_system_ref;
 
-    void(*pre_step)(lua_State* L);
-    void(*post_step)(lua_State* L);
-    void(*c_quit_callback)(lua_State* L);
+    int(*c_step_callback)(lua_State* L);
+    void(*c_quit_callback)(lua_State* L, int status);
 } SeleneContext;
 
 extern SeleneContext g_selene_context;

@@ -3,10 +3,6 @@
 
 #include "renderer/renderer.h"
 
-#define SELENE_APP_CONTINUE 0
-#define SELENE_APP_SUCCESS  1
-#define SELENE_APP_FAILURE  2
-
 static const SeleneContext* selctx = &g_selene_context;
 
 static const char* s_boot_script =
@@ -83,7 +79,8 @@ int selene_init(void** userdata, int argc, char** argv) {
 
 int selene_iterate(void* userdata) {
     lua_State* L = (lua_State*)userdata;
-    if (selctx->pre_step) selctx->pre_step(L);
+    return g_selene_context.c_step_callback(L);
+#if 0
     lua_rawgeti(L, LUA_REGISTRYINDEX, selctx->l_step_callback_ref);
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -91,8 +88,8 @@ int selene_iterate(void* userdata) {
                     lua_tostring(L, -1));
         return SELENE_APP_FAILURE;
     }
-    if (selctx->post_step) selctx->post_step(L);
     return selctx->is_running ? SELENE_APP_CONTINUE : SELENE_APP_SUCCESS;
+#endif
 }
 
 #if defined(SELENE_USE_SDL3)
@@ -261,6 +258,8 @@ int selene_event(void* userdata, SDL_Event* event) {
 
 void selene_quit(void* userdata, int status) {
     lua_State* L = (lua_State*)userdata;
+    g_selene_context.c_quit_callback(L, status);
+#if 0
 #if DEBUG
     fprintf(stderr, "quit: %d\n", status);
 #endif
@@ -279,6 +278,7 @@ void selene_quit(void* userdata, int status) {
     #else
         fprintf(stdout, "[selene] exiting...\n");
     #endif
+#endif
 #endif
 }
 

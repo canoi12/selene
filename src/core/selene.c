@@ -3,6 +3,9 @@
 
 #include "renderer/renderer.h"
 
+static int s_default_step_callback(lua_State* L);
+static void s_default_quit_callback(lua_State* L, int status);
+
 SeleneContext g_selene_context = {
     .is_running = 0,
 
@@ -14,16 +17,15 @@ SeleneContext g_selene_context = {
     .l_window_ref = LUA_NOREF,
     .l_renderer_ref = LUA_NOREF,
 
-    .pre_step = NULL,
-    .post_step = NULL,
-    .c_quit_callback = NULL
+    .c_step_callback = s_default_step_callback,
+    .c_quit_callback = s_default_quit_callback
 };
 SeleneContext *s_ctx = &g_selene_context;
 
 extern int l_renderer_create_Batch2D(lua_State *L);
 
-static void pre_step(lua_State *L) {}
-static void post_step(lua_State *L) {
+static int s_selene_step_callback(lua_State *L) {
+    int res = s_default_step_callback(L);
     lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
     Renderer *r = (Renderer *)lua_touserdata(L, -1);
     if (r && r->present)
@@ -33,9 +35,11 @@ static void post_step(lua_State *L) {
     SDL_Window **window = (SDL_Window **)lua_touserdata(L, -1);
     SDL_GL_SwapWindow(*window);
     SDL_Delay(16);
+    return res;
 }
 
-static void destroy_runner(lua_State *L) {
+static void s_selene_quit_callback(lua_State *L, int status) {
+    s_default_quit_callback(L, status);
     if (s_ctx->l_audio_system_ref != LUA_NOREF) {
         lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_audio_system_ref);
         lua_getfield(L, -1, "destroy");
@@ -66,6 +70,13 @@ static void destroy_runner(lua_State *L) {
         luaL_unref(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
     }
     SDL_Quit();
+#if DEBUG
+#ifndef SELENE_NO_SDL
+    SDL_Log("[selene] exiting...");
+#else
+    fprintf(stdout, "[selene] exiting...\n");
+#endif
+#endif
 }
 
 static int l_selene__call(lua_State *L) {
@@ -115,9 +126,8 @@ static int l_selene__call(lua_State *L) {
     sizeof(SDL_Renderer*)); luaL_setmetatable(L, "sdlRenderer"); *r_ptr = r;*/
 
     g_selene_context.l_renderer_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    g_selene_context.c_quit_callback = destroy_runner;
-    g_selene_context.pre_step = pre_step;
-    g_selene_context.post_step = post_step;
+    g_selene_context.c_step_callback = s_selene_step_callback;
+    g_selene_context.c_quit_callback = s_selene_quit_callback;
     return 0;
 }
 
@@ -370,4 +380,29 @@ int luaopen_selene(lua_State *L) {
     lua_setmetatable(L, -2);
 
     return 1;
+}
+
+int s_default_step_callback(lua_State* L) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_step_callback_ref);
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                    "[selene] failed to run step function: %s",
+                    lua_tostring(L, -1));
+        return SELENE_APP_FAILURE;
+    }
+    return g_selene_context.is_running ? SELENE_APP_CONTINUE : SELENE_APP_SUCCESS;
+}
+
+void s_default_quit_callback(lua_State* L, int status) {
+#if DEBUG
+    fprintf(stdout, "quit: %d\n", status);
+#endif
+    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_quit_callback_ref);
+    if (lua_isfunction(L, -1)) {
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                        "[selene] failed to run quit function: %s",
+                        lua_tostring(L, -1));
+        }
+    } else lua_pop(L, 1);
 }
