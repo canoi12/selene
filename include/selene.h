@@ -108,6 +108,7 @@ typedef struct {
     int l_renderer_ref;
     int l_audio_system_ref;
 
+    int(*c_event_callback)(lua_State* L);
     int(*c_step_callback)(lua_State* L);
     void(*c_quit_callback)(lua_State* L, int status);
 } SeleneContext;
