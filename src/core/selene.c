@@ -150,7 +150,7 @@ void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf,
 }
 #endif
 
-extern int l_setup_extended_libs(lua_State *L);
+extern void l_setup_extended_libs(lua_State *L);
 
 // Global Modules
 extern int luaopen_fs(lua_State *L);

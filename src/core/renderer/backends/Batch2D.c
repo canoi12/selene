@@ -42,7 +42,11 @@ static void s_draw_and_reset(Renderer* r, lua_State* L) {
     glBindBuffer(GL_ARRAY_BUFFER, data->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, data->buffer.offset * sizeof(Vertex2D), data->buffer.data);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     glBindVertexArray(data->vao);
+#else
+    glBindBuffer(GL_ARRAY_BUFFER, data->vbo);
+#endif
 
     //fprintf(stdout, "Subdata: %d %p\n", data->buffer.offset, data->buffer.data);
 
@@ -60,7 +64,11 @@ static void s_draw_and_reset(Renderer* r, lua_State* L) {
 
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     glBindVertexArray(0);
+#else
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     data->buffer.offset = 0;
@@ -100,8 +108,10 @@ int l_renderer_create_Batch2D(lua_State* L) {
     SDL_GLContext* gl_ctx = (SDL_GLContext*)lua_newuserdata(L, sizeof(*gl_ctx));
     luaL_setmetatable(L, "sdlGLContext");
     SDL_GL_MakeCurrent(*win, ctx);
+#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     if (gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress) == 0)
         return luaL_error(L, "Failed to init glad");
+#endif
 
     *gl_ctx = ctx;
     int ref = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -130,9 +140,11 @@ int l_renderer_create_Batch2D(lua_State* L) {
     self->l_framebuffer_ref = LUA_NOREF;
 
     /* Initialize VAO and VBO */
+#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     glGenVertexArrays(1, &batch_data->vao);
-    glGenBuffers(1, &batch_data->vbo);
     glBindVertexArray(batch_data->vao);
+#endif
+    glGenBuffers(1, &batch_data->vbo);
     glBindBuffer(GL_ARRAY_BUFFER, batch_data->vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * batch_data->buffer.count, NULL, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(effect->position_location, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)0);
@@ -141,7 +153,9 @@ int l_renderer_create_Batch2D(lua_State* L) {
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
+#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     glBindVertexArray(0);
+#endif
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     /* Load white texture */
@@ -196,7 +210,9 @@ int l_renderer_Batch2D_destroy(lua_State* L) {
     CHECK_META(Renderer);
     Batch2D_Data* bdata = (Batch2D_Data*)self->internal_data;
     glDeleteBuffers(1, &bdata->vbo);
+#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     glDeleteVertexArrays(1, &bdata->vao);
+#endif
 
     if (bdata->white_texture_ref != LUA_NOREF) {
         lua_rawgeti(L, LUA_REGISTRYINDEX, bdata->white_texture_ref);

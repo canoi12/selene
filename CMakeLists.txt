@@ -110,14 +110,17 @@ file(GLOB SELENE_SOURCES
     src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c
     src/modules/*.c src/third/glad/src/glad.c
 )
+if (EMSCRIPTEN)
+list(POP_BACK SELENE_SOURCES)
+endif()
 # list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/modules/sdl2.c)
 
 include_directories(include/ src/third/ src/third/glad/include)
 link_directories("${CMAKE_LIBRARY_PATH}")
 
-if (NOT ANDROID)
+if (NOT ANDROID AND NOT EMSCRIPTEN)
     find_package(OpenGL REQUIRED)
-else ()
+elseif (ANDROID)
     set (OPENGL_LIBRARIES GLESv1_CM GLESv2)
 endif ()
 if (NOT DEFINED EMSCRIPTEN)
