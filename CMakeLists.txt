@@ -137,7 +137,9 @@ if (${SELENE_USE_SDL3})
     add_definitions(-DSELENE_USE_SDL3)
 endif ()
 
-set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES})
+add_subdirectory(src/third/cglm)
+
+set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm)
 
 if (${SELENE_USE_SDL3})
     include_directories(${SDL3_INCLUDE_DIRS})
