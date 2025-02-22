@@ -65,6 +65,24 @@ selene.set_quit(function()
 end)
 ```
 
+### Selene runner (WIP)
+
+The selene runner will be the easier way to start your application, it will be a C core with an bunch of integrated systems
+like OpenGL renderer, audio system and filesystem, fully powered by SDL2 and SDL3.
+
+```lua
+selene("MyGame", "1.0.0", "org.selene.MyGame")
+local render = selene.get_renderer()
+selene.set_event(function(name, ...)
+    if name == 'quit' then selene.set_running(false)
+    elseif name == 'window closed' then selene.set_running(false) end
+end)
+selene.set_step(function()
+    render:clear(0.2, 0.3, 0.3)
+    render:push_cube({ 32, 64, -32 }, { math.rad(15), math.rad(60), 0 }, { 32, 32, 32 })
+end)
+```
+
 ## Building
 
 First you need to install [CMake](https://cmake.org/) on your system.
