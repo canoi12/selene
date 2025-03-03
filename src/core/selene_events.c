@@ -11,7 +11,8 @@ int g_selene_process_events(lua_State* L, SDL_Event* event) {
         case SDL_EVENT_KEY_UP:
         case SDL_EVENT_KEY_DOWN: {
             lua_pushstring(L, "key");
-            lua_pushinteger(L, event->key.scancode);
+            // lua_pushinteger(L, event->key.scancode);
+            lua_pushstring(L, SDL_GetScancodeName(event->key.scancode));
             lua_pushboolean(L, event->key.down);
             lua_pushboolean(L, event->key.repeat);
             return 4;
@@ -36,15 +37,29 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushstring(L, "quit");
             return 1;
         }
+        /* Keyboard events */
         case SDL_KEYUP:
         case SDL_KEYDOWN: {
             lua_pushstring(L, "key");
-            lua_pushinteger(L, event->key.keysym.scancode);
-            // lua_pushstring(L, SDL_GetScancodeName(event->key.keysym.scancode));
+            //lua_pushinteger(L, event->key.keysym.scancode);
+            lua_pushstring(L, SDL_GetScancodeName(event->key.keysym.scancode));
             lua_pushboolean(L, event->type == SDL_KEYDOWN);
             lua_pushboolean(L, event->key.repeat);
             return 4;
         }
+        case SDL_TEXTEDITING: {
+            lua_pushstring(L, "text edit");
+            lua_pushstring(L, event->edit.text);
+            lua_pushinteger(L, event->edit.start);
+            lua_pushinteger(L, event->edit.length);
+            return 4;
+        }
+        case SDL_TEXTINPUT: {
+            lua_pushstring(L, "text");
+            lua_pushstring(L, event->text.text);
+            return 2;
+        }
+        /* Mouse events */
         case SDL_MOUSEMOTION: {
             lua_pushstring(L, "mouse moved");
             lua_pushinteger(L, event->motion.x);
@@ -68,6 +83,55 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushinteger(L, event->wheel.y);
             return 3;
         }
+        /* Joystick events */
+        case SDL_JOYDEVICEADDED: {
+            lua_pushstring(L, "joystick added");
+            lua_pushinteger(L, event->jdevice.which);
+            return 2;
+        }
+        case SDL_JOYDEVICEREMOVED: {
+            lua_pushstring(L, "joystick removed");
+            lua_pushinteger(L, event->jdevice.which);
+            return 2;
+        }
+        case SDL_JOYAXISMOTION: {
+            lua_pushstring(L, "joystick axis");
+            lua_pushinteger(L, event->jaxis.which);
+            lua_pushinteger(L, event->jaxis.axis);
+            lua_pushinteger(L, event->jaxis.value);
+            return 4;
+        }
+        case SDL_JOYBUTTONUP:
+        case SDL_JOYBUTTONDOWN: {
+            lua_pushstring(L, "joystick button");
+            lua_pushinteger(L, event->jbutton.which);
+            lua_pushinteger(L, event->jbutton.button);
+            lua_pushboolean(L, event->jbutton.state == SDL_PRESSED);
+            return 4;
+        }
+        case SDL_JOYHATMOTION: {
+            lua_pushstring(L, "joystick hat");
+            lua_pushinteger(L, event->jhat.which);
+            lua_pushinteger(L, event->jhat.hat);
+            lua_pushinteger(L, event->jhat.value);
+            return 4;
+        }
+        case SDL_JOYBALLMOTION: {
+            lua_pushstring(L, "joystick ball");
+            lua_pushinteger(L, event->jball.which);
+            lua_pushinteger(L, event->jball.ball);
+            lua_pushinteger(L, event->jball.xrel);
+            lua_pushinteger(L, event->jball.yrel);
+            return 5;
+        }
+        case SDL_JOYBATTERYUPDATED: {
+            lua_pushstring(L, "joystick battery");
+            lua_pushinteger(L, event->jbattery.which);
+            const char* battery_level[] = {"unknown", "empty", "low", "medium", "full", "wired"};
+            lua_pushstring(L, battery_level[event->jbattery.level+1]);
+            return 3;
+        }
+        /* Gamepad events */
         case SDL_CONTROLLERDEVICEADDED: {
             lua_pushstring(L, "gamepad added");
             lua_pushinteger(L, event->cdevice.which);
@@ -78,6 +142,22 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushinteger(L, event->cdevice.which);
             return 2;
         }
+        case SDL_CONTROLLERBUTTONUP:
+        case SDL_CONTROLLERBUTTONDOWN: {
+            lua_pushstring(L, "gamepad button");
+            lua_pushinteger(L, event->cbutton.which);
+            lua_pushstring(L, SDL_GameControllerGetStringForButton(event->cbutton.button));
+            lua_pushboolean(L, event->cbutton.state == SDL_PRESSED);
+            return 4;
+        }
+        case SDL_CONTROLLERAXISMOTION: {
+            lua_pushstring(L, "gamepad axis");
+            lua_pushinteger(L, event->caxis.which);
+            lua_pushstring(L, SDL_GameControllerGetStringForAxis(event->caxis.axis));
+            lua_pushinteger(L, event->caxis.value);
+            return 4;
+        }
+        /* Audio events */
         case SDL_AUDIODEVICEADDED: {
             lua_pushstring(L, "audio device added");
             lua_pushinteger(L, event->adevice.which);
@@ -90,6 +170,50 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushboolean(L, event->adevice.iscapture);
             return 2;
         }
+        /* Finger events */
+        case SDL_FINGERUP:
+        case SDL_FINGERDOWN: {
+            lua_pushstring(L, "touch finger");
+            lua_pushinteger(L, event->tfinger.touchId);
+            lua_pushinteger(L, event->tfinger.fingerId);
+            lua_pushinteger(L, event->tfinger.x);
+            lua_pushinteger(L, event->tfinger.y);
+            lua_pushinteger(L, event->tfinger.pressure);
+            return 6;
+        }
+        case SDL_FINGERMOTION: {
+            lua_pushstring(L, "touch finger motion");
+            lua_pushinteger(L, event->tfinger.touchId);
+            lua_pushinteger(L, event->tfinger.fingerId);
+            lua_pushinteger(L, event->tfinger.x);
+            lua_pushinteger(L, event->tfinger.y);
+            lua_pushinteger(L, event->tfinger.dx);
+            lua_pushinteger(L, event->tfinger.dy);
+            lua_pushinteger(L, event->tfinger.pressure);
+            return 8;
+        }
+        /* Gesture events */
+        case SDL_DOLLARGESTURE: {
+            lua_pushstring(L, "dollar gesture");
+            lua_pushinteger(L, event->dgesture.touchId);
+            lua_pushinteger(L, event->dgesture.gestureId);
+            lua_pushinteger(L, event->dgesture.numFingers);
+            lua_pushnumber(L, event->dgesture.error);
+            lua_pushinteger(L, event->dgesture.x);
+            lua_pushinteger(L, event->dgesture.y);
+            return 7;
+        }
+        case SDL_DOLLARRECORD: {
+            lua_pushstring(L, "dollar record");
+            lua_pushinteger(L, event->dgesture.touchId);
+            lua_pushinteger(L, event->dgesture.gestureId);
+            lua_pushinteger(L, event->dgesture.numFingers);
+            lua_pushnumber(L, event->dgesture.error);
+            lua_pushinteger(L, event->dgesture.x);
+            lua_pushinteger(L, event->dgesture.y);
+            return 7;
+        }
+        /* Drop events */
         case SDL_DROPFILE: {
             lua_pushstring(L, "drop file");
             lua_pushstring(L, event->drop.file);
@@ -102,6 +226,12 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             // free(event->drop.file);
             return 2;
         }
+        /* Clipboard events */
+        case SDL_CLIPBOARDUPDATE: {
+            lua_pushstring(L, "clipboard update");
+            return 1;
+        }
+        /* Window events */
         case SDL_WINDOWEVENT: {
             switch (event->window.event) {
                 case SDL_WINDOWEVENT_CLOSE: {
@@ -136,10 +266,6 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
                     lua_pushstring(L, "window resized");
                     lua_pushinteger(L, event->window.data1);
                     lua_pushinteger(L, event->window.data2);
-                    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_renderer_ref);
-                    Renderer* r = (Renderer*) lua_touserdata(L, -1);
-                    lua_pop(L, 1);
-                    if (r && r->on_resize) r->on_resize(r, L, event->window.data1, event->window.data2);
                     return 3;
                 }
             }
