@@ -10,9 +10,18 @@ print(_BOOT_SCRIPT)
 print(_VERSION)
 local i = 1
 selene.set_event(function(name, ...)
-    if name == 'quit' then selene.set_running(false)
-    elseif name == 'window close' then
+    if name == 'quit' or name == 'window close' then
         selene.set_running(false)
+    end
+    if name == 'gamepad added' then
+        local which = ...
+        sdl.gamepad_open(which)
+    elseif name == 'gamepad button' then
+        local which,button = ...
+        print('button', which, button)
+    elseif name == 'gamepad axis' then
+        local which,axis,value = ...
+        print('axis', which, axis, value)
     end
 end)
 selene.set_step(function()
