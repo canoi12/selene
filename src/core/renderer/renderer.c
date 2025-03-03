@@ -139,6 +139,7 @@ static void s_renderer_call_commands(Renderer* r) {
             }
             break;
             default:
+                break;
         }
         it++;
         if (it >= pool->current) {
