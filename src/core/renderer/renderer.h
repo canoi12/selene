@@ -95,6 +95,9 @@ typedef struct {
  */
 
 typedef struct {
+    vec3 color;
+    float roughness;
+    float metallic;
 } Material;
 
 /**
