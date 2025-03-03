@@ -1,7 +1,7 @@
 selene('My Game', '1.0.0', 'org.selene.MyGame')
-print(selene.renderer, selene.renderer.Batch2D)
+print(selene.renderer)
 print(selene.get_renderer)
-local renderer = selene.get_renderer()
+local render = selene.renderer.RenderBatch2D(selene.get_renderer())
 if not selene then
     error(err)
 end
@@ -25,6 +25,9 @@ selene.set_event(function(name, ...)
     end
 end)
 selene.set_step(function()
-    renderer:clear(0.2, 0.3, 0.3)
-    renderer:push_triangle(0, 0.5, 0.5, -0.5, -0.5, -0.5)
+    render:begin()
+    render:clear(0.2, 0.3, 0.3)
+    render:set_color(1, 0, 1)
+    render:push_triangle(320, 0, 0, 320, 640, 320)
+    render:finish()
 end)
