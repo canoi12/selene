@@ -72,14 +72,15 @@ like OpenGL renderer, audio system and filesystem, fully powered by SDL2 and SDL
 
 ```lua
 selene("MyGame", "1.0.0", "org.selene.MyGame")
-local render = selene.get_renderer()
+local render = selene.renderer.RenderBatch2D(selene.get_renderer())
 selene.set_event(function(name, ...)
-    if name == 'quit' then selene.set_running(false)
-    elseif name == 'window closed' then selene.set_running(false) end
+    if name == 'quit' or name == 'window closed' then selene.set_running(false) end
 end)
 selene.set_step(function()
+    render:begin()
     render:clear(0.2, 0.3, 0.3)
     render:push_cube({ 32, 64, -32 }, { math.rad(15), math.rad(60), 0 }, { 32, 32, 32 })
+    render:finish()
 end)
 ```
 
@@ -91,7 +92,7 @@ I put the [premake5](https://premake.github.io/) scripts on the `scripts/` folde
 
 ### SDL2
 
-By default the CMake script checks for SDL dists in the `src/third/SDL2` folder.
+By default the CMake script checks for SDL dists in the `.cache/SDL2` folder.
 
 - MINGW
 - MSVC
@@ -101,6 +102,8 @@ But you can specify the paths with:
 
 - -DSDL_PRECOMP_DIR=\[Precompiled dir\] (SDL provides that for MINGW and MSVC)
 - -DSDL_SOURCE_DIR=\[SDL source directory\]
+
+You can also download SDL2 using the script inside `scripts/download_sdl.sh`.
 
 ### Linux
 
@@ -129,7 +132,7 @@ cmake --build build
 For Windows, you will also need to download the [SDL2](https://libsdl.org/) package for development. Making that, simply run on a terminal:
 
 ```
-cmake -B build -DSDL_PRECOMP_DIR=[Path to SDL2 MSVC dev dist, callbacks to src/third/SDL2/MSVC]
+cmake -B build -DSDL_PRECOMP_DIR=[Path to SDL2 MSVC dev dist, callbacks to .cache/SDL2/MSVC]
 ```
 
 ### Cross Compiling
@@ -143,10 +146,10 @@ cmake --build build
 
 #### Toolchains
 
-You can find the toolchains in the `cross/toolchains` folder, and you can edit them or create new ones as you need. To cross compile for MinGW, for example:
+You can find the toolchains in the `cmake/toolchains` folder, and you can edit them or create new ones as you need. To cross compile for MinGW, for example:
 
 ```
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=cross/toolchains/MinGW.cmake -DSDL_PRECOMP_DIR=[Path to SDL2 MinGW dev dist]
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/MinGW.cmake -DSDL_PRECOMP_DIR=[Path to SDL2 MinGW dev dist]
 cmake --build build
 ```
 
