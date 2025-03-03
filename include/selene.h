@@ -119,12 +119,6 @@ extern SeleneContext g_selene_context;
 extern "C" {
 #endif
 
-/* Implemented in core/core.c */
-SELENE_API int selene_init_callback(void** L, int argc, char** argv);
-SELENE_API int selene_event_callback(lua_State* L, SDL_Event* event);
-SELENE_API int selene_step_callback(lua_State* L);
-SELENE_API int selene_quit_callback(lua_State* L);
-
 /**
  * Open selene lib
  */
