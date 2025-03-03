@@ -11,7 +11,11 @@ int l_Canvas_create(lua_State* L) {
     canvas->texture.height = height;
     glGenTextures(1, &canvas->depth);
     glBindTexture(GL_TEXTURE_2D, canvas->depth);
+#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+#endif
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glBindTexture(GL_TEXTURE_2D, canvas->texture.handle);

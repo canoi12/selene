@@ -95,7 +95,6 @@ typedef struct {
  */
 
 typedef struct {
-    Effect3D
 } Material;
 
 /**

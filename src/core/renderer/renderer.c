@@ -94,28 +94,48 @@ static void s_renderer_call_commands(Renderer* r) {
             }
             break;
             case RENDER_COMMAND_DRAW_VERTEX: {
+        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
                 glBindVertexArray(rc->draw.vao);
+        #else
+                glBindBuffer(GL_ARRAY_BUFFER, rc->draw.vao);
+        #endif
                 // fprintf(stdout, "draw_vertex: %d %d %d\n", rc->draw.mode, rc->draw.start, rc->draw.count);
                 glDrawArrays(rc->draw.mode, rc->draw.start, rc->draw.count);
+        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
                 glBindVertexArray(0);
+        #else
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+        #endif
             }
             break;
             case RENDER_COMMAND_DRAW_INDEX: {
+        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
                 glBindVertexArray(rc->draw.vao);
+        #else
+                glBindBuffer(GL_ARRAY_BUFFER, rc->draw.vao);
+        #endif
                 glDrawElements(rc->draw.mode, rc->draw.count, GL_UNSIGNED_INT, NULL);
+        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
                 glBindVertexArray(0);
+        #else
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+        #endif
             }
             break;
             case RENDER_COMMAND_DRAW_VERTEX_INSTANCED: {
+        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
                 glBindVertexArray(rc->instanced.vao);
                 glDrawArraysInstanced(rc->instanced.mode, rc->instanced.start, rc->instanced.count, rc->instanced.instance_count);
                 glBindVertexArray(0);
+        #endif
             }
             break;
             case RENDER_COMMAND_DRAW_INDEX_INSTANCED: {
+        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
                 glBindVertexArray(rc->instanced.vao);
                 glDrawElementsInstanced(rc->instanced.mode, rc->instanced.count, GL_UNSIGNED_INT, NULL, rc->instanced.instance_count);
                 glBindVertexArray(0);
+        #endif
             }
             break;
             default:
