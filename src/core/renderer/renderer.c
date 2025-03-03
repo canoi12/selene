@@ -80,12 +80,19 @@ static void s_renderer_call_commands(Renderer* r) {
                 glActiveTexture(GL_TEXTURE0+rc->texture.slot);
                 glBindTexture(rc->texture.target, rc->texture.handle);
                 break;
-            case RENDER_COMMAND_SET_TARGET:
-                glBindFramebuffer(rc->target.target, rc->target.handle);
-                break;
             case RENDER_COMMAND_SET_EFFECT:
                 glUseProgram(rc->effect.handle);
                 curr_program = rc->effect.handle;
+                break;
+            case RENDER_COMMAND_SET_TARGET:
+                glBindFramebuffer(rc->target.target, rc->target.handle);
+                break;
+            case RENDER_COMMAND_ENABLE_CLIP_RECT:
+                glEnable(GL_SCISSOR_TEST);
+                glScissor(rc->clip.x, rc->clip.y, rc->clip.width, rc->clip.height);
+                break;
+            case RENDER_COMMAND_DISABLE_CLIP_RECT:
+                glDisable(GL_SCISSOR_TEST);
                 break;
             case RENDER_COMMAND_SET_PROJECTION:
             case RENDER_COMMAND_SET_VIEW:
@@ -153,7 +160,7 @@ static void s_renderer_call_commands(Renderer* r) {
 
 static void s_renderer_present(Renderer* r, lua_State* L) {
     // fprintf(stdout, "render present\n");
-    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_window_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, r->l_window_ref);
     SDL_Window **window = (SDL_Window **)lua_touserdata(L, -1);
     lua_pop(L, 1);
     SDL_GL_SwapWindow(*window);
@@ -165,7 +172,9 @@ int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win) {
         return -1;
     }
     memset(r, 0, sizeof(*r));
-    r->pool = &r->root;
+    r->pool = &(r->root);
+    r->pool->prev = NULL;
+    r->pool->next = NULL;
     r->clear = s_renderer_clear_commands;
     r->push = s_renderer_push_command;
     r->pop = s_renderer_pop_command;
@@ -184,6 +193,7 @@ int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win) {
         return luaL_error(L, "Failed to init glad");
 #endif
     r->l_gl_context_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    r->l_window_ref = g_selene_context.l_window_ref;
     return 0;
 }
 

@@ -30,6 +30,7 @@ static int s_selene_step_callback(lua_State *L) {
     const int res = s_default_step_callback(L);
     lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
     Renderer *r = (Renderer *)lua_touserdata(L, -1);
+    lua_pop(L, 1);
     if (r && r->present) r->present(r, L);
     SDL_Delay(16);
     return res;
@@ -70,11 +71,7 @@ static void s_selene_quit_callback(lua_State *L, int status) {
     }
     SDL_Quit();
 #if DEBUG
-#ifndef SELENE_NO_SDL
     SDL_Log("[selene] exiting...");
-#else
-    fprintf(stdout, "[selene] exiting...\n");
-#endif
 #endif
 }
 
@@ -96,12 +93,13 @@ static int l_selene__call(lua_State *L) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
-    SDL_Window *win =
-        SDL_CreateWindow(name,
+    SDL_Window *win = SDL_CreateWindow(
+        name,
 #if !defined(SELENE_USE_SDL3)
-                        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 #endif
-                        640, 380, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+        640, 380, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
+    );
     if (win == NULL)
         return luaL_error(L, "failed to create window: %s", SDL_GetError());
     SDL_Window **win_ptr =
@@ -109,31 +107,11 @@ static int l_selene__call(lua_State *L) {
     luaL_setmetatable(L, "sdlWindow");
     *win_ptr = win;
     g_selene_context.l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    Renderer* r = lua_newuserdata(L, sizeof(Renderer));
-    luaL_setmetatable(L, "Renderer");
+    NEW_UDATA(Renderer, r);
     if (g_init_renderer(L, r, win) < 0) {
         const char* str = lua_tostring(L, -1);
         return luaL_error(L, "%s", str);
     }
-#if 0
-    lua_pushcfunction(L, l_renderer_create_Batch2D);
-    lua_pushinteger(L, 0);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_window_ref);
-    if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
-        return luaL_error(L, "failed to create Batch2D renderer: %s",
-                          lua_tostring(L, -1));
-    }
-#endif
-    /*#if defined(SELENE_USE_SDL3)
-        SDL_Renderer* r = SDL_CreateRenderer(win, "opengl");
-    #else
-      SDL_Renderer* r = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    #endif
-        if (r == NULL)
-            return luaL_error(L, "failed to create renderer: %s", SDL_GetError());
-        SDL_Renderer** r_ptr = (SDL_Renderer**)lua_newuserdata(L,
-    sizeof(SDL_Renderer*)); luaL_setmetatable(L, "sdlRenderer"); *r_ptr = r;*/
-
     g_selene_context.l_renderer_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     g_selene_context.c_step_callback = s_selene_step_callback;
     g_selene_context.c_quit_callback = s_selene_quit_callback;
@@ -141,19 +119,18 @@ static int l_selene__call(lua_State *L) {
 }
 
 #if SELENE_USE_JIT
-void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf,
-                   int glb) {
-  lua_pushcfunction(L, openf);
-  lua_pushstring(L, modname); /* argument to open function */
-  lua_call(L, 1, 1);          /* open module */
-  lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED");
-  lua_pushvalue(L, -2);         /* make copy of module (call result) */
-  lua_setfield(L, -2, modname); /* _LOADED[modname] = module */
-  lua_pop(L, 1);                /* remove _LOADED table */
-  if (glb) {
-    lua_pushvalue(L, -1);      /* copy of 'mod' */
-    lua_setglobal(L, modname); /* _G[modname] = module */
-  }
+void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf, int glb) {
+    lua_pushcfunction(L, openf);
+    lua_pushstring(L, modname); /* argument to open function */
+    lua_call(L, 1, 1);          /* open module */
+    lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED");
+    lua_pushvalue(L, -2);         /* make copy of module (call result) */
+    lua_setfield(L, -2, modname); /* _LOADED[modname] = module */
+    lua_pop(L, 1);                /* remove _LOADED table */
+    if (glb) {
+        lua_pushvalue(L, -1);      /* copy of 'mod' */
+        lua_setglobal(L, modname); /* _G[modname] = module */
+    }
 }
 #endif
 

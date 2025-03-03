@@ -135,10 +135,12 @@ enum RenderCommandType {
     RENDER_COMMAND_SET_VIEW,
 
     RENDER_COMMAND_SET_BUFFER,
-    RENDER_COMMAND_SET_CLIP_RECT,
     RENDER_COMMAND_SET_EFFECT,
     RENDER_COMMAND_SET_TEXTURE,
     RENDER_COMMAND_SET_TARGET,
+
+    RENDER_COMMAND_ENABLE_CLIP_RECT,
+    RENDER_COMMAND_DISABLE_CLIP_RECT,
 
     RENDER_COMMAND_FLOAT_UNIFORM,
     RENDER_COMMAND_MATRIX_UNIFORM,
@@ -205,25 +207,31 @@ struct RenderCommandPool {
     struct RenderCommandPool* next;
 };
 
+
 typedef struct Renderer Renderer;
+typedef void(*ClearRenderListFunc)(Renderer*);
+typedef void(*PushRenderListFunc)(Renderer*, struct RenderCommand*);
+typedef struct RenderCommand*(*PopRenderListFunc)(Renderer*);
+typedef void(*CallRenderListFunc)(Renderer*);
+
 struct Renderer {
     int l_gl_context_ref;
-    struct RenderCommandPool* pool;
-    struct RenderCommandPool root;
-
-    void(*clear)(struct Renderer*);
-    void(*push)(struct Renderer*, struct RenderCommand*);
-    struct RenderCommand*(*pop)(struct Renderer*);
-    void(*call)(struct Renderer*);
+    int l_window_ref;
+    ClearRenderListFunc clear;
+    PushRenderListFunc push;
+    PopRenderListFunc pop;
+    CallRenderListFunc call;
 
     void(*present)(Renderer*, lua_State*);
+
+    struct RenderCommandPool* pool;
+    struct RenderCommandPool root;
 };
 
 #define TEXTURE2D_CLASS LUA_META_CLASS(Texture2D)
 #define FRAMEBUFFER_CLASS LUA_META_CLASS(Framebuffer)
 #define CANVAS_CLASS LUA_META_CLASS(Canvas)
 
-#define BATCH2D_CLASS LUA_META_CLASS(Batch2D)
 #define EFFECT2D_CLASS LUA_META_CLASS(Effect2D)
 
 #define RENDER_BATCH2D_CLASS LUA_META_CLASS(RenderBatch2D)

@@ -27,10 +27,36 @@ static void s_push_draw_command(RenderBatch2D* r, lua_State* L) {
     rc.draw.mode = GL_TRIANGLES;
     rc.draw.start = r->last_offset;
     rc.draw.count = r->buffer.offset - r->last_offset;
+#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
     rc.draw.vao = r->vao;
+#else
+    rc.draw.vao = r->vbo;
+#endif
     // fprintf(stdout, "draw command: %d %d\n", rc.draw.start, rc.draw.count);
     r->renderer->push(r->renderer, &rc);
     r->last_offset = r->buffer.offset;
+}
+
+static void s_push_update_size(RenderBatch2D* r, lua_State* L, int w, int h) {
+    struct RenderCommand rc;
+    /* Set viewport */
+    memset(&rc, 0, sizeof(rc));
+    rc.type = RENDER_COMMAND_SET_VIEWPORT;
+    rc.viewport.width = w;
+    rc.viewport.height = h;
+    r->renderer->push(r->renderer, &rc);
+    /* Set projection */
+    memset(&rc, 0, sizeof(rc));
+    rc.type = RENDER_COMMAND_SET_PROJECTION;
+    lua_rawgeti(L, LUA_REGISTRYINDEX, r->current_effect_ref);
+    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    rc.uniform.program = eff->handle;
+    rc.uniform.location = eff->projection_location;
+    mat4 m = GLM_MAT4_IDENTITY_INIT;
+    glm_ortho(0, w, h, 0, 0, 1000, m);
+    glm_mat4_udup(m, rc.uniform.m);
+    r->renderer->push(r->renderer, &rc);
 }
 
 static int l_RenderBatch2D_create(lua_State* L) {
@@ -490,24 +516,46 @@ static int l_RenderBatch2D__set_canvas(lua_State* L) {
     rc.target.target = GL_FRAMEBUFFER;
     rc.target.handle = canvas ? canvas->fbo : 0;
     self->renderer->push(self->renderer, &rc);
-    /* Set viewport */
-    memset(&rc, 0, sizeof(rc));
+    s_push_update_size(self, L, canvas->texture.width, canvas->texture.height);
+    return 0;
+}
+
+static int l_RenderBatch2D__set_viewport(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
+    struct RenderCommand rc;
     rc.type = RENDER_COMMAND_SET_VIEWPORT;
-    rc.viewport.width = canvas->texture.width;
-    rc.viewport.height = canvas->texture.height;
+    rc.viewport.x = (int)luaL_checkinteger(L, arg++);
+    rc.viewport.y = (int)luaL_checkinteger(L, arg++);
+    rc.viewport.width = (int)luaL_checkinteger(L, arg++);
+    rc.viewport.height = (int)luaL_checkinteger(L, arg++);
     self->renderer->push(self->renderer, &rc);
-    /* Set projection */
-    memset(&rc, 0, sizeof(rc));
-    rc.type = RENDER_COMMAND_SET_PROJECTION;
-    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
-    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
-    lua_pop(L, 1);
-    rc.uniform.program = eff->handle;
-    rc.uniform.location = eff->projection_location;
-    mat4 m = GLM_MAT4_IDENTITY_INIT;
-    glm_ortho(0, canvas->texture.width, canvas->texture.height, 0, 0, 1000, m);
-    glm_mat4_udup(m, rc.uniform.m);
-    self->renderer->push(self->renderer, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__set_clip_rect(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
+    if (lua_isinteger(L, arg)) {
+        struct RenderCommand rc;
+        int h;
+        SDL_GetWindowSize(self->window, NULL, &h);
+        rc.type = RENDER_COMMAND_ENABLE_CLIP_RECT;
+        CHECK_INTEGER(left);
+        CHECK_INTEGER(top);
+        CHECK_INTEGER(right);
+        CHECK_INTEGER(bottom);
+        rc.clip.x = left;
+        rc.clip.y = h - bottom;
+        rc.clip.width = right - left;
+        rc.clip.height = bottom-top;
+        self->renderer->push(self->renderer, &rc);
+    } else if (lua_isnil(L, arg) || lua_gettop(L) < 2) {
+        struct RenderCommand rc;
+        rc.type = RENDER_COMMAND_DISABLE_CLIP_RECT;
+        self->renderer->push(self->renderer, &rc);
+    } else
+        return luaL_argerror(L, arg, "must contains the rect values (x, y, w, h), or nil to disable");
     return 0;
 }
 
@@ -516,9 +564,10 @@ static int l_RenderBatch2D__begin(lua_State* L) {
     self->renderer->clear(self->renderer);
     self->buffer.offset = 0;
     self->last_offset = 0;
+    /* Set effect */
     lua_rawgeti(L, LUA_REGISTRYINDEX, self->default_effect_ref);
     Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
-    lua_pop(L, 1);
+    lua_rawseti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_SET_EFFECT;
     rc.effect.handle = eff->handle;
@@ -528,11 +577,15 @@ static int l_RenderBatch2D__begin(lua_State* L) {
     rc.type = RENDER_COMMAND_SET_TEXTURE;
     lua_rawgeti(L, LUA_REGISTRYINDEX, self->white_texture_ref);
     Texture2D* tex = (Texture2D*)lua_touserdata(L, -1);
-    lua_pop(L, 1);
+    lua_rawseti(L, LUA_REGISTRYINDEX, self->current_texture_ref);
     rc.texture.handle = tex->handle;
     rc.texture.target = GL_TEXTURE_2D;
     rc.texture.slot = 0;
     self->renderer->push(self->renderer, &rc);
+    
+    int w, h;
+    SDL_GetWindowSize(self->window, &w, &h);
+    s_push_update_size(self, L, w, h);
     return 0;
 }
 
@@ -569,6 +622,8 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_META_FIELD(RenderBatch2D, set_texture),
         REG_META_FIELD(RenderBatch2D, set_effect),
         REG_META_FIELD(RenderBatch2D, set_canvas),
+        REG_META_FIELD(RenderBatch2D, set_clip_rect),
+        REG_META_FIELD(RenderBatch2D, set_viewport),
         REG_META_FIELD(RenderBatch2D, begin),
         REG_META_FIELD(RenderBatch2D, finish),
         {NULL, NULL}
