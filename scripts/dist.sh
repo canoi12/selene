@@ -3,7 +3,7 @@
 OUTDIR=dist
 TMPDIR="temp"
 BUILDSDIR=builds/
-APPIMAGETOOL="./appimagetool-x86_64.AppImage"
+APPIMAGETOOL=".cache/appimagetool-x86_64.AppImage"
 SELENE_VERSION="0.3.0"
 
 if [ ! -d $BUILDSDIR ]; then
@@ -23,8 +23,7 @@ generate_appimage() {
     mkdir -p $TMPDIR/AppImage/usr/lib
 
     cp $BUILDSDIR/$1/bin/selene $TMPDIR/AppImage/usr/bin/selene
-    cp $BUILDSDIR/$1/lib/liblua5.4.so $TMPDIR/AppImage/usr/lib/liblua5.4.so
-    cp $BUILDSDIR/$1/lib/libselene.so $TMPDIR/AppImage/usr/lib/libselene.so
+    cp $BUILDSDIR/$1/lib/*.so $TMPDIR/AppImage/usr/lib/
 
     ARCH=""
     case $1 in
@@ -61,13 +60,13 @@ copy_windows() {
         mkdir -p "$OUTDIR/windows/x86"
     fi
 
-    cp "$BUILDSDIR/x86-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x86/"
+    cp $BUILDSDIR/x86-windows-msvc/v143/bin/*.dll "$OUTDIR/windows/x86/"
     cp "$BUILDSDIR/x86-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x86/"
     # cp "$BUILDSDIR/x86-windows-msvc/v143/bin/SDL2.dll" "$OUTDIR/windows/x86/"
     cp ".cache/SDL2/win32/x86/SDL2.dll" "$OUTDIR/windows/x86/"
     cp ".cache/SDL2/win32/x86/README-SDL.txt" "$OUTDIR/windows/x86/"
 
-    cp "$BUILDSDIR/x64-windows-msvc/v143/bin/lua5.4.dll" "$OUTDIR/windows/x64/"
+    cp $BUILDSDIR/x64-windows-msvc/v143/bin/*.dll "$OUTDIR/windows/x64/"
     cp "$BUILDSDIR/x64-windows-msvc/v143/bin/selene.exe" "$OUTDIR/windows/x64/"
     cp ".cache/SDL2/win32/x64/SDL2.dll" "$OUTDIR/windows/x64/"
     cp ".cache/SDL2/win32/x64/README-SDL.txt" "$OUTDIR/windows/x64/"

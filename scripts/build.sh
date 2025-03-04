@@ -16,7 +16,7 @@ copy_files() {
 
 build_default() {
     cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-    cmake --build build
+    cmake --build build --target seleneBin
 }
 
 build_cross_linux() {
@@ -35,7 +35,7 @@ build_cross_linux() {
     esac
 
     cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE $TOOLCHAIN_FILE
-    cmake --build build
+    cmake --build build --target seleneBin
 
     copy_files $TRIPLE
     rm -rf build
@@ -60,7 +60,7 @@ build_mingw() {
     esac
 
     cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE $TOOLCHAIN_FILE
-    cmake --build build
+    cmake --build build --target seleneBin
 
     copy_files $TRIPLE
 
@@ -101,7 +101,7 @@ build_android() {
     -DANDROID_PLATFORM=$ANDROID_PLATFORM \
 
     echo "Building project"
-    cmake --build build
+    cmake --build build --target seleneBin
 
     mkdir -p $OUTDIR/$ANDROID_ARCH-linux-android/$ANDROID_PLATFORM/bin
     mkdir -p $OUTDIR/$ANDROID_ARCH-linux-android/$ANDROID_PLATFORM/lib
@@ -113,7 +113,7 @@ build_android() {
 
 build_emscripten() {
     cmake -B build $BUILD_TYPE_ARG -DCMAKE_TOOLCHAIN_FILE=.cache/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
-    cmake --build build --verbose
+    cmake --build build --target seleneBin --verbose
     copy_files "wasm32-unknown-emscripten"
 
     rm -rf build/
