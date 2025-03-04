@@ -417,4 +417,5 @@ int selene_open_enums(lua_State* L) {
         lua_pushinteger(L, selene_Enums_reg[i].value);
         lua_rawset(L, -3);
     }
+    return 0;
 }

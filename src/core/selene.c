@@ -382,6 +382,7 @@ int s_default_event_callback(lua_State *L) {
         lua_pushvalue(L, -1);
         // selene_event(L, &event);
     }
+    return 0;
 }
 
 int s_default_step_callback(lua_State* L) {
