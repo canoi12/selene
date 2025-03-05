@@ -1,7 +1,7 @@
 message("Check for Lua lib")
 
 set (LUA_DIST_DIR "${CMAKE_SOURCE_DIR}/builds/${triple}${LIB_PLATFORM}")
-set (LUA_PROJECT_DIR "${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}")
+set (LUA_PROJECT_DIR "${CMAKE_SOURCE_DIR}/third/lua/lua${LUA_VERSION}")
 set (LUA_TARGET_NAME "lua${LUA_VERSION}")
 
 find_library(LUA_LIBRARY NAMES ${LUA_TARGET_NAME} PATHS "${LUA_DIST_DIR}/lib" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
@@ -29,5 +29,5 @@ endif ()
 if (LUA_INCLUDE_DIR)
     include_directories(${LUA_INCLUDE_DIR})
 else ()
-    include_directories("${CMAKE_SOURCE_DIR}/lua/lua${LUA_VERSION}/include")
+    include_directories("${LUA_PROJECT_DIR}/include")
 endif ()

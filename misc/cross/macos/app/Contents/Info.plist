@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.selene.App</string>
+    <key>CFBundleName</key>
+    <string>Selene</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string> <!-- Tipo de pacote: Aplicativo -->
+    <key>CFBundleExecutable</key>
+    <string>Selene</string> <!-- Nome do binário executável -->
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string> <!-- Nome do arquivo de ícone -->
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string> <!-- Versão mínima do sistema -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string> <!-- Arquitetura necessária -->
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string> <!-- Orientação suportada -->
+    </array>
+</dict>
+</plist>

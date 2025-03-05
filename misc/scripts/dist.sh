@@ -5,6 +5,7 @@ TMPDIR="temp"
 BUILDSDIR=builds/
 APPIMAGETOOL=".cache/appimagetool-x86_64.AppImage"
 SELENE_VERSION="0.3.0"
+CROSSDIR="misc/cross"
 
 if [ ! -d $BUILDSDIR ]; then
     ./scripts/build.sh
@@ -17,7 +18,7 @@ fi
 generate_appimage() {
     rm -r $TMPDIR/
     mkdir $TMPDIR/
-    cp -r cross/AppImage $TMPDIR/AppImage
+    cp -r $CROSSDIR/AppImage $TMPDIR/AppImage
 
     mkdir -p $TMPDIR/AppImage/usr/bin
     mkdir -p $TMPDIR/AppImage/usr/lib
@@ -42,7 +43,7 @@ generate_apk() {
     rm -rf $TMPDIR/
     mkdir $TMPDIR/
 
-    cp -r cross/android/* $TMPDIR/
+    cp -r $CROSSDIR/android/* $TMPDIR/
     cd $TMPDIR
     ./gradlew build
 

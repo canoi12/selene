@@ -108,14 +108,14 @@ endif ()
 file(GLOB SELENE_SOURCES 
     src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c
     src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c
-    src/modules/*.c src/third/glad/src/glad.c
+    src/modules/*.c third/glad/src/glad.c
 )
 if (EMSCRIPTEN)
 list(POP_BACK SELENE_SOURCES)
 endif()
 # list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/modules/sdl2.c)
 
-include_directories(include/ src/third/ src/third/glad/include)
+include_directories(include/ third/ third/glad/include)
 link_directories("${CMAKE_LIBRARY_PATH}")
 
 if (NOT ANDROID AND NOT EMSCRIPTEN)
@@ -140,10 +140,10 @@ if (${SELENE_USE_SDL3})
     add_definitions(-DSELENE_USE_SDL3)
 endif ()
 
-add_subdirectory(src/third/cglm)
+add_subdirectory(third/cglm)
 
 set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm)
-include_directories(src/third/cglm/include)
+include_directories(third/cglm/include)
 
 if (${SELENE_USE_SDL3})
     include_directories(${SDL3_INCLUDE_DIRS})
@@ -195,7 +195,7 @@ if (NOT DEFINED ANDROID)
         target_link_libraries(${PROJECT_NAME}Bin lua51)
     endif ()
     if (WIN32)
-        target_sources(${PROJECT_NAME}Bin PRIVATE "${CMAKE_SOURCE_DIR}/cross/windres/ICON.rc")
+        target_sources(${PROJECT_NAME}Bin PRIVATE "${CMAKE_SOURCE_DIR}/misc/cross/windres/ICON.rc")
     endif ()
     set_target_properties(${PROJECT_NAME}Bin PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
     if (DEFINED EMSCRIPTEN)

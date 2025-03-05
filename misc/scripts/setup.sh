@@ -52,4 +52,6 @@ case $1 in
         setup_android ;;
     "emscripten" )
         setup_emscripten ;;
+    * )
+        echo "Usage: ./setup.sh [android|emscripten]" ;;
 esac
