@@ -36,6 +36,7 @@
 #include <cglm/mat4.h>
 #include <cglm/cam.h>
 #include <cglm/affine.h>
+#include <cglm/affine2d.h>
 
 #ifndef SELENE_NO_GL
 #if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_APPLE)

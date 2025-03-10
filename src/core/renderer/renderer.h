@@ -8,6 +8,27 @@
 #define SELENE_BATCH2D_PROJECTION_FAR 1000
 #endif
 
+#define RENDERLIST_CLEAR(list)\
+lua_pushcfunction(L, (list)->clear);\
+lua_pushlightuserdata(L, (list));\
+lua_call(L, 1, 0)
+
+#define RENDERLIST_CALL(list)\
+lua_pushcfunction(L, (list)->call);\
+lua_pushlightuserdata(L, (list));\
+lua_call(L, 1, 0)
+
+#define RENDERLIST_PUSH(list, rc)\
+lua_pushcfunction(L, (list)->push);\
+lua_pushlightuserdata(L, (list));\
+lua_pushlightuserdata(L, (rc));\
+lua_call(L, 2, 0)
+
+#define RENDERLIST_POP(list)\
+lua_pushcfunction(L, (list)->pop);\
+lua_pushlightuserdata(L, (list));\
+lua_call(L, 1, 1)
+
 extern const char* pixel_formats[];
 extern const int pixel_formats_values[];
 
@@ -142,6 +163,8 @@ enum RenderCommandType {
     RENDER_COMMAND_ENABLE_CLIP_RECT,
     RENDER_COMMAND_DISABLE_CLIP_RECT,
 
+    RENDER_COMMAND_SET_BLEND_MODE,
+
     RENDER_COMMAND_FLOAT_UNIFORM,
     RENDER_COMMAND_MATRIX_UNIFORM,
 
@@ -185,6 +208,10 @@ struct RenderCommand {
         struct { Uint32 vao; Uint32 vbo; } sprite_batch;
 
         struct { int x, y, width, height; } viewport;
+        struct {
+            int func0, func1;
+            int equation;
+        } blend;
 
         struct {
             Uint32 vao;
@@ -199,14 +226,20 @@ struct RenderCommand {
         } instanced;
     };
 };
-
+#if 0
 struct RenderCommandPool {
     int current;
     struct RenderCommand commands[512];
     struct RenderCommandPool* prev;
     struct RenderCommandPool* next;
 };
+#endif
 
+typedef struct RenderCommandBlock RenderCommandBlock;
+struct RenderCommandBlock {
+    int current;
+    struct RenderCommand commands[512];
+};
 
 typedef struct Renderer Renderer;
 typedef void(*ClearRenderListFunc)(Renderer*);
@@ -214,18 +247,53 @@ typedef void(*PushRenderListFunc)(Renderer*, struct RenderCommand*);
 typedef struct RenderCommand*(*PopRenderListFunc)(Renderer*);
 typedef void(*CallRenderListFunc)(Renderer*);
 
-struct Renderer {
-    int l_gl_context_ref;
-    int l_window_ref;
+typedef struct RenderList RenderList;
+struct RenderList {
+#if 0
     ClearRenderListFunc clear;
     PushRenderListFunc push;
     PopRenderListFunc pop;
     CallRenderListFunc call;
+#endif
+    lua_CFunction clear;
+    lua_CFunction push;
+    lua_CFunction pop;
+    lua_CFunction call;
+
+    int l_render_blocks_table_ref;
+    int block_index;
+    struct RenderCommandBlock* block_ptr;
+};
+
+struct Renderer {
+    int l_gl_context_ref;
+    int l_window_ref;
+    SDL_Window* window_ptr;
+#if 0
+    ClearRenderListFunc clear;
+    PushRenderListFunc push;
+    PopRenderListFunc pop;
+    CallRenderListFunc call;
+#endif
+
+    // texture
+    int current_tex2d_id;
+    int current_fbo_id;
+    // program
+    int current_program_id;
+    // buffer
+    int current_vbo_id;
+    int current_ibo_id;
+
+    // render list
+    int l_render_list_ref;
+    RenderList* list_ptr;
 
     void(*present)(Renderer*, lua_State*);
-
+#if 0
     struct RenderCommandPool* pool;
     struct RenderCommandPool root;
+#endif
 };
 
 #define TEXTURE2D_CLASS LUA_META_CLASS(Texture2D)

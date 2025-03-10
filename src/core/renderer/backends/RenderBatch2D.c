@@ -6,12 +6,18 @@ typedef struct RenderBatch2D RenderBatch2D;
 struct RenderBatch2D {
     Renderer* renderer;
     SDL_Window* window;
+    RenderList* list;
     Uint32 vao;
     Uint32 vbo;
     int white_texture_ref;
     int default_effect_ref;
+
+    int current_draw_mode;
+
     int current_effect_ref;
     int current_texture_ref;
+    int current_canvas_ref;
+
     struct {
         int offset, count;
         Vertex2D* data;
@@ -20,11 +26,23 @@ struct RenderBatch2D {
     Vertex2D aux_vertex;
 };
 
+static void s_check_buffer(lua_State* L, RenderBatch2D* rb, int count) {
+    if ((rb->buffer.offset + count) > rb->buffer.count) {
+        // return luaL_error(L, "buffer overflow");
+        rb->buffer.count *= 2;
+        rb->buffer.data = realloc(rb->buffer.data, sizeof(Vertex2D) * rb->buffer.count);
+        glBindBuffer(GL_ARRAY_BUFFER, rb->vbo);
+        glBufferData(GL_ARRAY_BUFFER, rb->buffer.count*sizeof(Vertex2D), rb->buffer.data, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+}
+
 static void s_push_draw_command(RenderBatch2D* r, lua_State* L) {
     if (r->buffer.offset == r->last_offset) return;
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_DRAW_VERTEX;
-    rc.draw.mode = GL_TRIANGLES;
+    rc.draw.mode = r->current_draw_mode;
     rc.draw.start = r->last_offset;
     rc.draw.count = r->buffer.offset - r->last_offset;
 #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
@@ -33,7 +51,7 @@ static void s_push_draw_command(RenderBatch2D* r, lua_State* L) {
     rc.draw.vao = r->vbo;
 #endif
     // fprintf(stdout, "draw command: %d %d\n", rc.draw.start, rc.draw.count);
-    r->renderer->push(r->renderer, &rc);
+    RENDERLIST_PUSH(r->renderer->list_ptr, &rc);
     r->last_offset = r->buffer.offset;
 }
 
@@ -44,7 +62,7 @@ static void s_push_update_size(RenderBatch2D* r, lua_State* L, int w, int h) {
     rc.type = RENDER_COMMAND_SET_VIEWPORT;
     rc.viewport.width = w;
     rc.viewport.height = h;
-    r->renderer->push(r->renderer, &rc);
+    RENDERLIST_PUSH(r->list, &rc);
     /* Set projection */
     memset(&rc, 0, sizeof(rc));
     rc.type = RENDER_COMMAND_SET_PROJECTION;
@@ -56,7 +74,7 @@ static void s_push_update_size(RenderBatch2D* r, lua_State* L, int w, int h) {
     mat4 m = GLM_MAT4_IDENTITY_INIT;
     glm_ortho(0, w, h, 0, 0, 1000, m);
     glm_mat4_udup(m, rc.uniform.m);
-    r->renderer->push(r->renderer, &rc);
+    RENDERLIST_PUSH(r->list, &rc);
 }
 
 static int l_RenderBatch2D_create(lua_State* L) {
@@ -64,6 +82,8 @@ static int l_RenderBatch2D_create(lua_State* L) {
     CHECK_UDATA(Renderer, r);
     NEW_UDATA(RenderBatch2D, self);
     self->renderer = r;
+    self->list = r->list_ptr;
+    self->current_draw_mode = GL_TRIANGLES;
 
     lua_pushcfunction(L, l_Effect2D_create);
     lua_pushnil(L);
@@ -84,7 +104,8 @@ static int l_RenderBatch2D_create(lua_State* L) {
 
     self->last_offset = 0;
 
-    glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
 
     /* Initialize VAO and VBO */
 #if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
@@ -183,7 +204,7 @@ static int l_RenderBatch2D__clear(lua_State* L) {
     for (int i = 2; i <= lua_gettop(L); i++) {
         rc.clear.color[i-2] = (float)luaL_checknumber(L, i);
     }
-    self->renderer->push(self->renderer, &rc);
+    RENDERLIST_PUSH(self->list, &rc);
     return 0;
 }
 
@@ -212,8 +233,10 @@ int l_RenderBatch2D__push_vertex(lua_State* L) {
 
 int l_RenderBatch2D__push_point(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if (self->buffer.offset + 1 > self->buffer.count) {
-        return luaL_error(L, "buffer overflow");
+    s_check_buffer(L, self, 1);
+    if (self->current_draw_mode != GL_POINTS) {
+        s_push_draw_command(self, L);
+        self->current_draw_mode = GL_POINTS;
     }
     Vertex2D* v = self->buffer.data + self->buffer.offset;
     memcpy(v, &(self->aux_vertex), sizeof(Vertex2D));
@@ -225,8 +248,10 @@ int l_RenderBatch2D__push_point(lua_State* L) {
 
 int l_RenderBatch2D__push_line(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if (self->buffer.offset + 2 > self->buffer.count) {
-        return luaL_error(L, "buffer overflow");
+    s_check_buffer(L, self, 2);
+    if (self->current_draw_mode != GL_LINES) {
+        s_push_draw_command(self, L);
+        self->current_draw_mode = GL_LINES;
     }
     Vertex2D* v = self->buffer.data + self->buffer.offset;
     for (int i = 0; i < 2; i++) {
@@ -243,67 +268,363 @@ int l_RenderBatch2D__push_line(lua_State* L) {
 
 int l_RenderBatch2D__push_triangle(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if (self->buffer.offset + 3 > self->buffer.count) {
-        return luaL_error(L, "buffer overflow");
+    if (self->current_draw_mode == GL_POINTS) {
+        s_push_draw_command(self, L);
+        self->current_draw_mode = GL_TRIANGLES;
     }
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
-    for (int i = 0; i < 3; i++) {
-        memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
+    if (self->current_draw_mode == GL_LINES) {
+        s_check_buffer(L, self, 6);
+        Vertex2D* v = self->buffer.data + self->buffer.offset;
+        for (int i = 0; i < 6; i++) {
+            memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
+        }
+        v[0].x = (float)luaL_checknumber(L, 2);
+        v[0].y = (float)luaL_checknumber(L, 3);
+        v[1].x = (float)luaL_checknumber(L, 4);
+        v[1].y = (float)luaL_checknumber(L, 5);
+
+        v[2].x = v[1].x;
+        v[2].y = v[1].y;
+        v[3].x = (float)luaL_checknumber(L, 6);
+        v[3].y = (float)luaL_checknumber(L, 7);
+
+        v[4].x = v[0].x;
+        v[4].y = v[0].y;
+        v[5].x = v[3].x;
+        v[5].y = v[3].y;
+        // memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 3);
+        self->buffer.offset += 6;
+    } else if (self->current_draw_mode == GL_TRIANGLES) {
+        s_check_buffer(L, self, 3);
+        Vertex2D* v = self->buffer.data + self->buffer.offset;
+        for (int i = 0; i < 3; i++) {
+            memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
+        }
+        v[0].x = (float)luaL_checknumber(L, 2);
+        v[0].y = (float)luaL_checknumber(L, 3);
+        v[1].x = (float)luaL_checknumber(L, 4);
+        v[1].y = (float)luaL_checknumber(L, 5);
+        v[2].x = (float)luaL_checknumber(L, 6);
+        v[2].y = (float)luaL_checknumber(L, 7);
+        // memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 3);
+        self->buffer.offset += 3;
+
     }
-    v[0].x = (float)luaL_checknumber(L, 2);
-    v[0].y = (float)luaL_checknumber(L, 3);
-    v[1].x = (float)luaL_checknumber(L, 4);
-    v[1].y = (float)luaL_checknumber(L, 5);
-    v[2].x = (float)luaL_checknumber(L, 6);
-    v[2].y = (float)luaL_checknumber(L, 7);
-    // memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 3);
-    self->buffer.offset += 3;
     return 0;
 }
 
 int l_RenderBatch2D__push_rect(lua_State* L) {
     CHECK_META(RenderBatch2D);
+    if (self->current_draw_mode == GL_POINTS) {
+        s_check_buffer(L, self, 4);
+        Vertex2D* v = self->buffer.data + self->buffer.offset;
+        for (int i = 0; i < 4; i++) {
+            memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
+        }
+        float x, y, w, h;
+        x = (float)luaL_checknumber(L, 2);
+        y = (float)luaL_checknumber(L, 3);
+        w = (float)luaL_checknumber(L, 4);
+        h = (float)luaL_checknumber(L, 5);
+        int inv = 0;
+        float yy = 0.f;
+        if (lua_isboolean(L, 6)) {
+            inv = lua_toboolean(L, 6);
+            yy = 1.f;
+        }
+        v[0].x = x;
+        v[0].y = y;
+        v[0].u = 0.f;
+        v[0].v = yy;
+
+        v[1].x = x + w;
+        v[1].y = y;
+        v[1].u = 1.f;
+        v[1].v = yy;
+
+        v[2].x = x + w;
+        v[2].y = y + h;
+        v[2].u = 1.f;
+        v[2].v = 1.f-yy;
+
+        v[3].x = x;
+        v[3].y = y + h;
+        v[3].u = 0.f;
+        v[3].v = 1.f-yy;
+
+        self->buffer.offset += 4;
+    } else if (self->current_draw_mode == GL_LINES) {
+        s_check_buffer(L, self, 8);
+        Vertex2D* v = self->buffer.data + self->buffer.offset;
+        for (int i = 0; i < 8; i++) {
+            memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
+        }
+        float x, y, w, h;
+        x = (float)luaL_checknumber(L, 2);
+        y = (float)luaL_checknumber(L, 3);
+        w = (float)luaL_checknumber(L, 4);
+        h = (float)luaL_checknumber(L, 5);
+        int inv = 0;
+        float yy = 0.f;
+        if (lua_isboolean(L, 6)) {
+            inv = lua_toboolean(L, 6);
+            yy = 1.f;
+        }
+        // top
+        v[0].x = x;
+        v[0].y = y;
+        v[0].u = 0.f;
+        v[0].v = yy;
+
+        v[1].x = x + w;
+        v[1].y = y;
+        v[1].u = 1.f;
+        v[1].v = yy;
+
+        // right
+        v[2].x = x + w;
+        v[2].y = y;
+        v[2].u = 1.f;
+        v[2].v = yy;
+
+        v[3].x = x + w;
+        v[3].y = y + h;
+        v[3].u = 1.f;
+        v[3].v = 1.f-yy;
+
+        // bottom
+        v[4].x = x + w;
+        v[4].y = y + h;
+        v[4].u = 1.f;
+        v[4].v = 1.f-yy;
+
+        v[5].x = x;
+        v[5].y = y + h;
+        v[5].u = 0.f;
+        v[5].v = 1.f-yy;
+
+        // left
+        v[6].x = x;
+        v[6].y = y + h;
+        v[6].u = 0.f;
+        v[6].v = 1.f-yy;
+
+        v[7].x = x;
+        v[7].y = y;
+        v[7].u = 0.f;
+        v[7].v = yy;
+
+        self->buffer.offset += 8;
+    } else if (self->current_draw_mode == GL_TRIANGLES) {
+        s_check_buffer(L, self, 6);
+        Vertex2D* v = self->buffer.data + self->buffer.offset;
+        for (int i = 0; i < 6; i++) {
+            memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
+        }
+        if (lua_isinteger(L, arg)) {
+            float x, y, w, h;
+            x = (float)luaL_checknumber(L, 2);
+            y = (float)luaL_checknumber(L, 3);
+            w = (float)luaL_checknumber(L, 4);
+            h = (float)luaL_checknumber(L, 5);
+            int inv = 0;
+            float yy = 0.f;
+            if (lua_isboolean(L, 6)) {
+                inv = lua_toboolean(L, 6);
+                yy = 1.f;
+            }
+            v[0].x = x;
+            v[0].y = y;
+            v[0].u = 0.f;
+            v[0].v = yy;
+
+            v[1].x = x + w;
+            v[1].y = y;
+            v[1].u = 1.f;
+            v[1].v = yy;
+
+            v[2].x = x + w;
+            v[2].y = y + h;
+            v[2].u = 1.f;
+            v[2].v = 1.f-yy;
+
+            v[3].x = x;
+            v[3].y = y;
+            v[3].u = 0.f;
+            v[3].v = yy;
+
+            v[4].x = x;
+            v[4].y = y + h;
+            v[4].u = 0.f;
+            v[4].v = 1.f-yy;
+
+            v[5].x = x + w;
+            v[5].y = y + h;
+            v[5].u = 1.f;
+            v[5].v = 1.f-yy;
+        } else if (lua_istable(L, arg)) {
+            float x, y, w, h;
+            vec2 uv[4] = {
+                {0.f, 0.f},
+                {1.f, 0.f},
+                {1.f, 1.f},
+                {0.f, 1.f}
+            };
+            lua_rawgeti(L, arg, 1);
+            x = (float)luaL_checknumber(L, -1);
+            lua_rawgeti(L, arg, 2);
+            y = (float)luaL_checknumber(L, -1);
+            lua_rawgeti(L, arg, 3);
+            w = (float)luaL_checknumber(L, -1);
+            lua_rawgeti(L, arg, 4);
+            h = (float)luaL_checknumber(L, -1);
+            lua_pop(L, 4);
+
+            arg++;
+            if (lua_istable(L, arg)) {
+                SDL_FRect rect;
+                lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_texture_ref);
+                Texture2D* tex = (Texture2D*)lua_touserdata(L, -1);
+                lua_pop(L, 1);
+                vec2 texel;
+                texel[0] = 1.f / (float)tex->width;
+                texel[1] = 1.f / (float)tex->height;
+                // fprintf(stdout, "tex(%d) w(%d) h(%d)\n", tex->handle, tex->width, tex->height);
+
+                lua_rawgeti(L, arg, 1);
+                rect.x = texel[0] * luaL_checknumber(L, -1);
+                lua_rawgeti(L, arg, 2);
+                rect.y = texel[1] * luaL_checknumber(L, -1);
+                lua_rawgeti(L, arg, 3);
+                rect.w = texel[0] * luaL_checknumber(L, -1);
+                lua_rawgeti(L, arg, 4);
+                rect.h = texel[1] * luaL_checknumber(L, -1);
+                lua_pop(L, 4);
+
+                uv[0][0] = rect.x;
+                uv[0][1] = rect.y;
+
+                uv[1][0] = rect.x+rect.w;
+                uv[1][1] = rect.y;
+
+                uv[2][0] = rect.x+rect.w;
+                uv[2][1] = rect.y+rect.h;
+
+                uv[3][0] = rect.x;
+                uv[3][1] = rect.y+rect.h;
+            }
+
+            v[0].x = x;
+            v[0].y = y;
+            v[0].u = uv[0][0];
+            v[0].v = uv[0][1];
+
+            v[1].x = x + w;
+            v[1].y = y;
+            v[1].u = uv[1][0];
+            v[1].v = uv[1][1];
+
+            v[2].x = x + w;
+            v[2].y = y + h;
+            v[2].u = uv[2][0];
+            v[2].v = uv[2][1];
+
+            v[3].x = x;
+            v[3].y = y;
+            v[3].u = uv[0][0];
+            v[3].v = uv[0][1];
+
+            v[4].x = x;
+            v[4].y = y + h;
+            v[4].u = uv[3][0];
+            v[4].v = uv[3][1];
+
+            v[5].x = x + w;
+            v[5].y = y + h;
+            v[5].u = uv[2][0];
+            v[5].v = uv[2][1];
+
+        }
+
+        self->buffer.offset += 6;
+    }
+    return 0;
+}
+
+int  l_RenderBatch2D__push_circle(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    if (self->current_draw_mode == GL_POINTS) {
+        s_push_draw_command(self, L);
+        self->current_draw_mode = GL_TRIANGLES;
+    }
+    return 0;
+}
+
+int l_RenderBatch2D__push_quad(lua_State* L) {
+    CHECK_META(RenderBatch2D);
     if (self->buffer.offset + 6 > self->buffer.count) {
-        return luaL_error(L, "buffer overflow");
+        // return luaL_error(L, "buffer overflow");
+        self->buffer.count *= 2;
+        self->buffer.data = realloc(self->buffer.data, sizeof(Vertex2D) * self->buffer.count);
     }
     Vertex2D* v = self->buffer.data + self->buffer.offset;
     for (int i = 0; i < 6; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
     float x, y, w, h;
-    x = (float)luaL_checknumber(L, 2);
-    y = (float)luaL_checknumber(L, 3);
-    w = (float)luaL_checknumber(L, 4);
-    h = (float)luaL_checknumber(L, 5);
-    v[0].x = x;
-    v[0].y = y;
-    v[0].u = 0.f;
-    v[0].v = 0.f;
+    int args = lua_gettop(L)-1;
+    if (args < 4)
+        return luaL_error(L, "function expects 4 tables as argument");
+    lua_rawgeti(L, arg, 1);
+    v[0].x = (float)luaL_checknumber(L, -1);
+    v[3].x = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 2);
+    v[0].y = (float)luaL_checknumber(L, -1);
+    v[3].y = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 3);
+    v[0].u = (float)luaL_checknumber(L, -1);
+    v[3].u = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 4);
+    v[0].v = (float)luaL_checknumber(L, -1);
+    v[3].v = (float)luaL_checknumber(L, -1);
+    lua_pop(L, 4);
 
-    v[1].x = x + w;
-    v[1].y = y;
-    v[1].u = 1.f;
-    v[1].v = 0.f;
+    arg++;
+    lua_rawgeti(L, arg, 1);
+    v[1].x = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 2);
+    v[1].y = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 3);
+    v[1].u = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 4);
+    v[1].v = (float)luaL_checknumber(L, -1);
+    lua_pop(L, 4);
 
-    v[2].x = x + w;
-    v[2].y = y + h;
-    v[2].u = 1.f;
-    v[2].v = 1.f;
+    arg++;
+    lua_rawgeti(L, arg, 1);
+    v[2].x = (float)luaL_checknumber(L, -1);
+    v[5].x = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 2);
+    v[2].y = (float)luaL_checknumber(L, -1);
+    v[5].y = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 3);
+    v[2].u = (float)luaL_checknumber(L, -1);
+    v[5].u = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 4);
+    v[2].v = (float)luaL_checknumber(L, -1);
+    v[5].v = (float)luaL_checknumber(L, -1);
+    lua_pop(L, 4);
 
-    v[3].x = x;
-    v[3].y = y;
-    v[3].u = 0.f;
-    v[3].v = 0.f;
-
-    v[4].x = x;
-    v[4].y = y + h;
-    v[4].u = 0.f;
-    v[4].v = 1.f;
-
-    v[5].x = x + w;
-    v[5].y = y + h;
-    v[5].u = 1.f;
-    v[5].v = 1.f;
+    arg++;
+    lua_rawgeti(L, arg, 1);
+    v[4].x = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 2);
+    v[4].y = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 3);
+    v[4].u = (float)luaL_checknumber(L, -1);
+    lua_rawgeti(L, arg, 4);
+    v[4].v = (float)luaL_checknumber(L, -1);
+    lua_pop(L, 4);
 
     self->buffer.offset += 6;
     return 0;
@@ -429,6 +750,126 @@ static int l_RenderBatch2D__push_cube(lua_State* L) {
     return 0;
 }
 
+static int l_RenderBatch2D__push_sprite(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_texture_ref);
+    Texture2D* tex = (Texture2D*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    SDL_FRect src;
+    if (lua_istable(L, arg)) {
+        lua_rawgeti(L, arg, 1);
+        src.x = (float)luaL_checknumber(L, -1);
+        lua_rawgeti(L, arg, 2);
+        src.y = (float)luaL_checknumber(L, -1);
+        lua_rawgeti(L, arg, 3);
+        src.w = (float)luaL_checknumber(L, -1);
+        lua_rawgeti(L, arg, 4);
+        src.h = (float)luaL_checknumber(L, -1);
+        lua_pop(L, 4);
+        arg++;
+    } else {
+        src.x = 0.f;
+        src.y = 0.f;
+        src.w = (float)tex->width;
+        src.h = (float)tex->height;
+    }
+    vec2 uv[4];
+    SDL_FRect nrect;
+    nrect.x = (1.f / (float)tex->width) * src.x; 
+    nrect.y = (1.f / (float)tex->height) * src.y; 
+    nrect.w = (1.f / (float)tex->width) * src.w;
+    nrect.h = (1.f / (float)tex->height) * src.h;
+
+    uv[0][0] = nrect.x;
+    uv[0][1] = nrect.y;
+
+    uv[1][0] = nrect.x + nrect.w;
+    uv[1][1] = nrect.y;
+
+    uv[2][0] = nrect.x + nrect.w;
+    uv[2][1] = nrect.y + nrect.h;
+
+    uv[3][0] = nrect.x;
+    uv[3][1] = nrect.y + nrect.h;
+
+    CHECK_NUMBER(float, x);
+    CHECK_NUMBER(float, y);
+
+    mat3 mat = GLM_MAT3_IDENTITY_INIT;
+    glm_translate2d(mat, (vec2){x, y});
+
+    vec2 pos[4];
+    pos[0][0] = 0;
+    pos[0][1] = 0;
+
+    pos[1][0] = src.w;
+    pos[1][1] = 0;
+
+    pos[2][0] = src.w;
+    pos[2][1] = src.h;
+
+    pos[3][0] = 0;
+    pos[3][1] = src.h;
+
+    float angle = luaL_optnumber(L, arg++, 0.f);
+    float sx = luaL_optnumber(L, arg++, 1.f);
+    float sy = luaL_optnumber(L, arg++, 1.f);
+
+    glm_rotate2d(mat, DEG2RAD(angle));
+    glm_scale2d(mat, (vec2){sx, sy});
+
+    for (int i = 0; i < 4; i++) {
+        // vec3 p = {pos[i][0], pos[i][1], 0.f};
+        vec3 p = {1.f, 1.f, 1.f};
+        vec3 out;
+        glm_mat3_mulv(mat, p, out);
+        pos[i][0] += out[0];
+        pos[i][1] += out[1];
+    }
+
+    // int flip_x = lua_toboolean(L, arg++);
+    
+    int inv = 0;
+    float yy = 0.f;
+    s_check_buffer(L, self, 6);
+    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    for (int i = 0; i < 6; i++) {
+        memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
+    }
+    v[0].x = pos[0][0];
+    v[0].y = pos[0][1];
+    v[0].u = uv[0][0];
+    v[0].v = uv[0][1];
+
+    v[1].x = pos[1][0];
+    v[1].y = pos[1][1];
+    v[1].u = uv[1][0];
+    v[1].v = uv[1][1];
+
+    v[2].x = pos[2][0];
+    v[2].y = pos[2][1];
+    v[2].u = uv[2][0];
+    v[2].v = uv[2][1];
+
+    v[3].x = pos[0][0];
+    v[3].y = pos[0][1];
+    v[3].u = uv[0][0];
+    v[3].v = uv[0][1];
+
+    v[4].x = pos[3][0];
+    v[4].y = pos[3][1];
+    v[4].u = uv[3][0];
+    v[4].v = uv[3][1];
+
+    v[5].x = pos[2][0];
+    v[5].y = pos[2][1];
+    v[5].u = uv[2][0];
+    v[5].v = uv[2][1];
+    self->buffer.offset += 6;
+
+    return 0;
+}
+
 static int l_RenderBatch2D__get_white_texture(lua_State* L) {
     CHECK_META(RenderBatch2D);
     lua_rawgeti(L, LUA_REGISTRYINDEX, self->white_texture_ref);
@@ -454,21 +895,36 @@ static int l_RenderBatch2D__set_color(lua_State* L) {
     return 0;
 }
 
+static int l_RenderBatch2D__set_z_index(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    self->aux_vertex.z = (float)luaL_checknumber(L, arg);
+    return 0;
+}
+
 static int l_RenderBatch2D__set_texture(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if (!lua_isuserdata(L, arg) && !lua_isnil(L, arg))
+    Texture2D* tex = NULL;
+    if (lua_gettop(L) < 2 || lua_isnil(L, arg)) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, self->white_texture_ref);
+        tex = (Texture2D*)lua_touserdata(L, -1);
+        lua_pop(L, 1);
+    } else if (lua_isuserdata(L, arg)) {
+        tex = (Texture2D*)lua_touserdata(L, arg);
+    } else
         return luaL_argerror(L, arg, "must be a Texture2D, Canvas or nil");
-    Texture2D* tex = (Texture2D*)lua_touserdata(L, arg);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_texture_ref);
     Texture2D* curr = (Texture2D*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
     if (tex != curr) {
+        lua_pushvalue(L, arg);
+        lua_rawseti(L, LUA_REGISTRYINDEX, self->current_texture_ref);
         s_push_draw_command(self, L);
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_SET_TEXTURE;
         rc.texture.slot = 0;
         rc.texture.target = GL_TEXTURE_2D;
         rc.texture.handle = tex ? tex->handle : 0;
-        self->renderer->push(self->renderer, &rc);
+        RENDERLIST_PUSH(self->list, &rc);
     }
     return 0;
 }
@@ -486,17 +942,17 @@ static int l_RenderBatch2D__set_effect(lua_State* L) {
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_DRAW_VERTEX;
         rc.draw.mode = GL_TRIANGLES;
-        rc.draw.start = 
         rc.type = RENDER_COMMAND_SET_EFFECT;
         rc.effect.handle = eff ? eff->handle : 0;
-        self->renderer->push(self->renderer, &rc);
+        RENDERLIST_PUSH(self->list, &rc);
     }
     return 0;
 }
 
 static int l_RenderBatch2D__set_canvas(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if (!lua_isuserdata(L, arg) && !lua_isnil(L, arg))
+    int args = lua_gettop(L)-1;
+    if (args > 0 && !lua_isuserdata(L, arg) && !lua_isnil(L, arg))
         return luaL_argerror(L, arg, "must be an Canvas or nil");
     Canvas def;
     Canvas* canvas = (Canvas*)lua_touserdata(L, arg);
@@ -515,29 +971,55 @@ static int l_RenderBatch2D__set_canvas(lua_State* L) {
     rc.type = RENDER_COMMAND_SET_TARGET;
     rc.target.target = GL_FRAMEBUFFER;
     rc.target.handle = canvas ? canvas->fbo : 0;
-    self->renderer->push(self->renderer, &rc);
+    RENDERLIST_PUSH(self->list, &rc);
     s_push_update_size(self, L, canvas->texture.width, canvas->texture.height);
     return 0;
 }
 
 static int l_RenderBatch2D__set_viewport(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    s_push_draw_command(self, L);
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_SET_VIEWPORT;
     rc.viewport.x = (int)luaL_checkinteger(L, arg++);
     rc.viewport.y = (int)luaL_checkinteger(L, arg++);
     rc.viewport.width = (int)luaL_checkinteger(L, arg++);
     rc.viewport.height = (int)luaL_checkinteger(L, arg++);
-    self->renderer->push(self->renderer, &rc);
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__set_float_uniform(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
+    rc.uniform.location = (int)luaL_checkinteger(L, arg++);
+    rc.uniform.f = (float)luaL_checknumber(L, arg++);
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__set_matrix_uniform(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
+    rc.uniform.location = (int)luaL_checkinteger(L, arg++);
+    if (lua_istable(L, arg)) {
+        float* m = (float*)rc.uniform.m;
+        for (int i = 0; i < 16; i++) {
+            lua_rawgeti(L, arg, i+1);
+            m[i] = (float)luaL_checknumber(L, -1);
+        }
+        lua_pop(L, 16);
+    }
+    RENDERLIST_PUSH(self->list, &rc);
     return 0;
 }
 
 static int l_RenderBatch2D__set_clip_rect(lua_State* L) {
     CHECK_META(RenderBatch2D);
     s_push_draw_command(self, L);
+    struct RenderCommand rc;
     if (lua_isinteger(L, arg)) {
-        struct RenderCommand rc;
         int h;
         SDL_GetWindowSize(self->window, NULL, &h);
         rc.type = RENDER_COMMAND_ENABLE_CLIP_RECT;
@@ -549,19 +1031,62 @@ static int l_RenderBatch2D__set_clip_rect(lua_State* L) {
         rc.clip.y = h - bottom;
         rc.clip.width = right - left;
         rc.clip.height = bottom-top;
-        self->renderer->push(self->renderer, &rc);
     } else if (lua_isnil(L, arg) || lua_gettop(L) < 2) {
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_DISABLE_CLIP_RECT;
-        self->renderer->push(self->renderer, &rc);
     } else
         return luaL_argerror(L, arg, "must contains the rect values (x, y, w, h), or nil to disable");
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static const char* blend_modes[] = {
+    "alpha", "additive", "subtractive", "multiply", NULL
+};
+
+static int l_RenderBatch2D__set_blend_mode(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
+    int opt = luaL_checkoption(L, arg, "alpha", blend_modes);
+    if (opt < 0)
+        return luaL_argerror(L, arg, "invalid option");
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_SET_BLEND_MODE;
+    switch(opt) {
+        case 0:
+            rc.blend.func0 = GL_SRC_ALPHA;
+            rc.blend.func1 = GL_ONE_MINUS_SRC_ALPHA;
+            rc.blend.equation = GL_FUNC_ADD;
+            break;
+        case 1:
+            rc.blend.func0 = GL_SRC_ALPHA;
+            rc.blend.func1 = GL_ONE;
+            rc.blend.equation = GL_FUNC_ADD;
+            break;
+        case 2:
+            rc.blend.func0 = GL_SRC_ALPHA;
+            rc.blend.func1 = GL_ONE;
+            rc.blend.equation = GL_FUNC_REVERSE_SUBTRACT;
+            break;
+        case 3:
+            rc.blend.func0 = GL_DST_COLOR;
+            rc.blend.func1 = GL_ZERO;
+            rc.blend.equation = GL_FUNC_ADD;
+            break;
+    }
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__draw(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
     return 0;
 }
 
 static int l_RenderBatch2D__begin(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    self->renderer->clear(self->renderer);
+    RENDERLIST_CLEAR(self->list);
     self->buffer.offset = 0;
     self->last_offset = 0;
     /* Set effect */
@@ -571,7 +1096,7 @@ static int l_RenderBatch2D__begin(lua_State* L) {
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_SET_EFFECT;
     rc.effect.handle = eff->handle;
-    self->renderer->push(self->renderer, &rc);
+    RENDERLIST_PUSH(self->list, &rc);
     /* Set texture */
     memset(&rc, 0, sizeof(rc));
     rc.type = RENDER_COMMAND_SET_TEXTURE;
@@ -581,7 +1106,7 @@ static int l_RenderBatch2D__begin(lua_State* L) {
     rc.texture.handle = tex->handle;
     rc.texture.target = GL_TEXTURE_2D;
     rc.texture.slot = 0;
-    self->renderer->push(self->renderer, &rc);
+    RENDERLIST_PUSH(self->list, &rc);
     
     int w, h;
     SDL_GetWindowSize(self->window, &w, &h);
@@ -597,12 +1122,18 @@ static void s_draw_batch(RenderBatch2D* r, lua_State* L) {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         s_push_draw_command(r, L);
     }
-    r->renderer->call(r->renderer);
+    RENDERLIST_CALL(r->list);
 }
 
 static int l_RenderBatch2D__finish(lua_State* L) {
     CHECK_META(RenderBatch2D);
     s_draw_batch(self, L);
+    return 0;
+}
+
+static int l_RenderBatch2D__present(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    SDL_GL_SwapWindow(self->window);
     return 0;
 }
 
@@ -615,17 +1146,25 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_META_FIELD(RenderBatch2D, push_vertex),
         REG_META_FIELD(RenderBatch2D, push_triangle),
         REG_META_FIELD(RenderBatch2D, push_rect),
+        REG_META_FIELD(RenderBatch2D, push_quad),
         REG_META_FIELD(RenderBatch2D, push_cube),
+        REG_META_FIELD(RenderBatch2D, push_sprite),
         REG_META_FIELD(RenderBatch2D, get_white_texture),
         REG_META_FIELD(RenderBatch2D, get_default_effect),
         REG_META_FIELD(RenderBatch2D, set_color),
+        REG_META_FIELD(RenderBatch2D, set_z_index),
         REG_META_FIELD(RenderBatch2D, set_texture),
         REG_META_FIELD(RenderBatch2D, set_effect),
         REG_META_FIELD(RenderBatch2D, set_canvas),
         REG_META_FIELD(RenderBatch2D, set_clip_rect),
+        REG_META_FIELD(RenderBatch2D, set_blend_mode),
         REG_META_FIELD(RenderBatch2D, set_viewport),
+        REG_META_FIELD(RenderBatch2D, set_float_uniform),
+        REG_META_FIELD(RenderBatch2D, set_matrix_uniform),
+        REG_META_FIELD(RenderBatch2D, draw),
         REG_META_FIELD(RenderBatch2D, begin),
         REG_META_FIELD(RenderBatch2D, finish),
+        REG_META_FIELD(RenderBatch2D, present),
         {NULL, NULL}
     };
     luaL_setfuncs(L, reg, 0);

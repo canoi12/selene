@@ -3,6 +3,9 @@
 
 #include "renderer/renderer.h"
 
+extern int l_renderer_create(lua_State* L);
+extern int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win);
+
 static int s_default_event_callback(lua_State *L);
 static int s_default_step_callback(lua_State* L);
 static void s_default_quit_callback(lua_State* L, int status);
@@ -23,8 +26,6 @@ SeleneContext g_selene_context = {
     .c_quit_callback = s_default_quit_callback
 };
 SeleneContext *s_ctx = &g_selene_context;
-
-extern int l_renderer_create_Batch2D(lua_State *L);
 
 static int s_selene_step_callback(lua_State *L) {
     const int res = s_default_step_callback(L);
@@ -75,8 +76,6 @@ static void s_selene_quit_callback(lua_State *L, int status) {
 #endif
 }
 
-extern int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win);
-
 static int l_selene__call(lua_State *L) {
     const char *name = luaL_checkstring(L, 2);
     const char *version = luaL_checkstring(L, 3);
@@ -107,11 +106,17 @@ static int l_selene__call(lua_State *L) {
     luaL_setmetatable(L, "sdlWindow");
     *win_ptr = win;
     g_selene_context.l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+#if 0
     NEW_UDATA(Renderer, r);
     if (g_init_renderer(L, r, win) < 0) {
         const char* str = lua_tostring(L, -1);
         return luaL_error(L, "%s", str);
     }
+#endif
+    lua_pushcfunction(L, l_renderer_create);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_window_ref);
+    if (lua_pcall(L, 1, 1, 0) != LUA_OK)
+        return luaL_error(L, "failed to create renderer: %s", lua_tostring(L, -1));
     g_selene_context.l_renderer_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     g_selene_context.c_step_callback = s_selene_step_callback;
     g_selene_context.c_quit_callback = s_selene_quit_callback;
@@ -306,6 +311,11 @@ static int l_selene_get_renderer(lua_State *L) {
     return 1;
 }
 
+static int l_selene_get_window(lua_State* L) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
+    return 1;
+}
+
 extern int selene_open_enums(lua_State *L);
 
 /**
@@ -317,10 +327,12 @@ int luaopen_selene(lua_State *L) {
     const luaL_Reg reg[] = {
         /* Runner functions */
         REG_FIELD(selene, set_running),
+        // Set callbacks
         REG_FIELD(selene, set_event),
         REG_FIELD(selene, set_step),
         REG_FIELD(selene, set_quit),
-        // REG_FIELD(selene, get_window),
+        // Get data
+        REG_FIELD(selene, get_window),
         REG_FIELD(selene, get_renderer),
         // REG_FIELD(selene, get_audio_system),
         {NULL, NULL}
