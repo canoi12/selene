@@ -741,10 +741,6 @@ static int l_RenderBatch2D__push_cube(lua_State* L) {
         bv[i].x = out[0];
         bv[i].y = out[1];
         bv[i].z = out[2];
-        if (is_white)
-            bv[i].r = bv[i].g = bv[i].b = bv[i].a = 1.f;
-        //bv[i].u = tex_uv[index%4][0];
-        //bv[i].v = tex_uv[index%4][1];
     }
     self->buffer.offset += 36;
     return 0;
@@ -795,47 +791,73 @@ static int l_RenderBatch2D__push_sprite(lua_State* L) {
     CHECK_NUMBER(float, x);
     CHECK_NUMBER(float, y);
 
-    mat3 mat = GLM_MAT3_IDENTITY_INIT;
-    glm_translate2d(mat, (vec2){x, y});
+
+    float angle = luaL_optnumber(L, arg++, 0.f);
+    float sx = luaL_optnumber(L, arg++, 1.f);
+    float sy = luaL_optnumber(L, arg++, 1.f);
+    vec2 offset = {0, 0};
+    if (lua_istable(L, arg)) {
+        lua_rawgeti(L, arg, 1);
+        offset[0] = sx*(float)luaL_checknumber(L, -1);
+        lua_rawgeti(L, arg, 2);
+        offset[1] = sy*(float)luaL_checknumber(L, -1);
+        lua_pop(L, 2);
+    }
+    arg++;
+    int invert[2] = {0, 0};
+    if (lua_istable(L, arg)) {
+        lua_rawgeti(L, arg, 1);
+        invert[0] = lua_toboolean(L, -1);
+        lua_rawgeti(L, arg, 2);
+        invert[1] = lua_toboolean(L, -1);
+        lua_pop(L, 2);
+        arg++;
+    }
 
     vec2 pos[4];
     pos[0][0] = 0;
     pos[0][1] = 0;
 
-    pos[1][0] = src.w;
+    pos[1][0] = 1.f; //src.w;//(sx*src.w);
     pos[1][1] = 0;
 
-    pos[2][0] = src.w;
-    pos[2][1] = src.h;
+    pos[2][0] = 1.f; //src.w;//(sx*src.w);
+    pos[2][1] = 1.f; //src.h;//(sy*src.h);
 
     pos[3][0] = 0;
-    pos[3][1] = src.h;
+    pos[3][1] = 1.f; //src.h;//(sy*src.h);
 
-    float angle = luaL_optnumber(L, arg++, 0.f);
-    float sx = luaL_optnumber(L, arg++, 1.f);
-    float sy = luaL_optnumber(L, arg++, 1.f);
-
+    #if 1
+    mat4 mat = GLM_MAT4_IDENTITY_INIT;
+    glm_rotate_z(mat, DEG2RAD(angle), mat);
+    glm_translate(mat, (vec3){-offset[0], -offset[1], 0.f});
+    glm_scale(mat, (vec3){sx*src.w, sy*src.h, 1.f});
+    #else
+    mat3 mat = GLM_MAT3_IDENTITY_INIT;
+    glm_scale2d(mat, (vec2){src.w*sx, src.h*sy});
+    //glm_translate2d(mat, (vec2){-offset[0], -offset[1]});
     glm_rotate2d(mat, DEG2RAD(angle));
-    glm_scale2d(mat, (vec2){sx, sy});
+    //glm_translate2d(mat, (vec2){90.f, 95.f});
+    #endif
 
     for (int i = 0; i < 4; i++) {
-        // vec3 p = {pos[i][0], pos[i][1], 0.f};
-        vec3 p = {1.f, 1.f, 1.f};
-        vec3 out;
-        glm_mat3_mulv(mat, p, out);
-        pos[i][0] += out[0];
-        pos[i][1] += out[1];
-    }
+        vec3 p = {pos[i][0], pos[i][1], 0.f};
+        #if 1
+        glm_mat4_mulv3(mat, p, 1.f, p);
+        #else
+        glm_mat3_mulv(mat, p, p);
+        #endif
+        pos[i][0] = x+p[0];
+        pos[i][1] = y+p[1];
 
-    // int flip_x = lua_toboolean(L, arg++);
+        if (invert[0]) uv[i][0] = 1.f - uv[i][0];
+        if (invert[1]) uv[i][1] = 1.f - uv[i][1];
+    }
     
-    int inv = 0;
-    float yy = 0.f;
     s_check_buffer(L, self, 6);
     Vertex2D* v = self->buffer.data + self->buffer.offset;
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 6; i++)
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
-    }
     v[0].x = pos[0][0];
     v[0].y = pos[0][1];
     v[0].u = uv[0][0];
