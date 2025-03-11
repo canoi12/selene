@@ -12,6 +12,7 @@ struct RenderBatch2D {
     int white_texture_ref;
     int default_effect_ref;
 
+    int current_clear_mask;
     int current_draw_mode;
 
     int current_effect_ref;
@@ -84,6 +85,7 @@ static int l_RenderBatch2D_create(lua_State* L) {
     self->renderer = r;
     self->list = r->list_ptr;
     self->current_draw_mode = GL_TRIANGLES;
+    self->current_clear_mask = GL_COLOR_BUFFER_BIT;
 
     lua_pushcfunction(L, l_Effect2D_create);
     lua_pushnil(L);
@@ -196,7 +198,7 @@ static int l_RenderBatch2D__clear(lua_State* L) {
     CHECK_META(RenderBatch2D);
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_CLEAR;
-    rc.clear.mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
+    rc.clear.mask = self->current_clear_mask;
     rc.clear.color[0] = 0.f;
     rc.clear.color[1] = 0.f;
     rc.clear.color[2] = 0.f;
@@ -204,6 +206,26 @@ static int l_RenderBatch2D__clear(lua_State* L) {
     for (int i = 2; i <= lua_gettop(L); i++) {
         rc.clear.color[i-2] = (float)luaL_checknumber(L, i);
     }
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__enable_3d(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    self->current_clear_mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_ENABLE;
+    rc.enable.attrib = GL_DEPTH_TEST;
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__disable_3d(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    self->current_clear_mask = GL_COLOR_BUFFER_BIT;
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_DISABLE;
+    rc.enable.attrib = GL_DEPTH_TEST;
     RENDERLIST_PUSH(self->list, &rc);
     return 0;
 }
@@ -850,8 +872,20 @@ static int l_RenderBatch2D__push_sprite(lua_State* L) {
         pos[i][0] = x+p[0];
         pos[i][1] = y+p[1];
 
-        if (invert[0]) uv[i][0] = 1.f - uv[i][0];
-        if (invert[1]) uv[i][1] = 1.f - uv[i][1];
+    }
+    if (invert[0]) {
+        vec2 aux = {uv[0][0], uv[2][0]};
+        uv[0][0] = uv[1][0];
+        uv[1][0] = aux[0];
+        uv[2][0] = uv[3][0];
+        uv[3][0] = aux[1];
+    } 
+    if (invert[1]) {
+        vec2 aux = {uv[0][1], uv[2][1]};
+        uv[0][1] = uv[1][1];
+        uv[1][1] = aux[0];
+        uv[2][1] = uv[3][1];
+        uv[3][1] = aux[1];
     }
     
     s_check_buffer(L, self, 6);
@@ -1165,6 +1199,8 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_FIELD(RenderBatch2D, create),
         REG_META_FIELD(RenderBatch2D, destroy),
         REG_META_FIELD(RenderBatch2D, clear),
+        REG_META_FIELD(RenderBatch2D, enable_3d),
+        REG_META_FIELD(RenderBatch2D, disable_3d),
         REG_META_FIELD(RenderBatch2D, push_vertex),
         REG_META_FIELD(RenderBatch2D, push_triangle),
         REG_META_FIELD(RenderBatch2D, push_rect),
