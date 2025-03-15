@@ -7,6 +7,7 @@ struct RenderBatch2D {
     Renderer* renderer;
     SDL_Window* window;
     RenderList* list;
+
     Uint32 vao;
     Uint32 vbo;
     int white_texture_ref;
@@ -19,12 +20,14 @@ struct RenderBatch2D {
     int current_texture_ref;
     int current_canvas_ref;
 
+    Vertex2D aux_vertex;
     struct {
         int offset, count;
         Vertex2D* data;
     } buffer;
     int last_offset;
-    Vertex2D aux_vertex;
+
+    mat4 view_matrix;
 };
 
 static void s_check_buffer(lua_State* L, RenderBatch2D* rb, int count) {
@@ -226,6 +229,58 @@ static int l_RenderBatch2D__disable_3d(lua_State* L) {
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_DISABLE;
     rc.enable.attrib = GL_DEPTH_TEST;
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__identity(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    float* f = (float*)self->view_matrix;
+    for (int i = 0; i < 16; i++) {
+        if (i % 4 == 0) f[i] = 1.f;
+        else f[i] = 0.f;
+    }
+    return 0;
+}
+
+static int l_RenderBatch2D__translate(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    vec3 pos;
+    mat4 m = GLM_MAT4_IDENTITY_INIT;
+    pos[0] = (float)luaL_checknumber(L, arg++);
+    pos[1] = (float)luaL_checknumber(L, arg++);
+    pos[2] = (float)luaL_optnumber(L, arg++, 0.f);
+    glm_translate(m, pos);
+    glm_mat4_ucopy(m, self->view_matrix);
+    return 0;
+}
+
+static int l_RenderBatch2D__rotate(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    float angle = (float)luaL_checknumber(L, arg++);
+    glm_rotate_z(self->view_matrix, DEG2RAD(angle), self->view_matrix);
+    return 0;
+}
+
+static int l_RenderBatch2D__scale(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    vec3 scale;
+    scale[0] = (float)luaL_checknumber(L, arg++);
+    scale[1] = (float)luaL_checknumber(L, arg++);
+    scale[2] = (float)luaL_optnumber(L, arg++, 0.f);
+    glm_scale(self->view_matrix, scale);
+    return 0;
+}
+
+static int l_RenderBatch2D__send_view_matrix(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
+    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_SET_VIEW;
+    rc.uniform.location = eff->model_view_location;
+    glm_mat4_udup(rc.uniform.m, self->view_matrix);
     RENDERLIST_PUSH(self->list, &rc);
     return 0;
 }
@@ -833,6 +888,7 @@ static int l_RenderBatch2D__push_sprite(lua_State* L) {
         lua_rawgeti(L, arg, 2);
         invert[1] = lua_toboolean(L, -1);
         lua_pop(L, 2);
+        fprintf(stdout, "invert: %d %d\n", invert[0], invert[1]);
         arg++;
     }
 
@@ -871,17 +927,17 @@ static int l_RenderBatch2D__push_sprite(lua_State* L) {
         #endif
         pos[i][0] = x+p[0];
         pos[i][1] = y+p[1];
-
     }
     if (invert[0]) {
-        vec2 aux = {uv[0][0], uv[2][0]};
+        const vec2 aux = {uv[0][0], uv[2][0]};
         uv[0][0] = uv[1][0];
         uv[1][0] = aux[0];
         uv[2][0] = uv[3][0];
         uv[3][0] = aux[1];
     } 
     if (invert[1]) {
-        vec2 aux = {uv[0][1], uv[2][1]};
+        fprintf(stdout, "invert y\n");
+        const vec2 aux = {uv[0][1], uv[2][1]};
         uv[0][1] = uv[1][1];
         uv[1][1] = aux[0];
         uv[2][1] = uv[3][1];
@@ -1201,6 +1257,11 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_META_FIELD(RenderBatch2D, clear),
         REG_META_FIELD(RenderBatch2D, enable_3d),
         REG_META_FIELD(RenderBatch2D, disable_3d),
+        REG_META_FIELD(RenderBatch2D, identity),
+        REG_META_FIELD(RenderBatch2D, translate),
+        REG_META_FIELD(RenderBatch2D, rotate),
+        REG_META_FIELD(RenderBatch2D, scale),
+        REG_META_FIELD(RenderBatch2D, send_view_matrix),
         REG_META_FIELD(RenderBatch2D, push_vertex),
         REG_META_FIELD(RenderBatch2D, push_triangle),
         REG_META_FIELD(RenderBatch2D, push_rect),
