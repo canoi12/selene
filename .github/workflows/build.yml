@@ -87,12 +87,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libsdl2-dev
           sudo apt-get install openjdk-17-jre openjdk-17-jdk
-          bash scripts/download_sdl.sh source
-          bash scripts/setup.sh android
+          bash misc/scripts/download_sdl.sh source
+          bash misc/scripts/setup.sh android
 
       - name: Build project
         run: |
-          bash scripts/build.sh android
+          bash misc/scripts/build.sh android
 
   build-emscripten:
     runs-on: ubuntu-latest
@@ -106,10 +106,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake git
-          bash scripts/setup.sh emscripten
+          bash misc/scripts/setup.sh emscripten
 
           echo "${EMSDK_ROOT_DIR}" >> $GITHUB_PATH
 
       - name: Build project
         run: |
-          bash scripts/build.sh emscripten
+          bash misc/scripts/build.sh emscripten
