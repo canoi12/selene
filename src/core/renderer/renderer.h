@@ -155,23 +155,23 @@ enum RenderCommandType {
     RENDER_COMMAND_SET_PROJECTION,
     RENDER_COMMAND_SET_VIEW,
 
+    RENDER_COMMAND_SET_VERTEX_ARRAY,
     RENDER_COMMAND_SET_BUFFER,
-    RENDER_COMMAND_SET_EFFECT,
+    RENDER_COMMAND_SET_PROGRAM,
     RENDER_COMMAND_SET_TEXTURE,
-    RENDER_COMMAND_SET_TARGET,
+    RENDER_COMMAND_SET_FRAMEBUFFER,
+    RENDER_COMMAND_SET_RENDERBUFFER,
 
     RENDER_COMMAND_ENABLE_CLIP_RECT,
     RENDER_COMMAND_DISABLE_CLIP_RECT,
 
     RENDER_COMMAND_SET_BLEND_MODE,
 
+    RENDER_COMMAND_INTEGER_UNIFORM,
     RENDER_COMMAND_FLOAT_UNIFORM,
     RENDER_COMMAND_MATRIX_UNIFORM,
 
     RENDER_COMMAND_SET_VIEWPORT,
-
-    RENDER_COMMAND_DRAW_POINT,
-    RENDER_COMMAND_DRAW_LINE,
 
     RENDER_COMMAND_DRAW_VERTEX,
     RENDER_COMMAND_DRAW_INDEX,
@@ -189,23 +189,28 @@ struct RenderCommand {
         struct {
             Uint32 program;
             Uint32 location;
+            Sint8 c;
+            Uint8 uc;
+            Sint16 s;
+            Uint16 us;
+            Sint32 i;
+            Uint32 ui;
             float f;
+            double d;
             mat4 m;
         } uniform;
         struct { Uint32 mask; float color[4]; } clear;
         struct { int x, y, width, height; } clip;
         struct { Uint32 attrib; } enable;
         struct { Uint32 attrib; } disable;
-        struct { Uint32 target; Uint32 handle; } buffer;
 
         struct { int width, height; } size;
 
-        struct { Uint32 handle; } effect;
+        struct { Uint32 handle; } vao;
+        struct { Uint32 target; Uint32 handle; } buffer;
+        struct { Uint32 handle; } program;
         struct { Uint32 slot; Uint32 target; Uint32 handle; } texture;
         struct { Uint32 target; Uint32 handle; } target;
-
-        struct { Uint32 vao; Uint32 vbo; Uint32 ibo; } model;
-        struct { Uint32 vao; Uint32 vbo; } sprite_batch;
 
         struct { int x, y, width, height; } viewport;
         struct {
@@ -214,12 +219,11 @@ struct RenderCommand {
         } blend;
 
         struct {
-            Uint32 vao;
             Uint32 mode;
             Uint32 start, count;
         } draw;
+
         struct {
-            Uint32 vao;
             Uint32 mode;
             Uint32 start, count;
             Uint32 instance_count;
@@ -275,15 +279,19 @@ struct Renderer {
     PopRenderListFunc pop;
     CallRenderListFunc call;
 #endif
+    vec4 clear_color;
 
-    // texture
-    int current_tex2d_id;
-    int current_fbo_id;
-    // program
-    int current_program_id;
+    // vertex array
+    int current_vao_id;
     // buffer
     int current_vbo_id;
     int current_ibo_id;
+    // texture
+    int current_tex2d_id;
+    int current_fbo_id;
+    int current_rbo_id;
+    // program
+    int current_program_id;
 
     // render list
     int l_render_list_ref;

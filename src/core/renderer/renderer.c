@@ -1,5 +1,12 @@
 #include "renderer.h"
 
+static const char* blend_modes[] = {"alpha", "additive", "subtractive", "multiply", NULL};
+
+const char* projection_modes[] = {"orthographic", "frustum", "perspective", NULL};
+
+const char* clear_masks[] = {"color", "depth", "stencil", NULL};
+const int clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_STENCIL_BUFFER_BIT};
+
 const char* enable_attribs[] = { "blend", "depth test", NULL };
 const int enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST };
 
@@ -35,38 +42,6 @@ static void s_renderer_present(Renderer* r, lua_State* L) {
     lua_pop(L, 1);
     SDL_GL_SwapWindow(*window);
 }
-#if 0
-int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win) {
-    if (!r) {
-        lua_pushstring(L, "empty renderer");
-        return -1;
-    }
-    memset(r, 0, sizeof(*r));
-    r->pool = &(r->root);
-    r->pool->prev = NULL;
-    r->pool->next = NULL;
-    r->clear = s_renderer_clear_commands;
-    r->push = s_renderer_push_command;
-    r->pop = s_renderer_pop_command;
-    r->call = s_renderer_call_commands;
-    r->present = s_renderer_present;
-    SDL_GLContext ctx = SDL_GL_CreateContext(win);
-    if (!ctx) {
-        lua_pushfstring(L, "failed to create SDL OpenGL context: %s", SDL_GetError());
-        return -1;
-    }
-    SDL_GLContext* gl_ctx = (SDL_GLContext*)lua_newuserdata(L, sizeof(*gl_ctx));
-    luaL_setmetatable(L, "sdlGLContext");
-    SDL_GL_MakeCurrent(win, ctx);
-#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
-    if (gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress) == 0)
-        return luaL_error(L, "Failed to init glad");
-#endif
-    r->l_gl_context_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    r->l_window_ref = g_selene_context.l_window_ref;
-    return 0;
-}
-#endif
 
 int l_renderer_create(lua_State* L) {
     INIT_ARG();
@@ -89,10 +64,10 @@ int l_renderer_create(lua_State* L) {
     lua_pushvalue(L, 2);
     lua_call(L, 1, 1);
     r->list_ptr = (RenderList*)lua_touserdata(L, -1);
-    fprintf(stdout, "render list: %p\n", r->list_ptr);
+    // fprintf(stdout, "render list: %p\n", r->list_ptr);
     r->l_render_list_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     r->l_gl_context_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    lua_pushvalue(L, 2);
+    lua_pushvalue(L, 1);
     r->l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     return 1;
 }
@@ -122,18 +97,35 @@ static int l_Renderer__finish(lua_State* L) {
     return 0;
 }
 
+static int l_Renderer__set_clear_color(lua_State* L) {
+    CHECK_META(Renderer);
+    self->clear_color[0] = 0.f;
+    self->clear_color[1] = 0.f;
+    self->clear_color[2] = 0.f;
+    self->clear_color[3] = 1.f;
+    for (int i = 2; i <= lua_gettop(L); i++) {
+        self->clear_color[i-2] = (float)luaL_checknumber(L, i);
+    }
+    return 0;
+}
+
 static int l_Renderer__clear(lua_State* L) {
     CHECK_META(Renderer);
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_CLEAR;
-    rc.clear.mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
-    rc.clear.color[0] = 0.f;
-    rc.clear.color[1] = 0.f;
-    rc.clear.color[2] = 0.f;
-    rc.clear.color[3] = 1.f;
-    for (int i = 2; i <= lua_gettop(L); i++) {
-        rc.clear.color[i-2] = (float)luaL_checknumber(L, i);
+    int opt = luaL_checkoption(L, arg++, "color", clear_masks);
+    int mask = clear_masks_values[opt];
+    if (lua_gettop(L) >= arg) {
+        for (int i = arg; i <= lua_gettop(L); i++) {
+            int opt = luaL_checkoption(L, i, NULL, clear_masks);
+            if (opt != -1) mask |= clear_masks_values[opt];
+        }
     }
+    rc.clear.mask = mask;
+    rc.clear.color[0] = self->clear_color[0];
+    rc.clear.color[1] = self->clear_color[1];
+    rc.clear.color[2] = self->clear_color[2];
+    rc.clear.color[3] = self->clear_color[3];
     RENDERLIST_PUSH(self->list_ptr, &rc);
     return 0;
 }
@@ -158,21 +150,32 @@ static int l_Renderer__disable(lua_State* L) {
     return 0;
 }
 
+static int l_Renderer__set_vao(lua_State* L) {
+    CHECK_META(Renderer);
+    Uint32 handle = (int)luaL_optinteger(L, arg++, 0); 
+    if (handle != self->current_vao_id) {
+        struct RenderCommand rc;
+        rc.type = RENDER_COMMAND_SET_VERTEX_ARRAY;
+        rc.vao.handle = handle;
+        RENDERLIST_PUSH(self->list_ptr, &rc);
+        self->current_vao_id = handle;
+    }
+    return 0;
+}
+
 static int l_Renderer__set_texture(lua_State* L) {
     CHECK_META(Renderer);
     int target = luaL_checkoption(L, arg++, "tex2d", texture_targets);
-    Texture2D* tex = NULL;
-    if (lua_isuserdata(L, arg)) {
-        tex = (Texture2D*)lua_touserdata(L, arg);
-    }
-    int id = tex ? tex->handle : 0;
-    if (id != self->current_tex2d_id) {
+    Uint32 handle = (Uint32)luaL_optinteger(L, arg++, 0);
+    Uint32 slot = (Uint32)luaL_optinteger(L, arg++, 0);
+    if (handle != self->current_tex2d_id) {
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_SET_TEXTURE;
-        rc.texture.slot = 0;
+        rc.texture.slot = slot;
         rc.texture.target = texture_targets_values[target];
-        rc.texture.handle = id;
+        rc.texture.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
+        self->current_tex2d_id = handle;
     }
 
     return 0;
@@ -180,52 +183,44 @@ static int l_Renderer__set_texture(lua_State* L) {
 
 static int l_Renderer__set_texture2d(lua_State* L) {
     CHECK_META(Renderer);
-    Texture2D* tex = NULL;
-    if (lua_isuserdata(L, arg)) {
-        tex = (Texture2D*)lua_touserdata(L, arg);
-    }
-    int id = tex ? tex->handle : 0;
-    if (id != self->current_tex2d_id) {
+    Uint32 handle = (Uint32)luaL_optinteger(L, arg++, 0);
+    Uint32 slot = (Uint32)luaL_optinteger(L, arg++, 0);
+    if (handle != self->current_tex2d_id) {
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_SET_TEXTURE;
-        rc.texture.slot = 0;
+        rc.texture.slot = slot;
         rc.texture.target = GL_TEXTURE_2D;
-        rc.texture.handle = id;
+        rc.texture.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
+        self->current_tex2d_id = handle;
     }
     return 0;
 }
 
 static int l_Renderer__set_framebuffer(lua_State* L) {
     CHECK_META(Renderer);
-    Canvas* c = NULL;
-    if (lua_isuserdata(L, arg)) {
-        c = (Canvas*)lua_touserdata(L, arg);
-    }
-    int id = c ? c->fbo : 0;
-    if (id != self->current_fbo_id) {
+    Uint32 handle = (Uint32)luaL_optinteger(L, arg++, 0);
+    if (handle != self->current_fbo_id) {
         struct RenderCommand rc;
         /* Set target */
-        rc.type = RENDER_COMMAND_SET_TARGET;
+        rc.type = RENDER_COMMAND_SET_FRAMEBUFFER;
         rc.target.target = GL_FRAMEBUFFER;
-        rc.target.handle = id;
+        rc.target.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
+        self->current_fbo_id = handle;
     }
     return 0;
 }
 
 static int l_Renderer__set_program(lua_State* L) {
     CHECK_META(Renderer);
-    Effect2D* prog = NULL;
-    if (lua_isuserdata(L, arg)) {
-        prog = (Effect2D*)lua_touserdata(L, arg);
-    }
-    int id = prog ? prog->handle : 0;
-    if (id != self->current_program_id) {
+    Uint32 handle = (Uint32)luaL_optinteger(L, arg++, 0);
+    if (handle != self->current_program_id) {
         struct RenderCommand rc;
-        rc.type = RENDER_COMMAND_SET_EFFECT;
-        rc.effect.handle = id;
+        rc.type = RENDER_COMMAND_SET_PROGRAM;
+        rc.program.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
+        self->current_program_id = handle;
     }
     return 0;
 }
@@ -262,10 +257,6 @@ static int l_Renderer__set_scissor(lua_State* L) {
     RENDERLIST_PUSH(self->list_ptr, &rc);
     return 0;
 }
-
-static const char* blend_modes[] = {
-    "alpha", "additive", "subtractive", "multiply", NULL
-};
 
 static int l_Renderer__set_blend_mode(lua_State* L) {
     CHECK_META(Renderer);
@@ -312,6 +303,43 @@ static int l_Renderer__draw(lua_State* L) {
     return 0;
 }
 
+static int l_Renderer__send_float(lua_State* L) {
+    CHECK_META(Renderer);
+    const char* name = luaL_checkstring(L, arg++);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
+    rc.uniform.location = glGetUniformLocation(self->current_program_id, name);
+    rc.uniform.f = luaL_checknumber(L, arg);
+    RENDERLIST_PUSH(self->list_ptr, &rc);
+    return 0;
+}
+
+static int l_Renderer__send_matrix(lua_State* L) {
+    CHECK_META(Renderer);
+    const char* name = luaL_checkstring(L, arg++);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_MATRIX_UNIFORM;
+    rc.uniform.location = glGetUniformLocation(self->current_program_id, name);
+    if (lua_istable(L, arg)) {
+        if (lua_rawlen(L, arg) < 16)
+            return luaL_argerror(L, arg, "table must have at least 16 elements");
+        float* m = (float*)rc.uniform.m;
+        for (int i = 0; i < 16; i++) {
+            lua_rawgeti(L, arg, i+1);
+            m[i] = (int)luaL_checkinteger(L, -1);
+            lua_pop(L, 1);
+        }
+    } else {
+        float* m = (float*)rc.uniform.m;
+        for (int i = 0; i < 16; i++) {
+            if (i % 5 == 0) m[i] = 1.f;
+            else m[i] = 0.f;
+        }
+    }
+    RENDERLIST_PUSH(self->list_ptr, &rc);
+    return 0;
+}
+
 static int l_Renderer_meta(lua_State* L) {
     luaL_newmetatable(L, "Renderer");
     lua_pushvalue(L, -1);
@@ -323,12 +351,16 @@ static int l_Renderer_meta(lua_State* L) {
         REG_META_FIELD(Renderer, clear),
         REG_META_FIELD(Renderer, enable),
         REG_META_FIELD(Renderer, disable),
+        REG_META_FIELD(Renderer, set_vao),
         REG_META_FIELD(Renderer, set_texture2d),
         REG_META_FIELD(Renderer, set_framebuffer),
         REG_META_FIELD(Renderer, set_program),
         REG_META_FIELD(Renderer, set_viewport),
         REG_META_FIELD(Renderer, set_scissor),
         REG_META_FIELD(Renderer, set_blend_mode),
+        // uniforms
+        REG_META_FIELD(Renderer, send_float),
+        REG_META_FIELD(Renderer, send_matrix),
         REG_META_FIELD(Renderer, draw),
         {NULL, NULL}
     };

@@ -27,7 +27,7 @@ struct RenderBatch2D {
     } buffer;
     int last_offset;
 
-    mat4 view_matrix;
+    vec4* view_matrix;
 };
 
 static void s_check_buffer(lua_State* L, RenderBatch2D* rb, int count) {
@@ -49,11 +49,6 @@ static void s_push_draw_command(RenderBatch2D* r, lua_State* L) {
     rc.draw.mode = r->current_draw_mode;
     rc.draw.start = r->last_offset;
     rc.draw.count = r->buffer.offset - r->last_offset;
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-    rc.draw.vao = r->vao;
-#else
-    rc.draw.vao = r->vbo;
-#endif
     // fprintf(stdout, "draw command: %d %d\n", rc.draw.start, rc.draw.count);
     RENDERLIST_PUSH(r->renderer->list_ptr, &rc);
     r->last_offset = r->buffer.offset;
@@ -89,6 +84,7 @@ static int l_RenderBatch2D_create(lua_State* L) {
     self->list = r->list_ptr;
     self->current_draw_mode = GL_TRIANGLES;
     self->current_clear_mask = GL_COLOR_BUFFER_BIT;
+    self->view_matrix = malloc(sizeof(mat4));
 
     lua_pushcfunction(L, l_Effect2D_create);
     lua_pushnil(L);
@@ -104,7 +100,6 @@ static int l_RenderBatch2D_create(lua_State* L) {
     self->buffer.data = malloc(sizeof(Vertex2D) * self->buffer.count);
 #if defined(DEBUG)
     fprintf(stdout, "Batch buffer size: %d\n", self->buffer.count * sizeof(Vertex2D));
-    fprintf(stdout, "RenderCommandPool size: %d\n", sizeof(struct RenderCommandPool));
 #endif
 
     self->last_offset = 0;
@@ -192,6 +187,7 @@ static int l_RenderBatch2D__destroy(lua_State* L) {
         luaL_unref(L, LUA_REGISTRYINDEX, self->default_effect_ref);
     }
 
+    if (self->view_matrix) free(self->view_matrix);
     if (self->buffer.data) free(self->buffer.data);
 
     return 0;
@@ -229,58 +225,6 @@ static int l_RenderBatch2D__disable_3d(lua_State* L) {
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_DISABLE;
     rc.enable.attrib = GL_DEPTH_TEST;
-    RENDERLIST_PUSH(self->list, &rc);
-    return 0;
-}
-
-static int l_RenderBatch2D__identity(lua_State* L) {
-    CHECK_META(RenderBatch2D);
-    float* f = (float*)self->view_matrix;
-    for (int i = 0; i < 16; i++) {
-        if (i % 4 == 0) f[i] = 1.f;
-        else f[i] = 0.f;
-    }
-    return 0;
-}
-
-static int l_RenderBatch2D__translate(lua_State* L) {
-    CHECK_META(RenderBatch2D);
-    vec3 pos;
-    mat4 m = GLM_MAT4_IDENTITY_INIT;
-    pos[0] = (float)luaL_checknumber(L, arg++);
-    pos[1] = (float)luaL_checknumber(L, arg++);
-    pos[2] = (float)luaL_optnumber(L, arg++, 0.f);
-    glm_translate(m, pos);
-    glm_mat4_ucopy(m, self->view_matrix);
-    return 0;
-}
-
-static int l_RenderBatch2D__rotate(lua_State* L) {
-    CHECK_META(RenderBatch2D);
-    float angle = (float)luaL_checknumber(L, arg++);
-    glm_rotate_z(self->view_matrix, DEG2RAD(angle), self->view_matrix);
-    return 0;
-}
-
-static int l_RenderBatch2D__scale(lua_State* L) {
-    CHECK_META(RenderBatch2D);
-    vec3 scale;
-    scale[0] = (float)luaL_checknumber(L, arg++);
-    scale[1] = (float)luaL_checknumber(L, arg++);
-    scale[2] = (float)luaL_optnumber(L, arg++, 0.f);
-    glm_scale(self->view_matrix, scale);
-    return 0;
-}
-
-static int l_RenderBatch2D__send_view_matrix(lua_State* L) {
-    CHECK_META(RenderBatch2D);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
-    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
-    lua_pop(L, 1);
-    struct RenderCommand rc;
-    rc.type = RENDER_COMMAND_SET_VIEW;
-    rc.uniform.location = eff->model_view_location;
-    glm_mat4_udup(rc.uniform.m, self->view_matrix);
     RENDERLIST_PUSH(self->list, &rc);
     return 0;
 }
@@ -648,7 +592,6 @@ int l_RenderBatch2D__push_quad(lua_State* L) {
     for (int i = 0; i < 6; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
-    float x, y, w, h;
     int args = lua_gettop(L)-1;
     if (args < 4)
         return luaL_error(L, "function expects 4 tables as argument");
@@ -818,6 +761,9 @@ static int l_RenderBatch2D__push_cube(lua_State* L) {
         bv[i].x = out[0];
         bv[i].y = out[1];
         bv[i].z = out[2];
+        if (is_white) {
+            bv[i].r = bv[i].g = bv[i].b = bv[i].a = 1.f;
+        }
     }
     self->buffer.offset += 36;
     return 0;
@@ -888,7 +834,7 @@ static int l_RenderBatch2D__push_sprite(lua_State* L) {
         lua_rawgeti(L, arg, 2);
         invert[1] = lua_toboolean(L, -1);
         lua_pop(L, 2);
-        fprintf(stdout, "invert: %d %d\n", invert[0], invert[1]);
+        //fprintf(stdout, "invert: %d %d\n", invert[0], invert[1]);
         arg++;
     }
 
@@ -936,12 +882,11 @@ static int l_RenderBatch2D__push_sprite(lua_State* L) {
         uv[3][0] = aux[1];
     } 
     if (invert[1]) {
-        fprintf(stdout, "invert y\n");
-        const vec2 aux = {uv[0][1], uv[2][1]};
-        uv[0][1] = uv[1][1];
-        uv[1][1] = aux[0];
-        uv[2][1] = uv[3][1];
-        uv[3][1] = aux[1];
+        const vec2 aux = {uv[0][1], uv[1][1]};
+        uv[0][1] = uv[3][1];
+        uv[3][1] = aux[0];
+        uv[1][1] = uv[2][1];
+        uv[2][1] = aux[1];
     }
     
     s_check_buffer(L, self, 6);
@@ -982,6 +927,7 @@ static int l_RenderBatch2D__push_sprite(lua_State* L) {
     return 0;
 }
 
+/* Get default resources */
 static int l_RenderBatch2D__get_white_texture(lua_State* L) {
     CHECK_META(RenderBatch2D);
     lua_rawgeti(L, LUA_REGISTRYINDEX, self->white_texture_ref);
@@ -994,6 +940,64 @@ static int l_RenderBatch2D__get_default_effect(lua_State* L) {
     return 1;
 }
 
+/* Camera */
+static int l_RenderBatch2D__set_view_identity(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    float* f = (float*)self->view_matrix;
+    for (int i = 0; i < 16; i++) {
+        if (i % 5 == 0) f[i] = 1.f;
+        else f[i] = 0.f;
+    }
+    return 0;
+}
+
+static int l_RenderBatch2D__set_view_translate(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    vec3 pos;
+    pos[0] = (float)luaL_checknumber(L, arg++);
+    pos[1] = (float)luaL_checknumber(L, arg++);
+    pos[2] = (float)luaL_optnumber(L, arg++, 0.f);
+    glm_translate(self->view_matrix, pos);
+    return 0;
+}
+
+static int l_RenderBatch2D__set_view_rotate(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    float angle = (float)luaL_checknumber(L, arg++);
+    glm_rotate_z(self->view_matrix, DEG2RAD(angle), self->view_matrix);
+    return 0;
+}
+
+static int l_RenderBatch2D__set_view_scale(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    vec3 scale;
+    scale[0] = (float)luaL_checknumber(L, arg++);
+    scale[1] = (float)luaL_checknumber(L, arg++);
+    scale[2] = (float)luaL_optnumber(L, arg++, 0.f);
+    glm_scale(self->view_matrix, scale);
+    return 0;
+}
+
+static int l_RenderBatch2D__send_view_matrix(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
+    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_SET_VIEW;
+    rc.uniform.location = eff->model_view_location;
+    glm_mat4_udup(self->view_matrix, rc.uniform.m);
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__set_projection(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    return 0;
+}
+
+/* Set states */
 static int l_RenderBatch2D__set_color(lua_State* L) {
     CHECK_META(RenderBatch2D);
     float c[4] = {1.f, 1.f, 1.f, 1.f};
@@ -1054,8 +1058,8 @@ static int l_RenderBatch2D__set_effect(lua_State* L) {
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_DRAW_VERTEX;
         rc.draw.mode = GL_TRIANGLES;
-        rc.type = RENDER_COMMAND_SET_EFFECT;
-        rc.effect.handle = eff ? eff->handle : 0;
+        rc.type = RENDER_COMMAND_SET_PROGRAM;
+        rc.program.handle = eff ? eff->handle : 0;
         RENDERLIST_PUSH(self->list, &rc);
     }
     return 0;
@@ -1080,7 +1084,7 @@ static int l_RenderBatch2D__set_canvas(lua_State* L) {
     s_push_draw_command(self, L);
     struct RenderCommand rc;
     /* Set target */
-    rc.type = RENDER_COMMAND_SET_TARGET;
+    rc.type = RENDER_COMMAND_SET_FRAMEBUFFER;
     rc.target.target = GL_FRAMEBUFFER;
     rc.target.handle = canvas ? canvas->fbo : 0;
     RENDERLIST_PUSH(self->list, &rc);
@@ -1100,7 +1104,17 @@ static int l_RenderBatch2D__set_viewport(lua_State* L) {
     return 0;
 }
 
-static int l_RenderBatch2D__set_float_uniform(lua_State* L) {
+static int l_RenderBatch2D__send_integer(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_INTEGER_UNIFORM;
+    rc.uniform.location = (int)luaL_checkinteger(L, arg++);
+    rc.uniform.i = (int)luaL_checknumber(L, arg++);
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
+static int l_RenderBatch2D__send_float(lua_State* L) {
     CHECK_META(RenderBatch2D);
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
@@ -1110,7 +1124,7 @@ static int l_RenderBatch2D__set_float_uniform(lua_State* L) {
     return 0;
 }
 
-static int l_RenderBatch2D__set_matrix_uniform(lua_State* L) {
+static int l_RenderBatch2D__send_matrix(lua_State* L) {
     CHECK_META(RenderBatch2D);
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
@@ -1144,7 +1158,6 @@ static int l_RenderBatch2D__set_clip_rect(lua_State* L) {
         rc.clip.width = right - left;
         rc.clip.height = bottom-top;
     } else if (lua_isnil(L, arg) || lua_gettop(L) < 2) {
-        struct RenderCommand rc;
         rc.type = RENDER_COMMAND_DISABLE_CLIP_RECT;
     } else
         return luaL_argerror(L, arg, "must contains the rect values (x, y, w, h), or nil to disable");
@@ -1206,8 +1219,13 @@ static int l_RenderBatch2D__begin(lua_State* L) {
     Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
     lua_rawseti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
     struct RenderCommand rc;
-    rc.type = RENDER_COMMAND_SET_EFFECT;
-    rc.effect.handle = eff->handle;
+    rc.type = RENDER_COMMAND_SET_PROGRAM;
+    rc.program.handle = eff->handle;
+    RENDERLIST_PUSH(self->list, &rc);
+    /* Set vertex array */
+    memset(&rc, 0, sizeof(rc));
+    rc.type = RENDER_COMMAND_SET_VERTEX_ARRAY;
+    rc.vao.handle = self->vao;
     RENDERLIST_PUSH(self->list, &rc);
     /* Set texture */
     memset(&rc, 0, sizeof(rc));
@@ -1257,19 +1275,24 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_META_FIELD(RenderBatch2D, clear),
         REG_META_FIELD(RenderBatch2D, enable_3d),
         REG_META_FIELD(RenderBatch2D, disable_3d),
-        REG_META_FIELD(RenderBatch2D, identity),
-        REG_META_FIELD(RenderBatch2D, translate),
-        REG_META_FIELD(RenderBatch2D, rotate),
-        REG_META_FIELD(RenderBatch2D, scale),
-        REG_META_FIELD(RenderBatch2D, send_view_matrix),
+        /* push vertices */
         REG_META_FIELD(RenderBatch2D, push_vertex),
         REG_META_FIELD(RenderBatch2D, push_triangle),
         REG_META_FIELD(RenderBatch2D, push_rect),
         REG_META_FIELD(RenderBatch2D, push_quad),
         REG_META_FIELD(RenderBatch2D, push_cube),
         REG_META_FIELD(RenderBatch2D, push_sprite),
+        /* get default resources */
         REG_META_FIELD(RenderBatch2D, get_white_texture),
         REG_META_FIELD(RenderBatch2D, get_default_effect),
+        /* camera */
+        REG_META_FIELD(RenderBatch2D, set_view_identity),
+        REG_META_FIELD(RenderBatch2D, set_view_translate),
+        REG_META_FIELD(RenderBatch2D, set_view_rotate),
+        REG_META_FIELD(RenderBatch2D, set_view_scale),
+        REG_META_FIELD(RenderBatch2D, send_view_matrix),
+        REG_META_FIELD(RenderBatch2D, set_projection),
+        /* Set states */
         REG_META_FIELD(RenderBatch2D, set_color),
         REG_META_FIELD(RenderBatch2D, set_z_index),
         REG_META_FIELD(RenderBatch2D, set_texture),
@@ -1278,8 +1301,11 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_META_FIELD(RenderBatch2D, set_clip_rect),
         REG_META_FIELD(RenderBatch2D, set_blend_mode),
         REG_META_FIELD(RenderBatch2D, set_viewport),
-        REG_META_FIELD(RenderBatch2D, set_float_uniform),
-        REG_META_FIELD(RenderBatch2D, set_matrix_uniform),
+        /* uniforms */
+        REG_META_FIELD(RenderBatch2D, send_integer),
+        REG_META_FIELD(RenderBatch2D, send_float),
+        REG_META_FIELD(RenderBatch2D, send_matrix),
+        /* draw */
         REG_META_FIELD(RenderBatch2D, draw),
         REG_META_FIELD(RenderBatch2D, begin),
         REG_META_FIELD(RenderBatch2D, finish),

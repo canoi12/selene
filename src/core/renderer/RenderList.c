@@ -78,16 +78,27 @@ static int l_default_RenderList_call(lua_State* L) {
             case RENDER_COMMAND_SET_VIEWPORT:
                 glViewport(rc->viewport.x, rc->viewport.y, rc->viewport.width, rc->viewport.height);
                 break;
+            case RENDER_COMMAND_SET_VERTEX_ARRAY:
+        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
+                glBindVertexArray(rc->vao.handle);
+        #endif
+                break;
+            case RENDER_COMMAND_SET_BUFFER:
+                glBindBuffer(rc->buffer.target, rc->buffer.handle);
+                break;
             case RENDER_COMMAND_SET_TEXTURE:
                 glActiveTexture(GL_TEXTURE0+rc->texture.slot);
                 glBindTexture(rc->texture.target, rc->texture.handle);
                 break;
-            case RENDER_COMMAND_SET_EFFECT:
-                glUseProgram(rc->effect.handle);
-                curr_program = rc->effect.handle;
+            case RENDER_COMMAND_SET_PROGRAM:
+                glUseProgram(rc->program.handle);
+                curr_program = rc->program.handle;
                 break;
-            case RENDER_COMMAND_SET_TARGET:
+            case RENDER_COMMAND_SET_FRAMEBUFFER:
                 glBindFramebuffer(rc->target.target, rc->target.handle);
+                break;
+            case RENDER_COMMAND_SET_RENDERBUFFER:
+                glBindRenderbuffer(rc->target.target, rc->target.handle);
                 break;
             case RENDER_COMMAND_ENABLE_CLIP_RECT:
                 glEnable(GL_SCISSOR_TEST);
@@ -102,54 +113,25 @@ static int l_default_RenderList_call(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_PROJECTION:
             case RENDER_COMMAND_SET_VIEW:
-            case RENDER_COMMAND_MATRIX_UNIFORM: {
+            case RENDER_COMMAND_MATRIX_UNIFORM:
                 glUniformMatrix4fv(rc->uniform.location, 1, GL_FALSE, rc->uniform.m[0]);
-            }
-            break;
-            case RENDER_COMMAND_DRAW_VERTEX: {
-        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                glBindVertexArray(rc->draw.vao);
-        #else
-                glBindBuffer(GL_ARRAY_BUFFER, rc->draw.vao);
-        #endif
+                break;
+            case RENDER_COMMAND_DRAW_VERTEX:
                 // fprintf(stdout, "draw_vertex: %d %d %d\n", rc->draw.mode, rc->draw.start, rc->draw.count);
                 glDrawArrays(rc->draw.mode, rc->draw.start, rc->draw.count);
-        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                glBindVertexArray(0);
-        #else
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-        #endif
-            }
-            break;
-            case RENDER_COMMAND_DRAW_INDEX: {
-        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                glBindVertexArray(rc->draw.vao);
-        #else
-                glBindBuffer(GL_ARRAY_BUFFER, rc->draw.vao);
-        #endif
+                break;
+            case RENDER_COMMAND_DRAW_INDEX:
                 glDrawElements(rc->draw.mode, rc->draw.count, GL_UNSIGNED_INT, NULL);
-        #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                glBindVertexArray(0);
-        #else
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-        #endif
-            }
             break;
-            case RENDER_COMMAND_DRAW_VERTEX_INSTANCED: {
+            case RENDER_COMMAND_DRAW_VERTEX_INSTANCED:
         #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                glBindVertexArray(rc->instanced.vao);
                 glDrawArraysInstanced(rc->instanced.mode, rc->instanced.start, rc->instanced.count, rc->instanced.instance_count);
-                glBindVertexArray(0);
         #endif
-            }
             break;
-            case RENDER_COMMAND_DRAW_INDEX_INSTANCED: {
+            case RENDER_COMMAND_DRAW_INDEX_INSTANCED:
         #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                glBindVertexArray(rc->instanced.vao);
                 glDrawElementsInstanced(rc->instanced.mode, rc->instanced.count, GL_UNSIGNED_INT, NULL, rc->instanced.instance_count);
-                glBindVertexArray(0);
         #endif
-            }
             break;
             default:
                 break;
