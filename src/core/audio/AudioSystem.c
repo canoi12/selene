@@ -82,6 +82,10 @@ static void s_sdl_audio_callback(void* userdata, Uint8* stream, int len) {
  */
 
 MODULE_FUNCTION(AudioSystem, create) {
+    if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
+            return luaL_error(L, "failed to init SDL Audio subsystem: %s", SDL_GetError());
+    }
     int freq = SELENE_AUDIO_SAMPLE_RATE;
     int format = SELENE_AUDIO_FORMAT;
     int channels = SELENE_AUDIO_CHANNELS;

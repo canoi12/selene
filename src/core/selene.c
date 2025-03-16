@@ -80,7 +80,7 @@ static int l_selene__call(lua_State *L) {
     const char *name = luaL_checkstring(L, 2);
     const char *version = luaL_checkstring(L, 3);
     const char *org = luaL_checkstring(L, 4);
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER) < 0) {
         return luaL_error(L, "failed to initialize SDL: %s", SDL_GetError());
     }
 #if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
