@@ -78,9 +78,12 @@ selene.set_event(function(name, ...)
 end)
 selene.set_step(function()
     render:begin()
+    render:enable_3d()
     render:clear(0.2, 0.3, 0.3)
     render:push_cube({ 32, 64, -32 }, { math.rad(15), math.rad(60), 0 }, { 32, 32, 32 })
+    render:disable_3d()
     render:finish()
+    render:present()
 end)
 ```
 
@@ -88,7 +91,7 @@ end)
 
 First you need to install [CMake](https://cmake.org/) on your system.
 
-I put the [premake5](https://premake.github.io/) scripts on the `scripts/` folder, but I don't have plans to update it by now.
+I put the [premake5](https://premake.github.io/) scripts on the `misc/scripts/` folder, but I don't have plans to update it by now.
 
 ### SDL2
 
