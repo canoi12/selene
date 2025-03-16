@@ -1226,8 +1226,14 @@ static int l_RenderBatch2D__begin(lua_State* L) {
     RENDERLIST_PUSH(self->list, &rc);
     /* Set vertex array */
     memset(&rc, 0, sizeof(rc));
+#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
     rc.type = RENDER_COMMAND_SET_VERTEX_ARRAY;
     rc.vao.handle = self->vao;
+#else
+    rc.type = RENDER_COMMAND_SET_BUFFER;
+    rc.buffer.target = GL_ARRAY_BUFFER;
+    rc.buffer.handle = self->vbo;
+#endif
     RENDERLIST_PUSH(self->list, &rc);
     /* Set texture */
     memset(&rc, 0, sizeof(rc));
