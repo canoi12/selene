@@ -211,6 +211,7 @@ static int l_RenderBatch2D__clear(lua_State* L) {
 
 static int l_RenderBatch2D__enable_3d(lua_State* L) {
     CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
     self->current_clear_mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_ENABLE;
@@ -221,10 +222,11 @@ static int l_RenderBatch2D__enable_3d(lua_State* L) {
 
 static int l_RenderBatch2D__disable_3d(lua_State* L) {
     CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
     self->current_clear_mask = GL_COLOR_BUFFER_BIT;
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_DISABLE;
-    rc.enable.attrib = GL_DEPTH_TEST;
+    rc.disable.attrib = GL_DEPTH_TEST;
     RENDERLIST_PUSH(self->list, &rc);
     return 0;
 }
