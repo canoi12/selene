@@ -144,6 +144,7 @@ endif ()
 
 file(GLOB CGLM_FILES third/cglm/src/*.c)
 add_library(cglm STATIC ${CGLM_FILES})
+target_compile_definitions(cglm PRIVATE -DCGLM_STATIC)
 
 set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm)
 include_directories(third/cglm/include)
