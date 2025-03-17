@@ -1,6 +1,8 @@
 #include "../renderer.h"
 
 extern int l_Effect2D_create(lua_State* L);
+extern void char_rect(FontGlyph* glyphs, const int c, float *x, float *y, int* out_pos, int* out_rect, int width, int line_height);
+extern int utf8_codepoint(uint8_t* p, int* codepoint);
 
 typedef struct RenderBatch2D RenderBatch2D;
 struct RenderBatch2D {
