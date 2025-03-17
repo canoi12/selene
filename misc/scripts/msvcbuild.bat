@@ -12,7 +12,7 @@ goto :eof
 
 :build_x64
     cmake -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -B build -G %VS_GENERATOR% -A x64
-    cmake --build build --config %BUILD_TYPE%
+    cmake --build build --config %BUILD_TYPE% --target seleneBin
     if not exist "%CD%\%OUT_DIR%\x64-windows-msvc\v143\bin" mkdir "%CD%\%OUT_DIR%\x64-windows-msvc\v143\bin"
     if not exist "%CD%\%OUT_DIR%\x64-windows-msvc\v143\lib" mkdir "%CD%\%OUT_DIR%\x64-windows-msvc\v143\lib"
     copy "%CD%\build\bin\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x64-windows-msvc\v143\bin\"
@@ -22,7 +22,7 @@ goto :eof
 
 :build_x86
     cmake -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -B build -G %VS_GENERATOR% -A Win32
-    cmake --build build --config %BUILD_TYPE%
+    cmake --build build --config %BUILD_TYPE% --target seleneBin
     if not exist "%CD%\%OUT_DIR%\x86-windows-msvc\v143\bin" mkdir "%CD%\%OUT_DIR%\x86-windows-msvc\v143\bin"
     if not exist "%CD%\%OUT_DIR%\x86-windows-msvc\v143\lib" mkdir "%CD%\%OUT_DIR%\x86-windows-msvc\v143\lib"
     copy "%CD%\build\bin\%BUILD_TYPE%\*" "%CD%\%OUT_DIR%\x86-windows-msvc\v143\bin\"

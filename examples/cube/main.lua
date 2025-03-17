@@ -1,6 +1,6 @@
 local conf = {
     window = {
-        resizable = true
+        resizable = false
     }
 }
 selene('Cube Example', '1.0.0', 'org.selene.CubeExample', conf)
@@ -71,18 +71,18 @@ selene.set_step(function()
     renderer:clear(0.2, 0.3, 0.3)
     renderer:set_canvas(canvas)
     renderer:clear()
-    renderer:push_cube({64, 24, -26}, {0, ay, math.rad(15)*time}, {32, 32, 32})
-    renderer:push_rect(0, 0, 32, 32)
+    renderer:draw_cube({64, 24, -26}, {0, ay, math.rad(15)*time}, {32, 32, 32})
+    renderer:draw_rect(0, 0, 32, 32)
     renderer:set_color(1, 0, 0)
-    renderer:push_rect(160-32, 95-32, 32, 32)
+    renderer:draw_rect(160-32, 95-32, 32, 32)
     renderer:set_color()
     renderer:set_texture(canvas)
     renderer:set_canvas()
     renderer:set_color()
     --renderer:set_canvas(canvas)
-    renderer:push_cube({x, y, z}, {math.rad(x_angle), math.rad(y_angle), 0}, {160, 95, 160}, true)
+    renderer:draw_cube({x, y, z}, {math.rad(x_angle), math.rad(y_angle), 0}, {160, 95, 160}, true)
     --renderer:set_canvas(nil)
-    renderer:push_rect(0, 0, 160, 95)
+    renderer:draw_rect(0, 0, 160, 95)
     renderer:set_texture(renderer:get_white_texture())
     renderer:disable_3d()
     renderer:finish()
