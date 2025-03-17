@@ -54,6 +54,11 @@ typedef struct {
     int size;      // Size of each face of the cube map
 } TextureCube;
 
+typedef struct {
+    Texture2D texture;
+    FontGlyph glyphs[256];
+} Font;
+
 /**
  * Framebuffer
  */

@@ -29,6 +29,10 @@ extern int l_Effect2D_open_meta(lua_State* L);
 extern int l_Texture2D_open_meta(lua_State* L);
 extern int l_Texture2D_create(lua_State* L);
 
+extern int l_Font_open_meta(lua_State* L);
+extern int l_Font_8x8(lua_State* L);
+extern int l_Font_load(lua_State* L);
+
 extern int l_Canvas_open_meta(lua_State* L);
 extern int l_Canvas_create(lua_State* L);
 
@@ -150,7 +154,7 @@ static int l_Renderer__disable(lua_State* L) {
     return 0;
 }
 
-static int l_Renderer__set_vao(lua_State* L) {
+int l_Renderer__set_vao(lua_State* L) {
     CHECK_META(Renderer);
     Uint32 handle = (int)luaL_optinteger(L, arg++, 0); 
     if (handle != self->current_vao_id) {
@@ -387,6 +391,9 @@ int luaopen_renderer(lua_State* L) {
     l_Canvas_open_meta(L);
     lua_setfield(L, -2, CANVAS_CLASS);
 
+    l_Font_open_meta(L);
+    lua_setfield(L, -2, "Font");
+
     // RenderBatch2D
     l_RenderBatch2D_meta(L);
     lua_setfield(L, -2, "RenderBatch2D");
@@ -396,6 +403,8 @@ int luaopen_renderer(lua_State* L) {
         {"create", l_renderer_create},
         {"create_canvas", l_Canvas_create},
         {"create_texture", l_Texture2D_create},
+        {"font8x8", l_Font_8x8},
+        {"load_font", l_Font_load},
         {NULL, NULL}
     };
     luaL_setfuncs(L, reg, 0);

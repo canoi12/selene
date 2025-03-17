@@ -29,10 +29,12 @@ SeleneContext *s_ctx = &g_selene_context;
 
 static int s_selene_step_callback(lua_State *L) {
     const int res = s_default_step_callback(L);
+#if 0
     lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
     Renderer *r = (Renderer *)lua_touserdata(L, -1);
     lua_pop(L, 1);
     if (r && r->present) r->present(r, L);
+#endif
     SDL_Delay(16);
     return res;
 }
@@ -92,12 +94,40 @@ static int l_selene__call(lua_State *L) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
+    int width = 640;
+    int height = 380;
+    int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+
+    if (lua_istable(L, 5)) {
+        fprintf(stdout, "is table\n");
+        lua_getfield(L, 5, "window");
+        if (!lua_istable(L, -1)) {
+            lua_pop(L, 1);
+            lua_newtable(L);
+        }
+        lua_getfield(L, -1, "width");
+        width = (int)luaL_optinteger(L, -1, width);
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "height");
+        height = (int)luaL_optinteger(L, -1, height);
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "resizable");
+        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_RESIZABLE * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "always_on_top");
+        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_ALWAYS_ON_TOP * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "borderless");
+        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
+        lua_pop(L, 2);
+    }
+
     SDL_Window *win = SDL_CreateWindow(
         name,
 #if !defined(SELENE_USE_SDL3)
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 #endif
-        640, 380, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
+        width, height, flags
     );
     if (win == NULL)
         return luaL_error(L, "failed to create window: %s", SDL_GetError());

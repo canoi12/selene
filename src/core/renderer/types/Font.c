@@ -1,30 +1,14 @@
-#ifndef SELENE_NO_FONT
-#include "selene.h"
-#include "lua_helper.h"
+#include "../renderer.h"
 
-#include "font8x8/font8x8_latin.h"
+//#include "font8x8/font8x8_latin.h"
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
 
-static MODULE_FUNCTION(FontGlyph, __index) {
-    CHECK_META(FontGlyph);
-    int index = luaL_checkinteger(L, 2);
-    lua_pushinteger(L, self[index].ax);
-    lua_pushinteger(L, self[index].ay);
-    lua_pushinteger(L, self[index].bl);
-    lua_pushinteger(L, self[index].bt);
-    lua_pushinteger(L, self[index].bw);
-    lua_pushinteger(L, self[index].bh);
-    lua_pushinteger(L, self[index].tx);
-    return 7;
-}
+extern char font8x8_basic[128][8];
+extern char font8x8_control[32][8];
+    extern char font8x8_ext_latin[96][8];
 
-static MODULE_FUNCTION(FontGlyph, meta) {
-    luaL_newmetatable(L, "FontGlyph");
-    lua_pushcfunction(L, l_FontGlyph___index);
-    lua_setfield(L, -2, "__index");
-    return 1;
-}
-
-static MODULE_FUNCTION(font, create8x8) {
+int l_Font_8x8(lua_State* L) {
     int w = 2048;
     int h = 8;
     uint8_t* bitmap = malloc(w*h*4);
@@ -80,24 +64,24 @@ static MODULE_FUNCTION(font, create8x8) {
             }
         }
     }
-    lua_newtable(L);
+    NEW_UDATA(Font, font);
+    font->texture.width = w;
+    font->texture.height = h;
     size_t size = w*h*4;
-    NEW_UDATA_ADD(Data, dt, sizeof(Data)+size);
-    memcpy(&dt[1], bitmap, size);
+
+    glGenTextures(1, &(font->texture.handle));
+    glBindTexture(GL_TEXTURE_2D, font->texture.handle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glBindTexture(GL_TEXTURE_2D, 0);
     free(bitmap);
-    lua_setfield(L, -2, "data");
-    lua_pushinteger(L, w);
-    lua_setfield(L, -2, "width");
-    lua_pushinteger(L, h);
-    lua_setfield(L, -2, "height");
-    lua_pushinteger(L, 4);
-    lua_setfield(L, -2, "channels");
-    lua_pushinteger(L, SELENE_PIXEL_RGBA);
-    lua_setfield(L, -2, "format");
-    NEW_UDATA_ADD(FontGlyph, glyphs, sizeof(FontGlyph)*256);
-    lua_setfield(L, -2, "glyphs");
+
+    FontGlyph* glyphs = font->glyphs;
     for (int i = 0; i < 256; i++) {
-        glyphs[i].ax = 8;
+        glyphs[i].ax = 8 / w;
         glyphs[i].ay = 0;
         glyphs[i].bl = 0;
         glyphs[i].bt = 0;
@@ -108,8 +92,7 @@ static MODULE_FUNCTION(font, create8x8) {
     return 1;
 }
 
-static MODULE_FUNCTION(font, from_ttf) {
-#if 0
+int l_Font_load(lua_State* L) {
     INIT_ARG();
     CHECK_STRING(path);
     OPT_INTEGER(font_size, 16);
@@ -146,11 +129,13 @@ static MODULE_FUNCTION(font, from_ttf) {
     stbtt_GetFontVMetrics(&info, &ascent, &descent, &line_gap);
     int baseline = (int)(ascent * scale);
 
+    NEW_UDATA(Font, font);
+
     int tw, th;
     tw = th = 0;
 
     int i;
-    FontGlyph aux_glyphs[256];
+    FontGlyph* aux_glyphs = font->glyphs;
 
     for (i = 0; i < 256; i++) {
         int ax, bl;
@@ -175,28 +160,18 @@ static MODULE_FUNCTION(font, from_ttf) {
     }
     int height = th;
     const int final_size = tw * th;
-    lua_newtable(L);
-    NEW_UDATA_ADD(Data, dt, final_size * sizeof(Data));
-    lua_setfield(L, -2, "data");
-    lua_pushinteger(L, tw);
-    lua_setfield(L, -2, "width");
-    lua_pushinteger(L, th);
-    lua_setfield(L, -2, "height");
-    lua_pushinteger(L, 4);
-    lua_setfield(L, -2, "channels");
-    lua_pushinteger(L, SELENE_PIXEL_RGBA);
-    lua_setfield(L, -2, "format");
+    font->texture.width = tw;
+    font->texture.height = th;
+    glGenTextures(1, &(font->texture.handle));
 
-    uint32_t* bitmap = &dt[1];
-    memset(bitmap, 0, final_size*sizeof(Data));
     int x = 0;
 
-    NEW_UDATA_ADD(FontGlyph, glyphs, sizeof(FontGlyph)*256);
-    memcpy(glyphs, aux_glyphs, sizeof(aux_glyphs));
-    lua_setfield(L, -2, "glyphs");
+    uint32_t* bitmap = (uint32_t*)malloc(tw*th*4);
+    memset(bitmap, 0, final_size*4);
+
     for (int i = 0; i < 256; i++) {
-        int ww = glyphs[i].bw;
-        int hh = glyphs[i].bh;
+        int ww = font->glyphs[i].bw;
+        int hh = font->glyphs[i].bh;
         int ssize = ww * hh;
         int ox, oy;
 
@@ -216,24 +191,41 @@ static MODULE_FUNCTION(font, from_ttf) {
         }
         stbtt_FreeBitmap(bmp, info.userdata);
 
-        glyphs[i].tx = x;
+        font->glyphs[i].tx = x;
 
-        x += glyphs[i].bw;
+        x += font->glyphs[i].bw;
     }
+    glBindTexture(GL_TEXTURE_2D, font->texture.handle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    free(bitmap);
+    free(data);
     return 1;
-#else
-    return 0;
-#endif
 }
 
-int luaopen_font(lua_State* L) {
-    BEGIN_REG(reg)
-        REG_FIELD(font, create8x8),
-        REG_FIELD(font, from_ttf),
-    END_REG()
-    luaL_newlib(L, reg);
-    l_FontGlyph_meta(L);
-    lua_setfield(L, -2, "FontGlyph");
+static int l_Font__destroy(lua_State* L) {
+    CHECK_META(Font);
+    if (self->texture.handle != 0) {
+        glDeleteTextures(1, &(self->texture.handle));
+        self->texture.handle = 0;
+    }
+    return 0;
+}
+
+int l_Font_open_meta(lua_State* L) {
+    luaL_newmetatable(L, "Font");
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "__index");
+    luaL_Reg reg[] = {
+        REG_FIELD(Font, 8x8),
+        REG_FIELD(Font, load),
+        REG_META_FIELD(Font, destroy),
+        {NULL, NULL}
+    };
+    luaL_setfuncs(L, reg, 0);
     return 1;
 }
-#endif /* SELENE_NO_FONT */

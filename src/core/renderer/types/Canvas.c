@@ -48,6 +48,8 @@ static int l_Canvas_destroy(lua_State* L) {
 
 int l_Canvas_open_meta(lua_State* L) {
     luaL_newmetatable(L, CANVAS_CLASS);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "__index");
     luaL_Reg reg[] = {
         REG_FIELD(Canvas, create),
         REG_FIELD(Canvas, destroy),

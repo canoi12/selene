@@ -1944,7 +1944,8 @@ static MODULE_FUNCTION(sdlRenderer, print) {
     int h = font->height;
     while (*p != 0) {
         int codepoint;
-        p = utf8_codepoint(p, &codepoint);
+        int n = utf8_codepoint(p, &codepoint);
+        if (n > -1) p += n;
         SDL_FRect dest;
         int pos[2];
         int src[4];
