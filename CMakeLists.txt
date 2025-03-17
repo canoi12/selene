@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
-project(selene VERSION 0.3.0 LANGUAGES C)
+project(selene VERSION 0.3.1 LANGUAGES C)
 include(CheckLibraryExists)
 include(CheckIncludeFile)
 

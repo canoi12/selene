@@ -4,7 +4,7 @@ OUTDIR=dist
 TMPDIR="temp"
 BUILDSDIR=builds/
 APPIMAGETOOL=".cache/appimagetool-x86_64.AppImage"
-SELENE_VERSION="0.3.0"
+SELENE_VERSION="0.3.1"
 CROSSDIR="misc/cross"
 
 if [ ! -d $BUILDSDIR ]; then
