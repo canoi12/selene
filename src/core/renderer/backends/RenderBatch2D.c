@@ -1,6 +1,7 @@
 #include "../renderer.h"
 
 extern int l_Effect2D_create(lua_State* L);
+extern int l_Font_8x8(lua_State* L);
 extern void char_rect(FontGlyph* glyphs, const int c, float *x, float *y, int* out_pos, int* out_rect, int width, int line_height);
 extern int utf8_codepoint(uint8_t* p, int* codepoint);
 
@@ -14,6 +15,7 @@ struct RenderBatch2D {
     Uint32 vbo;
     int white_texture_ref;
     int default_effect_ref;
+    int default_font_ref;
 
     int current_clear_mask;
     int current_draw_mode;
@@ -28,8 +30,9 @@ struct RenderBatch2D {
         Vertex2D* data;
     } buffer;
     int last_offset;
-
-    vec4* view_matrix;
+    
+    int matrix_mode;
+    mat4* matrix;
 };
 
 static void s_check_buffer(lua_State* L, RenderBatch2D* rb, int count) {
@@ -86,7 +89,13 @@ static int l_RenderBatch2D_create(lua_State* L) {
     self->list = r->list_ptr;
     self->current_draw_mode = 2;
     self->current_clear_mask = GL_COLOR_BUFFER_BIT;
-    self->view_matrix = malloc(sizeof(mat4));
+    self->matrix = malloc(2 * sizeof(mat4));
+    self->matrix_mode = 0;
+
+    lua_pushcfunction(L, l_Font_8x8);
+    if (lua_pcall(L, 0, 1, 0) != LUA_OK)
+        return luaL_error(L, "failed to created default font: %s", lua_tostring(L, -1));
+    self->default_font_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
     lua_pushcfunction(L, l_Effect2D_create);
     lua_pushnil(L);
@@ -189,7 +198,7 @@ static int l_RenderBatch2D__destroy(lua_State* L) {
         luaL_unref(L, LUA_REGISTRYINDEX, self->default_effect_ref);
     }
 
-    if (self->view_matrix) free(self->view_matrix);
+    if (self->matrix) free(self->matrix);
     if (self->buffer.data) free(self->buffer.data);
 
     return 0;
@@ -332,6 +341,7 @@ static int l_RenderBatch2D__fill_triangle(lua_State* L) {
     v[2].y = (float)luaL_checknumber(L, 7);
     // memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 3);
     self->buffer.offset += 3;
+    return 0;
 }
 
 static const lua_CFunction s_triangle_functions[] = {
@@ -690,11 +700,7 @@ int l_RenderBatch2D__draw_circle(lua_State* L) {
 
 int l_RenderBatch2D__draw_quad(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if (self->buffer.offset + 6 > self->buffer.count) {
-        // return luaL_error(L, "buffer overflow");
-        self->buffer.count *= 2;
-        self->buffer.data = realloc(self->buffer.data, sizeof(Vertex2D) * self->buffer.count);
-    }
+    s_check_buffer(L, self, 6);
     Vertex2D* v = self->buffer.data + self->buffer.offset;
     for (int i = 0; i < 6; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
@@ -754,125 +760,6 @@ int l_RenderBatch2D__draw_quad(lua_State* L) {
     lua_pop(L, 4);
 
     self->buffer.offset += 6;
-    return 0;
-}
-
-static const Vertex2D s_cube_vertices[24] = {
-    {-0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f },
-    { 0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f },
-    { 0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f },
-    {-0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-
-    {-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f },
-    {-0.5f,  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f },
-    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f },
-
-    {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f },
-    {-0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f },
-    {-0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f },
-    {-0.5f, 0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-
-    { 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f },
-    { 0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f },
-    { 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f },
-
-    { -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f },
-    { -0.5f, 0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f },
-    { 0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f },
-    { 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-
-    { -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f },
-    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
-    { 0.5f,  -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f },
-    { -0.5f, -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f },
-};
-static const int s_cube_indices[] = {
-    0, 1, 2,   0, 2, 3,      //-- front face
-    4, 5, 6,   4, 6, 7,      //-- back face
-    8, 9, 10,  8, 10, 11,    //-- left face
-    12, 13, 14, 12, 14, 15,   //-- right face
-    16, 17, 18, 16, 18, 19,   //-- top face
-    20, 21, 22, 20, 22, 23,   //-- bottom face
-};
-static int l_RenderBatch2D__draw_cube(lua_State* L) {
-    CHECK_META(RenderBatch2D);
-    if ((self->buffer.offset + 36) > self->buffer.count) {
-        return luaL_error(L, "buffer overflow");
-    }
-    mat4 m = GLM_MAT4_IDENTITY_INIT;
-    if (lua_istable(L, arg)) {
-        vec3 pos;
-        lua_rawgeti(L, arg, 1);
-        pos[0] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        lua_rawgeti(L, arg, 2);
-        pos[1] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        lua_rawgeti(L, arg, 3);
-        pos[2] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        glm_translate(m, pos);
-
-    }
-    arg++;
-    if (lua_istable(L, arg)) {
-        vec3 rotate;
-        lua_rawgeti(L, arg, 1);
-        rotate[0] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        lua_rawgeti(L, arg, 2);
-        rotate[1] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        lua_rawgeti(L, arg, 3);
-        rotate[2] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        mat4 out;
-        glm_mat4_copy(m, out);
-        glm_rotate_x(out, rotate[0], m);
-        glm_rotate_y(m, rotate[1], out);
-        glm_rotate_z(out, rotate[2], m);
-    }
-    arg++;
-    if (lua_istable(L, arg)) {
-        vec3 scale;
-        lua_rawgeti(L, arg, 1);
-        scale[0] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        lua_rawgeti(L, arg, 2);
-        scale[1] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        lua_rawgeti(L, arg, 3);
-        scale[2] = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-        glm_scale(m, scale);
-    }
-    arg++;
-    int is_white = 0;
-    if (lua_isboolean(L, arg)) {is_white = 1;}
-    Vertex2D* bv = self->buffer.data + self->buffer.offset;
-    static const vec2 tex_uv[] = {
-        {0.f, 0.f},
-        {1.f, 0.f},
-        {1.f, 1.f},
-        {0.f, 1.f}
-    };
-    for (int i = 0; i < 36; i++) {
-        const int index = s_cube_indices[i];
-        const Vertex2D* v = s_cube_vertices + index;
-        vec4 out;
-        // vec3 in = {v->x, v->y, v->z};
-        glm_mat4_mulv3(m, (float*)v, 1.f, out);
-        memcpy(bv+i, v, sizeof(Vertex2D));
-        bv[i].x = out[0];
-        bv[i].y = out[1];
-        bv[i].z = out[2];
-        if (is_white) {
-            bv[i].r = bv[i].g = bv[i].b = bv[i].a = 1.f;
-        }
-    }
-    self->buffer.offset += 36;
     return 0;
 }
 
@@ -1129,6 +1016,215 @@ static int l_RenderBatch2D__draw_text(lua_State* L) {
     return 0;
 }
 
+
+static const Vertex2D s_cube_vertices[24] = {
+    {-0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f },
+    { 0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f },
+    { 0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f },
+    {-0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+
+    {-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f },
+    {-0.5f,  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f },
+    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f },
+
+    {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f },
+    {-0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f },
+    {-0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f },
+    {-0.5f, 0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+
+    { 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f },
+    { 0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f },
+    { 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f },
+
+    { -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f },
+    { -0.5f, 0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f },
+    { 0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f },
+    { 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+
+    { -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f },
+    { 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+    { 0.5f,  -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f },
+    { -0.5f, -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f },
+};
+static const int s_cube_indices[] = {
+    0, 1, 2,   0, 2, 3,      //-- front face
+    4, 5, 6,   4, 6, 7,      //-- back face
+    8, 9, 10,  8, 10, 11,    //-- left face
+    12, 13, 14, 12, 14, 15,   //-- right face
+    16, 17, 18, 16, 18, 19,   //-- top face
+    20, 21, 22, 20, 22, 23,   //-- bottom face
+};
+static int l_RenderBatch2D__draw_cube(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    if ((self->buffer.offset + 36) > self->buffer.count) {
+        return luaL_error(L, "buffer overflow");
+    }
+    mat4 m = GLM_MAT4_IDENTITY_INIT;
+    if (lua_istable(L, arg)) {
+        vec3 pos;
+        lua_rawgeti(L, arg, 1);
+        pos[0] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 2);
+        pos[1] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 3);
+        pos[2] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        glm_translate(m, pos);
+
+    }
+    arg++;
+    if (lua_istable(L, arg)) {
+        vec3 rotate;
+        lua_rawgeti(L, arg, 1);
+        rotate[0] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 2);
+        rotate[1] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 3);
+        rotate[2] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        mat4 out;
+        glm_mat4_copy(m, out);
+        glm_rotate_x(out, rotate[0], m);
+        glm_rotate_y(m, rotate[1], out);
+        glm_rotate_z(out, rotate[2], m);
+    }
+    arg++;
+    if (lua_istable(L, arg)) {
+        vec3 scale;
+        lua_rawgeti(L, arg, 1);
+        scale[0] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 2);
+        scale[1] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, arg, 3);
+        scale[2] = lua_tonumber(L, -1);
+        lua_pop(L, 1);
+        glm_scale(m, scale);
+    }
+    arg++;
+    int is_white = 0;
+    if (lua_isboolean(L, arg)) {is_white = 1;}
+    Vertex2D* bv = self->buffer.data + self->buffer.offset;
+    static const vec2 tex_uv[] = {
+        {0.f, 0.f},
+        {1.f, 0.f},
+        {1.f, 1.f},
+        {0.f, 1.f}
+    };
+    for (int i = 0; i < 36; i++) {
+        const int index = s_cube_indices[i];
+        const Vertex2D* v = s_cube_vertices + index;
+        vec4 out;
+        // vec3 in = {v->x, v->y, v->z};
+        glm_mat4_mulv3(m, (float*)v, 1.f, out);
+        memcpy(bv+i, v, sizeof(Vertex2D));
+        bv[i].x = out[0];
+        bv[i].y = out[1];
+        bv[i].z = out[2];
+        if (is_white) {
+            bv[i].r = bv[i].g = bv[i].b = bv[i].a = 1.f;
+        }
+    }
+    self->buffer.offset += 36;
+    return 0;
+}
+
+int l_RenderBatch2D__fill_sphere(lua_State* L) {
+    RenderBatch2D* self = (RenderBatch2D*)lua_touserdata(L, 1);
+    int arg = 2;
+    float cx = (float)luaL_checknumber(L, arg++);
+    float cy = (float)luaL_checknumber(L, arg++);
+    float cz = (float)luaL_checknumber(L, arg++);
+    float radius = (float)luaL_checknumber(L, arg++);
+    int stacks = (int)luaL_optinteger(L, arg++, 16); // Número de pilhas (latitude)
+    int slices = (int)luaL_optinteger(L, arg++, 16); // Número de fatias (longitude)
+
+    // Verifique se há espaço suficiente no buffer
+    int totalVertices = 6 * slices * stacks; // 6 vértices por face (2 triângulos)
+    s_check_buffer(L, self, totalVertices);
+
+    Vertex2D* v = self->buffer.data + self->buffer.offset;
+
+    float stackStep = M_PI / (float)stacks; // Ângulo entre pilhas
+    float sliceStep = 2.0f * M_PI / (float)slices; // Ângulo entre fatias
+
+    for (int i = 0; i < stacks; i++) {
+        float stackAngle1 = i * stackStep; // Ângulo da pilha atual
+        float stackAngle2 = stackAngle1 + stackStep; // Ângulo da próxima pilha
+
+        for (int j = 0; j < slices; j++) {
+            float sliceAngle1 = j * sliceStep; // Ângulo da fatia atual
+            float sliceAngle2 = sliceAngle1 + sliceStep; // Ângulo da próxima fatia
+
+            // Vértices para o primeiro triângulo
+            v[0].x = cx + radius * sinf(stackAngle1) * cosf(sliceAngle1);
+            v[0].y = cy + radius * sinf(stackAngle1) * sinf(sliceAngle1);
+            v[0].z = cz + radius * cosf(stackAngle1);
+            v[0].r = self->aux_vertex.r - 1;
+            v[0].g = self->aux_vertex.g;
+            v[0].b = self->aux_vertex.b;
+            v[0].a = self->aux_vertex.a;
+
+            v[1].x = cx + radius * sinf(stackAngle2) * cosf(sliceAngle1);
+            v[1].y = cy + radius * sinf(stackAngle2) * sinf(sliceAngle1);
+            v[1].z = cz + radius * cosf(stackAngle2);
+            v[1].r = self->aux_vertex.r - 1;
+            v[1].g = self->aux_vertex.g;
+            v[1].b = self->aux_vertex.b;
+            v[1].a = self->aux_vertex.a;
+
+            v[2].x = cx + radius * sinf(stackAngle2) * cosf(sliceAngle2);
+            v[2].y = cy + radius * sinf(stackAngle2) * sinf(sliceAngle2);
+            v[2].z = cz + radius * cosf(stackAngle2);
+            v[2].r = self->aux_vertex.r - 1;
+            v[2].g = self->aux_vertex.g;
+            v[2].b = self->aux_vertex.b;
+            v[2].a = self->aux_vertex.a;
+
+            // Vértices para o segundo triângulo
+            v[3].x = cx + radius * sinf(stackAngle1) * cosf(sliceAngle1);
+            v[3].y = cy + radius * sinf(stackAngle1) * sinf(sliceAngle1);
+            v[3].z = cz + radius * cosf(stackAngle1);
+            v[3].r = self->aux_vertex.r;
+            v[3].g = self->aux_vertex.g - 1;
+            v[3].b = self->aux_vertex.b;
+            v[3].a = self->aux_vertex.a;
+
+            v[4].x = cx + radius * sinf(stackAngle2) * cosf(sliceAngle2);
+            v[4].y = cy + radius * sinf(stackAngle2) * sinf(sliceAngle2);
+            v[4].z = cz + radius * cosf(stackAngle2);
+            v[4].r = self->aux_vertex.r;
+            v[4].g = self->aux_vertex.g - 1;
+            v[4].b = self->aux_vertex.b;
+            v[4].a = self->aux_vertex.a;
+
+            v[5].x = cx + radius * sinf(stackAngle1) * cosf(sliceAngle2);
+            v[5].y = cy + radius * sinf(stackAngle1) * sinf(sliceAngle2);
+            v[5].z = cz + radius * cosf(stackAngle1);
+            v[5].r = self->aux_vertex.r;
+            v[5].g = self->aux_vertex.g -1;
+            v[5].b = self->aux_vertex.b;
+            v[5].a = self->aux_vertex.a;
+
+            v += 6; // Avança para o próximo conjunto de vértices
+        }
+    }
+
+    self->buffer.offset += totalVertices;
+    return 0;
+}
+
+static int l_RenderBatch2D__draw_sphere(lua_State* L) {
+    return l_RenderBatch2D__fill_sphere(L);
+}
+
 /* Get default resources */
 static int l_RenderBatch2D__get_white_texture(lua_State* L) {
     CHECK_META(RenderBatch2D);
@@ -1142,10 +1238,24 @@ static int l_RenderBatch2D__get_default_effect(lua_State* L) {
     return 1;
 }
 
-/* Camera */
-static int l_RenderBatch2D__set_view_identity(lua_State* L) {
+static int l_RenderBatch2D__get_default_font(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    float* f = (float*)self->view_matrix;
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->default_font_ref);
+    return 1;
+}
+
+/* Camera */
+static const char* matrix_modes[] = {"view", "projection", NULL};
+static int l_RenderBatch2D__set_matrix_mode(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    int opt = luaL_checkoption(L, arg++, "view", matrix_modes);
+    self->matrix_mode = opt;
+    return 0;
+}
+
+static int l_RenderBatch2D__matrix_identity(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    float* f = (float*)self->matrix[self->matrix_mode];
     for (int i = 0; i < 16; i++) {
         if (i % 5 == 0) f[i] = 1.f;
         else f[i] = 0.f;
@@ -1153,49 +1263,40 @@ static int l_RenderBatch2D__set_view_identity(lua_State* L) {
     return 0;
 }
 
-static int l_RenderBatch2D__set_view_translate(lua_State* L) {
+static int l_RenderBatch2D__matrix_translate(lua_State* L) {
     CHECK_META(RenderBatch2D);
     vec3 pos;
     pos[0] = (float)luaL_checknumber(L, arg++);
     pos[1] = (float)luaL_checknumber(L, arg++);
     pos[2] = (float)luaL_optnumber(L, arg++, 0.f);
-    glm_translate(self->view_matrix, pos);
+    glm_translate(self->matrix[self->matrix_mode], pos);
     return 0;
 }
 
-static int l_RenderBatch2D__set_view_rotate(lua_State* L) {
+static int l_RenderBatch2D__matrix_rotate(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    if (lua_isnumber(L, arg)) glm_rotate_x(self->matrix[self->matrix_mode], DEG2RAD((float)lua_tonumber(L, arg)), self->matrix[self->matrix_mode]);
+    arg++;
+    if (lua_isnumber(L, arg)) glm_rotate_y(self->matrix[self->matrix_mode], DEG2RAD((float)lua_tonumber(L, arg)), self->matrix[self->matrix_mode]);
+    arg++;
+    if (lua_isnumber(L, arg)) glm_rotate_z(self->matrix[self->matrix_mode], DEG2RAD((float)lua_tonumber(L, arg)), self->matrix[self->matrix_mode]);
+    return 0;
+}
+
+static int l_RenderBatch2D__matrix_rotate_z(lua_State* L) {
     CHECK_META(RenderBatch2D);
     float angle = (float)luaL_checknumber(L, arg++);
-    glm_rotate_z(self->view_matrix, DEG2RAD(angle), self->view_matrix);
+    glm_rotate_z(self->matrix[self->matrix_mode], DEG2RAD((float)lua_tonumber(L, arg)), self->matrix[self->matrix_mode]);
     return 0;
 }
 
-static int l_RenderBatch2D__set_view_scale(lua_State* L) {
+static int l_RenderBatch2D__matrix_scale(lua_State* L) {
     CHECK_META(RenderBatch2D);
     vec3 scale;
     scale[0] = (float)luaL_checknumber(L, arg++);
     scale[1] = (float)luaL_checknumber(L, arg++);
     scale[2] = (float)luaL_optnumber(L, arg++, 0.f);
-    glm_scale(self->view_matrix, scale);
-    return 0;
-}
-
-static int l_RenderBatch2D__send_view_matrix(lua_State* L) {
-    CHECK_META(RenderBatch2D);
-    s_push_draw_command(self, L);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
-    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
-    lua_pop(L, 1);
-    struct RenderCommand rc;
-    rc.type = RENDER_COMMAND_SET_VIEW;
-    rc.uniform.location = eff->model_view_location;
-    glm_mat4_udup(self->view_matrix, rc.uniform.m);
-    RENDERLIST_PUSH(self->list, &rc);
-    return 0;
-}
-
-static int l_RenderBatch2D__set_projection(lua_State* L) {
-    CHECK_META(RenderBatch2D);
+    glm_scale(self->matrix[self->matrix_mode], scale);
     return 0;
 }
 
@@ -1353,8 +1454,27 @@ static int l_RenderBatch2D__send_float(lua_State* L) {
     return 0;
 }
 
+static int send_matrix(lua_State* L) {
+    CHECK_META(RenderBatch2D);
+    s_push_draw_command(self, L);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, self->current_effect_ref);
+    Effect2D* eff = (Effect2D*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_SET_VIEW;
+    if (self->matrix_mode == 0)
+        rc.uniform.location = eff->model_view_location;
+    else if(self->matrix_mode == 1)
+        rc.uniform.location = eff->projection_location;
+    glm_mat4_udup(self->matrix[self->matrix_mode], rc.uniform.m);
+    RENDERLIST_PUSH(self->list, &rc);
+    return 0;
+}
+
 static int l_RenderBatch2D__send_matrix(lua_State* L) {
     CHECK_META(RenderBatch2D);
+    if (lua_gettop(L) < arg)
+        return send_matrix(L);
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
     rc.uniform.location = (int)luaL_checkinteger(L, arg++);
@@ -1518,19 +1638,21 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_META_FIELD(RenderBatch2D, draw_rect),
         REG_META_FIELD(RenderBatch2D, draw_circle),
         REG_META_FIELD(RenderBatch2D, draw_quad),
-        REG_META_FIELD(RenderBatch2D, draw_cube),
         REG_META_FIELD(RenderBatch2D, draw_sprite),
         REG_META_FIELD(RenderBatch2D, draw_text),
+        REG_META_FIELD(RenderBatch2D, draw_cube),
+        REG_META_FIELD(RenderBatch2D, draw_sphere),
         /* get default resources */
         REG_META_FIELD(RenderBatch2D, get_white_texture),
         REG_META_FIELD(RenderBatch2D, get_default_effect),
+        REG_META_FIELD(RenderBatch2D, get_default_font),
         /* camera */
-        REG_META_FIELD(RenderBatch2D, set_view_identity),
-        REG_META_FIELD(RenderBatch2D, set_view_translate),
-        REG_META_FIELD(RenderBatch2D, set_view_rotate),
-        REG_META_FIELD(RenderBatch2D, set_view_scale),
-        REG_META_FIELD(RenderBatch2D, send_view_matrix),
-        REG_META_FIELD(RenderBatch2D, set_projection),
+        REG_META_FIELD(RenderBatch2D, matrix_identity),
+        REG_META_FIELD(RenderBatch2D, matrix_translate),
+        REG_META_FIELD(RenderBatch2D, matrix_rotate),
+        REG_META_FIELD(RenderBatch2D, matrix_rotate_z),
+        REG_META_FIELD(RenderBatch2D, matrix_scale),
+        REG_META_FIELD(RenderBatch2D, send_matrix),
         /* Set states */
         REG_META_FIELD(RenderBatch2D, set_color),
         REG_META_FIELD(RenderBatch2D, set_draw_mode),
