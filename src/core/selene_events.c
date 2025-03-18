@@ -226,6 +226,12 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             // free(event->drop.file);
             return 2;
         }
+        case SDL_DROPBEGIN:
+            lua_pushstring(L, "drop begin");
+            return 1;
+        case SDL_DROPCOMPLETE:
+            lua_pushstring(L, "drop complete");
+            return 1;
         /* Clipboard events */
         case SDL_CLIPBOARDUPDATE: {
             lua_pushstring(L, "clipboard update");
@@ -234,39 +240,52 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
         /* Window events */
         case SDL_WINDOWEVENT: {
             switch (event->window.event) {
-                case SDL_WINDOWEVENT_CLOSE: {
-                    lua_pushstring(L, "window closed");
+                case SDL_WINDOWEVENT_SHOWN:
+                    lua_pushstring(L, "window shown");
                     return 1;
-                }
+                case SDL_WINDOWEVENT_HIDDEN:
+                    lua_pushstring(L, "window hidden");
+                    return 1;
+                case SDL_WINDOWEVENT_EXPOSED:
+                    lua_pushstring(L, "window exposed");
+                    return 1;
                 case SDL_WINDOWEVENT_MOVED: {
                     lua_pushstring(L, "window moved");
                     lua_pushinteger(L, event->window.data1);
                     lua_pushinteger(L, event->window.data2);
                     return 3;
                 }
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                    lua_pushstring(L, "window focused");
-                    return 1;
-                case SDL_WINDOWEVENT_ENTER:
-                    lua_pushstring(L, "window entered");
-                    return 1;
-                case SDL_WINDOWEVENT_FOCUS_LOST:
-                    lua_pushstring(L, "window unfocused");
-                    return 1;
-                case SDL_WINDOWEVENT_MAXIMIZED:
-                    lua_pushstring(L, "window maximized");
-                    return 1;
-                case SDL_WINDOWEVENT_MINIMIZED:
-                    lua_pushstring(L, "window minimized");
-                    return 1;
-                case SDL_WINDOWEVENT_RESTORED:
-                    lua_pushstring(L, "window restored");
-                    return 1;
+                case SDL_WINDOWEVENT_SIZE_CHANGED:
                 case SDL_WINDOWEVENT_RESIZED: {
                     lua_pushstring(L, "window resized");
                     lua_pushinteger(L, event->window.data1);
                     lua_pushinteger(L, event->window.data2);
                     return 3;
+                }
+                case SDL_WINDOWEVENT_MINIMIZED:
+                    lua_pushstring(L, "window minimized");
+                    return 1;
+                case SDL_WINDOWEVENT_MAXIMIZED:
+                    lua_pushstring(L, "window maximized");
+                    return 1;
+                case SDL_WINDOWEVENT_RESTORED:
+                    lua_pushstring(L, "window restored");
+                    return 1;
+                case SDL_WINDOWEVENT_ENTER:
+                    lua_pushstring(L, "mouse entered");
+                    return 1;
+                case SDL_WINDOWEVENT_LEAVE:
+                    lua_pushstring(L, "mouse leaved");
+                    return 1;
+                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                    lua_pushstring(L, "focus gained");
+                    return 1;
+                case SDL_WINDOWEVENT_FOCUS_LOST:
+                    lua_pushstring(L, "focus lost");
+                    return 1;
+                case SDL_WINDOWEVENT_CLOSE: {
+                    lua_pushstring(L, "window closed");
+                    return 1;
                 }
             }
         }
