@@ -1647,6 +1647,7 @@ int l_RenderBatch2D_meta(lua_State* L) {
         REG_META_FIELD(RenderBatch2D, get_default_effect),
         REG_META_FIELD(RenderBatch2D, get_default_font),
         /* camera */
+        REG_META_FIELD(RenderBatch2D, set_matrix_mode),
         REG_META_FIELD(RenderBatch2D, matrix_identity),
         REG_META_FIELD(RenderBatch2D, matrix_translate),
         REG_META_FIELD(RenderBatch2D, matrix_rotate),
