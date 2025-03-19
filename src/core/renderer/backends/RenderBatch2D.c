@@ -1152,68 +1152,86 @@ int l_RenderBatch2D__fill_sphere(lua_State* L) {
 
     Vertex2D* v = self->buffer.data + self->buffer.offset;
 
-    float stackStep = M_PI / (float)stacks; // Ângulo entre pilhas
-    float sliceStep = 2.0f * M_PI / (float)slices; // Ângulo entre fatias
+    float stackStep = M_PI / (float)stacks; // Angle between stacks
+    float sliceStep = 2.0f * M_PI / (float)slices; // Angle between slices
 
     for (int i = 0; i < stacks; i++) {
-        float stackAngle1 = i * stackStep; // Ângulo da pilha atual
-        float stackAngle2 = stackAngle1 + stackStep; // Ângulo da próxima pilha
+        float stackAngle1 = i * stackStep;
+        float stackAngle2 = stackAngle1 + stackStep;
+
+        float v1 = 1.0f - (float)i / (float)stacks;
+        float v2 = 1.0f - (float)(i + 1) / (float)stacks;
 
         for (int j = 0; j < slices; j++) {
-            float sliceAngle1 = j * sliceStep; // Ângulo da fatia atual
-            float sliceAngle2 = sliceAngle1 + sliceStep; // Ângulo da próxima fatia
+            float sliceAngle1 = j * sliceStep;
+            float sliceAngle2 = sliceAngle1 + sliceStep;
+
+            float u1 = (float)j / (float)slices;
+            float u2 = (float)(j + 1) / (float)slices;
 
             // Vértices para o primeiro triângulo
             v[0].x = cx + radius * sinf(stackAngle1) * cosf(sliceAngle1);
             v[0].y = cy + radius * sinf(stackAngle1) * sinf(sliceAngle1);
             v[0].z = cz + radius * cosf(stackAngle1);
-            v[0].r = self->aux_vertex.r - 1;
+            v[0].r = self->aux_vertex.r;
             v[0].g = self->aux_vertex.g;
             v[0].b = self->aux_vertex.b;
             v[0].a = self->aux_vertex.a;
+            v[0].u = u1;
+            v[0].v = v1;
 
             v[1].x = cx + radius * sinf(stackAngle2) * cosf(sliceAngle1);
             v[1].y = cy + radius * sinf(stackAngle2) * sinf(sliceAngle1);
             v[1].z = cz + radius * cosf(stackAngle2);
-            v[1].r = self->aux_vertex.r - 1;
+            v[1].r = self->aux_vertex.r;
             v[1].g = self->aux_vertex.g;
             v[1].b = self->aux_vertex.b;
             v[1].a = self->aux_vertex.a;
+            v[1].u = u1;
+            v[1].v = v2;
 
             v[2].x = cx + radius * sinf(stackAngle2) * cosf(sliceAngle2);
             v[2].y = cy + radius * sinf(stackAngle2) * sinf(sliceAngle2);
             v[2].z = cz + radius * cosf(stackAngle2);
-            v[2].r = self->aux_vertex.r - 1;
+            v[2].r = self->aux_vertex.r;
             v[2].g = self->aux_vertex.g;
             v[2].b = self->aux_vertex.b;
             v[2].a = self->aux_vertex.a;
+            v[2].u = u2;
+            v[2].v = v2;
 
-            // Vértices para o segundo triângulo
+            // Vertices for the second triangle
             v[3].x = cx + radius * sinf(stackAngle1) * cosf(sliceAngle1);
             v[3].y = cy + radius * sinf(stackAngle1) * sinf(sliceAngle1);
             v[3].z = cz + radius * cosf(stackAngle1);
             v[3].r = self->aux_vertex.r;
-            v[3].g = self->aux_vertex.g - 1;
+            v[3].g = self->aux_vertex.g;
             v[3].b = self->aux_vertex.b;
             v[3].a = self->aux_vertex.a;
+            v[3].u = u1;
+            v[3].v = v1;
 
             v[4].x = cx + radius * sinf(stackAngle2) * cosf(sliceAngle2);
             v[4].y = cy + radius * sinf(stackAngle2) * sinf(sliceAngle2);
             v[4].z = cz + radius * cosf(stackAngle2);
             v[4].r = self->aux_vertex.r;
-            v[4].g = self->aux_vertex.g - 1;
+            v[4].g = self->aux_vertex.g;
             v[4].b = self->aux_vertex.b;
             v[4].a = self->aux_vertex.a;
+            v[4].u = u2;
+            v[4].v = v2;
 
             v[5].x = cx + radius * sinf(stackAngle1) * cosf(sliceAngle2);
             v[5].y = cy + radius * sinf(stackAngle1) * sinf(sliceAngle2);
             v[5].z = cz + radius * cosf(stackAngle1);
             v[5].r = self->aux_vertex.r;
-            v[5].g = self->aux_vertex.g -1;
+            v[5].g = self->aux_vertex.g;
             v[5].b = self->aux_vertex.b;
             v[5].a = self->aux_vertex.a;
+            v[5].u = u2;
+            v[5].v = v1;
 
-            v += 6; // Avança para o próximo conjunto de vértices
+            v += 6;
         }
     }
 
