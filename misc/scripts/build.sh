@@ -15,7 +15,7 @@ copy_files() {
 }
 
 build_default() {
-    cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+    cmake -B build -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DUSE_SDL_SOURCE=ON
     cmake --build build --target seleneBin
 }
 

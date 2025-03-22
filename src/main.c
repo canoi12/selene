@@ -21,7 +21,7 @@ static int main_symbol_test(int a) { return -1; }
     lua_close(L);
     return 0;
 }*/
-extern int selene_main(int argc, char** argv);
+SELENE_API int selene_main(int argc, char** argv);
 
 #if !defined(OS_ANDROID)
     int main(int argc, char** argv) { return selene_main(argc, argv); }

@@ -4,11 +4,11 @@ OUTDIR=dist
 TMPDIR="temp"
 BUILDSDIR=builds/
 APPIMAGETOOL=".cache/appimagetool-x86_64.AppImage"
-SELENE_VERSION="0.3.1"
+SELENE_VERSION="0.4.0"
 CROSSDIR="misc/cross"
 
 if [ ! -d $BUILDSDIR ]; then
-    ./scripts/build.sh
+    ./misc/scripts/build.sh $1
 fi
 
 if [ ! -d $OUTDIR ]; then

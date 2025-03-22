@@ -1,20 +1,20 @@
 #ifndef SELENE_H_
 #define SELENE_H_
 
-#define SELENE_VERSION "0.3.1"
+#define SELENE_VERSION "0.4.0"
 
 #include <platforms.h>
 #include <common.h>
 
 #ifndef SELENE_API
-    #if defined(BUILD_LIB_AS_DLL)
-        #if defined(OS_WIN)
+    #if defined(OS_WIN)
+        #if defined(SELENE_EXPORT_DLL)
             #define SELENE_API __declspec(dllexport)
-        #else
-            #define SELENE_API extern
+        #elif defined(SELENE_IMPORT_DLL)
+            #define SELENE_API __declspec(dllimport)
         #endif
     #else
-        #define SELENE_API
+        #define SELENE_API extern
     #endif
 #endif
 
@@ -123,6 +123,7 @@ extern "C" {
  * Open selene lib
  */
 SELENE_API int luaopen_selene(lua_State* L);
+SELENE_API int selene_main(int argc, char** argv);
 
 #if defined(__cplusplus)
 }
