@@ -40,6 +40,10 @@ static void s_check_buffer(lua_State* L, RenderBatch2D* rb, int count) {
         // return luaL_error(L, "buffer overflow");
         rb->buffer.count *= 2;
         rb->buffer.data = realloc(rb->buffer.data, sizeof(Vertex2D) * rb->buffer.count);
+        if (!rb->buffer.data) {
+            fprintf(stderr, "Failed to realloc memory for vertex buffer\n");
+            exit(EXIT_FAILURE);
+        }
         glBindBuffer(GL_ARRAY_BUFFER, rb->vbo);
         glBufferData(GL_ARRAY_BUFFER, rb->buffer.count*sizeof(Vertex2D), rb->buffer.data, GL_DYNAMIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -479,7 +483,7 @@ static int l_RenderBatch2D__fill_rect(lua_State* L) {
     for (int i = 0; i < 6; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
-    if (lua_isinteger(L, arg)) {
+    if (lua_isnumber(L, arg)) {
         float x, y, w, h;
         x = (float)luaL_checknumber(L, 2);
         y = (float)luaL_checknumber(L, 3);
@@ -602,7 +606,7 @@ static int l_RenderBatch2D__fill_rect(lua_State* L) {
         v[5].u = uv[2][0];
         v[5].v = uv[2][1];
 
-    }
+    } else return luaL_argerror(L, arg, "invalid argument, number or table expected");
 
     self->buffer.offset += 6;
     return 0;
@@ -940,7 +944,7 @@ static int l_RenderBatch2D__draw_text(lua_State* L) {
     uint8_t* p = (uint8_t*)text;
     int w = font->texture.width;
     int h = font->texture.height;
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    
     int len = 0;
     while (*p != 0) {
         int codepoint;
@@ -950,6 +954,7 @@ static int l_RenderBatch2D__draw_text(lua_State* L) {
     }
     p = (uint8_t*)text;
     s_check_buffer(L, self, len*6);
+    Vertex2D* v = self->buffer.data + self->buffer.offset;
     while (*p != 0) {
         int codepoint;
         int n = utf8_codepoint(p, &codepoint);
@@ -1512,7 +1517,9 @@ static int l_RenderBatch2D__set_clip_rect(lua_State* L) {
     CHECK_META(RenderBatch2D);
     s_push_draw_command(self, L);
     struct RenderCommand rc;
-    if (lua_isinteger(L, arg)) {
+    if (lua_isnoneornil(L, arg)) {
+        rc.type = RENDER_COMMAND_DISABLE_CLIP_RECT;
+    } else if (lua_isinteger(L, arg)) {
         int h;
         SDL_GetWindowSize(self->window, NULL, &h);
         rc.type = RENDER_COMMAND_ENABLE_CLIP_RECT;
@@ -1521,11 +1528,9 @@ static int l_RenderBatch2D__set_clip_rect(lua_State* L) {
         CHECK_INTEGER(right);
         CHECK_INTEGER(bottom);
         rc.clip.x = left;
-        rc.clip.y = h - bottom;
-        rc.clip.width = right - left;
-        rc.clip.height = bottom-top;
-    } else if (lua_isnil(L, arg) || lua_gettop(L) < 2) {
-        rc.type = RENDER_COMMAND_DISABLE_CLIP_RECT;
+        rc.clip.y = h-top-bottom;
+        rc.clip.width = right;
+        rc.clip.height = bottom;
     } else
         return luaL_argerror(L, arg, "must contains the rect values (x, y, w, h), or nil to disable");
     RENDERLIST_PUSH(self->list, &rc);
