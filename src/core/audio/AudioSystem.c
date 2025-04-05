@@ -1,4 +1,4 @@
-#include "audio.h"
+#include "selene_audio.h"
 
 typedef struct AudioSystem AudioSystem;
 
@@ -118,7 +118,7 @@ MODULE_FUNCTION(AudioSystem, create) {
     SDL_AudioSpec obtained;
     SDL_AudioDeviceID dev = SDL_OpenAudioDevice(NULL, 0, &spec, &obtained, 0);
     fprintf(stderr, "audio device: %d\n", dev);
-    size = obtained.size;
+    size = (int)obtained.size;
     fprintf(stderr, "spec size: %d\n", size);
     if (dev == 0) {
         const char* name = SDL_GetAudioDeviceName(0, 0);
@@ -126,7 +126,7 @@ MODULE_FUNCTION(AudioSystem, create) {
         if (dev == 0)
             return luaL_error(L, "Failed to open audio device: %s\n", SDL_GetError());
         else
-            size = obtained.size;
+            size = (int)obtained.size;
     }
 #else
     SDL_AudioDeviceID dev = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
@@ -280,7 +280,7 @@ static MODULE_FUNCTION(AudioSystem, update) {
 #if defined(SELENE_USE_SDL3)
                 int res = SDL_PutAudioStreamData(buffer->stream, aux, read * self->spec.channels * sizeof(short));
 #else
-                int res = SDL_AudioStreamPut(buffer->stream, aux, read * self->spec.channels * sizeof(short));
+                int res = SDL_AudioStreamPut(buffer->stream, aux, (int)(read * self->spec.channels * sizeof(short)));
 #endif
             }
         } else if (buffer->audio_data && buffer->type == 1) {
@@ -288,7 +288,7 @@ static MODULE_FUNCTION(AudioSystem, update) {
 #if defined(SELENE_USE_SDL3)
             int len = samples;
 #else
-            int len = self->spec.size;
+            int len = (int)self->spec.size;
 #endif
             if (buffer->offset + len > size) {
                 len = size - buffer->offset;

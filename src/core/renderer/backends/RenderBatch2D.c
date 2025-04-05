@@ -1,4 +1,4 @@
-#include "../renderer.h"
+#include "selene_renderer.h"
 
 extern int l_Effect2D_create(lua_State* L);
 extern int l_Font_8x8(lua_State* L);
@@ -80,7 +80,7 @@ static void s_push_update_size(RenderBatch2D* r, lua_State* L, int w, int h) {
     rc.uniform.program = eff->handle;
     rc.uniform.location = eff->projection_location;
     mat4 m = GLM_MAT4_IDENTITY_INIT;
-    glm_ortho(0, w, h, 0, 0, 1000, m);
+    glm_ortho(0, (float)w, (float)h, 0, 0, 1000, m);
     glm_mat4_udup(m, rc.uniform.m);
     RENDERLIST_PUSH(r->list, &rc);
 }
@@ -554,13 +554,13 @@ static int l_RenderBatch2D__fill_rect(lua_State* L) {
             // fprintf(stdout, "tex(%d) w(%d) h(%d)\n", tex->handle, tex->width, tex->height);
 
             lua_rawgeti(L, arg, 1);
-            rect.x = texel[0] * luaL_checknumber(L, -1);
+            rect.x = texel[0] * (float)luaL_checknumber(L, -1);
             lua_rawgeti(L, arg, 2);
-            rect.y = texel[1] * luaL_checknumber(L, -1);
+            rect.y = texel[1] * (float)luaL_checknumber(L, -1);
             lua_rawgeti(L, arg, 3);
-            rect.w = texel[0] * luaL_checknumber(L, -1);
+            rect.w = texel[0] * (float)luaL_checknumber(L, -1);
             lua_rawgeti(L, arg, 4);
-            rect.h = texel[1] * luaL_checknumber(L, -1);
+            rect.h = texel[1] * (float)luaL_checknumber(L, -1);
             lua_pop(L, 4);
 
             uv[0][0] = rect.x;
@@ -641,12 +641,12 @@ int l_RenderBatch2D__line_circle(lua_State* L) {
     float inc = M_PI2 / (float)segments;
     for (int i = 0; i < segments; i++) {
         memcpy(v, &self->aux_vertex, sizeof(Vertex2D));
-        float angle = i * inc;
+        float angle = (float)i * inc;
         v[0].x = cx + (radius * cosf(angle));
         v[0].y = cy + (radius * sinf(angle)); 
 
         memcpy(v+1, &self->aux_vertex, sizeof(Vertex2D));
-        angle = (i+1) * inc;
+        angle = (float)(i+1) * inc;
         v[1].x = cx + (radius * cosf(angle));
         v[1].y = cy + (radius * sinf(angle)); 
 
@@ -674,12 +674,12 @@ int l_RenderBatch2D__fill_circle(lua_State* L) {
         v[0].y = cy;
 
         memcpy(v+1, &self->aux_vertex, sizeof(Vertex2D));
-        float angle = i * inc;
+        float angle = (float)i * inc;
         v[1].x = cx + (radius * cosf(angle));
         v[1].y = cy + (radius * sinf(angle)); 
 
         memcpy(v+2, &self->aux_vertex, sizeof(Vertex2D));
-        angle = (i+1) * inc;
+        angle = (float)(i+1) * inc;
         v[2].x = cx + (radius * cosf(angle));
         v[2].y = cy + (radius * sinf(angle)); 
 
@@ -963,8 +963,8 @@ static int l_RenderBatch2D__draw_text(lua_State* L) {
         int pos[2];
         int src[4];
         char_rect(font->glyphs, codepoint, &x0, &y0, pos, src, 0, font->texture.height);
-        dest.x = x + pos[0];
-        dest.y = y + pos[1];
+        dest.x = x + (float)pos[0];
+        dest.y = y + (float)pos[1];
         dest.w = (float)src[2];
         dest.h = (float)src[3];
         //fprintf(stderr, "%c:%d", *p, *p);
@@ -1161,14 +1161,14 @@ int l_RenderBatch2D__fill_sphere(lua_State* L) {
     float sliceStep = 2.0f * M_PI / (float)slices; // Angle between slices
 
     for (int i = 0; i < stacks; i++) {
-        float stackAngle1 = i * stackStep;
+        float stackAngle1 = (float)i * stackStep;
         float stackAngle2 = stackAngle1 + stackStep;
 
         float v1 = 1.0f - (float)i / (float)stacks;
         float v2 = 1.0f - (float)(i + 1) / (float)stacks;
 
         for (int j = 0; j < slices; j++) {
-            float sliceAngle1 = j * sliceStep;
+            float sliceAngle1 = (float)j * sliceStep;
             float sliceAngle2 = sliceAngle1 + sliceStep;
 
             float u1 = (float)j / (float)slices;
@@ -1549,7 +1549,7 @@ static int l_RenderBatch2D__set_blend_mode(lua_State* L) {
         return luaL_argerror(L, arg, "invalid option");
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_SET_BLEND_MODE;
-    switch(opt) {
+    switch (opt) {
         case 0:
             rc.blend.func0 = GL_SRC_ALPHA;
             rc.blend.func1 = GL_ONE_MINUS_SRC_ALPHA;

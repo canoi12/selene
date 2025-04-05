@@ -1,5 +1,5 @@
 #ifndef SELENE_NO_AUDIO
-#include "audio.h"
+#include "selene_audio.h"
 
 /**
  * Load audio data from a file (ogg, wav, mp3 and flac)
@@ -18,6 +18,7 @@ static MODULE_FUNCTION(audio, load_data) {
 #if defined(SELENE_USE_SDL3)
     if (dec.info.bit_depth == 16) dec_spec.format = SDL_AUDIO_S16;
     else if (dec.info.bit_depth == 32) dec_spec.format = SDL_AUDIO_F32;
+    else dec_spec.format = SELENE_AUDIO_FORMAT;
 #else
     if (dec.info.bit_depth == 16) dec_spec.format = AUDIO_S16;
     else if (dec.info.bit_depth == 32) dec_spec.format = AUDIO_F32;
@@ -56,14 +57,13 @@ static MODULE_FUNCTION(audio, load_data) {
             spec.format, spec.channels, spec.freq);
 #endif
 
-
     while (frame_count != 0) {
         // short* buffer = (short*)malloc(frame_count * channels * sizeof(short));
         short* buffer = (short*)aux_data;
 #if defined(SELENE_USE_SDL3)
-        int res = SDL_PutAudioStreamData(stream, buffer, frame_count * spec.channels * sizeof(short));
+        res = SDL_PutAudioStreamData(stream, buffer, frame_count * spec.channels * sizeof(short));
 #else
-        int res = SDL_AudioStreamPut(stream, buffer, frame_count * spec.channels * sizeof(short));
+        res = SDL_AudioStreamPut(stream, buffer, (int)(frame_count * spec.channels * sizeof(short)));
 #endif
         if (res < 0) {
             return luaL_error(L, "Failed to put audio stream: %s", SDL_GetError());
@@ -123,7 +123,6 @@ extern int l_AudioDecoder_meta(lua_State* L);
 
 int luaopen_audio(lua_State* L) {
     BEGIN_REG(reg)
-        {"create_system", l_AudioSystem_create},
         REG_FIELD(audio, load_data),
         REG_FIELD(audio, load_decoder),
     END_REG()

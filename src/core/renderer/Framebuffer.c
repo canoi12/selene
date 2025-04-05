@@ -1,4 +1,4 @@
-#include "../renderer.h"
+#include "selene_renderer.h"
 
 static int l_Framebuffer_create(lua_State* L) {
     Uint32 fbo;

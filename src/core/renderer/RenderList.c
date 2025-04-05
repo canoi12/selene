@@ -1,4 +1,4 @@
-#include "renderer.h"
+#include "selene_renderer.h"
 
 static int l_default_RenderList_clear(lua_State* L) {
     struct RenderList* list = (struct RenderList*)lua_touserdata(L, 1);
@@ -42,7 +42,6 @@ static int l_default_RenderList_pop(lua_State* L) {
         if (list->block_index == 1) return 0;
         list->block_index--;
         lua_rawgeti(L, LUA_REGISTRYINDEX, list->l_render_blocks_table_ref);
-        int blk_tbl = lua_gettop(L);
     }
     list->block_ptr->current--;
     lua_pushlightuserdata(L, list->block_ptr->commands + list->block_ptr->current);
@@ -57,15 +56,12 @@ static int l_default_RenderList_call(lua_State* L) {
     lua_pop(L, 2);
     int it = 0;
     int block_index = 1;
-    // fprintf(stdout, "render command count: %d\n", pool->current);
-    Uint32 curr_program = 0;
     while (block) {
         struct RenderCommand* rc = block->commands + it;
         switch (rc->type) {
             case RENDER_COMMAND_CLEAR: {
                 float* c = rc->clear.color;
                 glClearColor(c[0], c[1], c[2], c[3]);
-                // fprintf(stdout, "c: %f %f %f %f\n", c[0], c[1], c[2], c[3]);
                 glClear(rc->clear.mask);
             }
             break;
@@ -92,10 +88,12 @@ static int l_default_RenderList_call(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_PROGRAM:
                 glUseProgram(rc->program.handle);
-                curr_program = rc->program.handle;
                 break;
             case RENDER_COMMAND_SET_FRAMEBUFFER:
                 glBindFramebuffer(rc->target.target, rc->target.handle);
+                break;
+            case RENDER_COMMAND_SET_SCISSOR:
+                glScissor(rc->clip.x, rc->clip.y, rc->clip.width, rc->clip.height);
                 break;
             case RENDER_COMMAND_SET_RENDERBUFFER:
                 glBindRenderbuffer(rc->target.target, rc->target.handle);

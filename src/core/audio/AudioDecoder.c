@@ -1,4 +1,4 @@
-#include "audio.h"
+#include "selene_audio.h"
 
 int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* out) {
     char* p = (char*)path + len;
@@ -15,7 +15,7 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
         format = SELENE_FLAC_FORMAT;
     else
         return luaL_error(L, "Unsupported audio format: %s\n", path);
-    out->format = format;
+    out->format = (char)format;
 #if defined(OS_ANDROID)
     char* data = NULL;
     size_t data_size;
@@ -50,14 +50,14 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
             if (ogg == NULL)
                 return luaL_error(L, "Failed to load ogg: %s\n", path);
             stb_vorbis_info info = stb_vorbis_get_info(ogg);
-            out->info.sample_rate = info.sample_rate;
+            out->info.sample_rate = (int)info.sample_rate;
             out->info.channels = info.channels;
             out->ogg = ogg;
         }
             break;
         case SELENE_MP3_FORMAT: {
 #if !defined(OS_ANDROID)
-            int success = drmp3_init_file(&(out->mp3), path, NULL);
+            int success = (int)drmp3_init_file(&(out->mp3), path, NULL);
 #else
             int success = drmp3_init_memory(&(out->mp3), data, data_size, NULL);
 #endif
@@ -101,21 +101,17 @@ static MODULE_FUNCTION(AudioDecoder, close) {
 
 int s_AudioDecoder_close(AudioDecoder* self) {
     switch (self->format) {
-        case SELENE_WAV_FORMAT: {
+        case SELENE_WAV_FORMAT:
             drwav_uninit(&(self->wav));
-        }
             break;
-        case SELENE_OGG_FORMAT: {
+        case SELENE_OGG_FORMAT:
             stb_vorbis_close(self->ogg);
-        }
             break;
-        case SELENE_MP3_FORMAT: {
+        case SELENE_MP3_FORMAT:
             drmp3_uninit(&(self->mp3));
-        }
             break;
-        case SELENE_FLAC_FORMAT: {
+        case SELENE_FLAC_FORMAT:
             drflac_close(self->flac);
-        }
             break;
         default: break;
     }
@@ -135,21 +131,17 @@ static MODULE_FUNCTION(AudioDecoder, seek) {
 
 int s_AudioDecoder_seek(AudioDecoder* self, int index) {
     switch (self->format) {
-        case SELENE_WAV_FORMAT: {
+        case SELENE_WAV_FORMAT:
             drwav_seek_to_pcm_frame(&(self->wav), index);
-        }
             break;
-        case SELENE_OGG_FORMAT: {
+        case SELENE_OGG_FORMAT:
             stb_vorbis_seek(self->ogg, index);
-        }
             break;
-        case SELENE_MP3_FORMAT: {
+        case SELENE_MP3_FORMAT:
             drmp3_seek_to_pcm_frame(&(self->mp3), index);
-        }
             break;
-        case SELENE_FLAC_FORMAT: {
+        case SELENE_FLAC_FORMAT:
             drflac_seek_to_pcm_frame(self->flac, index);
-        }
             break;
         default: break;
     }
@@ -174,22 +166,14 @@ static MODULE_FUNCTION(AudioDecoder, read_s16) {
 
 int s_AudioDecoder_read_s16(AudioDecoder* self, int len, short* data) {
     switch (self->format) {
-        case SELENE_WAV_FORMAT: {
+        case SELENE_WAV_FORMAT:
             return (int)drwav_read_pcm_frames_s16(&(self->wav), len, data);
-        }
-            break;
-        case SELENE_OGG_FORMAT: {
+        case SELENE_OGG_FORMAT:
             return (int)stb_vorbis_get_samples_short_interleaved(self->ogg, self->info.channels, data, len);
-        }
-            break;
-        case SELENE_MP3_FORMAT: {
+        case SELENE_MP3_FORMAT:
             return (int)drmp3_read_pcm_frames_s16(&(self->mp3), len, data);
-        }
-            break;
-        case SELENE_FLAC_FORMAT: {
+        case SELENE_FLAC_FORMAT:
             return (int)drflac_read_pcm_frames_s16(self->flac, len, data);
-        }
-            break;
         default:
             return 0;
     }
@@ -207,22 +191,14 @@ static MODULE_FUNCTION(AudioDecoder, read_f32) {
 
 int s_AudioDecoder_read_f32(AudioDecoder* self, int len, float* data) {
     switch (self->format) {
-        case SELENE_WAV_FORMAT: {
+        case SELENE_WAV_FORMAT:
             return (int)drwav_read_pcm_frames_f32(&(self->wav), len, data);
-        }
-            break;
-        case SELENE_OGG_FORMAT: {
+        case SELENE_OGG_FORMAT:
             return (int)stb_vorbis_get_samples_float_interleaved(self->ogg, self->info.channels, data, len);
-        }
-            break;
-        case SELENE_MP3_FORMAT: {
+        case SELENE_MP3_FORMAT:
             return (int)drmp3_read_pcm_frames_f32(&(self->mp3), len, data);
-        }
-            break;
-        case SELENE_FLAC_FORMAT: {
+        case SELENE_FLAC_FORMAT:
             return (int)drflac_read_pcm_frames_f32(self->flac, len, data);
-        }
-            break;
         default:
             return 0;
     }

@@ -1,4 +1,4 @@
-#include "../renderer.h"
+#include "selene_renderer.h"
 
 int l_Canvas_create(lua_State* L) {
     int width = (int)luaL_checkinteger(L, 1);

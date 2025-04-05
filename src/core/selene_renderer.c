@@ -1,14 +1,14 @@
-#include "renderer.h"
+#include "selene_renderer.h"
 
 static const char* blend_modes[] = {"alpha", "additive", "subtractive", "multiply", NULL};
 
 const char* projection_modes[] = {"orthographic", "frustum", "perspective", NULL};
 
 const char* clear_masks[] = {"color", "depth", "stencil", NULL};
-const int clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_STENCIL_BUFFER_BIT};
+const int clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_STENCIL_BUFFER_BIT };
 
-const char* enable_attribs[] = { "blend", "depth test", NULL };
-const int enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST };
+const char* enable_attribs[] = { "blend", "depth test", "scissor test", "cull face", NULL };
+const int enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST, GL_SCISSOR_TEST, GL_CULL_FACE };
 
 const char* pixel_formats[] = { "rgb", "rgba", NULL };
 const int pixel_formats_values[] = { GL_RGB, GL_RGBA };
@@ -121,7 +121,7 @@ static int l_Renderer__clear(lua_State* L) {
     int mask = clear_masks_values[opt];
     if (lua_gettop(L) >= arg) {
         for (int i = arg; i <= lua_gettop(L); i++) {
-            int opt = luaL_checkoption(L, i, NULL, clear_masks);
+            opt = luaL_checkoption(L, i, NULL, clear_masks);
             if (opt != -1) mask |= clear_masks_values[opt];
         }
     }
@@ -162,7 +162,7 @@ int l_Renderer__set_vao(lua_State* L) {
         rc.type = RENDER_COMMAND_SET_VERTEX_ARRAY;
         rc.vao.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
-        self->current_vao_id = handle;
+        self->current_vao_id = (int)handle;
     }
     return 0;
 }
@@ -179,7 +179,7 @@ static int l_Renderer__set_texture(lua_State* L) {
         rc.texture.target = texture_targets_values[target];
         rc.texture.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
-        self->current_tex2d_id = handle;
+        self->current_tex2d_id = (int)handle;
     }
 
     return 0;
@@ -196,7 +196,7 @@ static int l_Renderer__set_texture2d(lua_State* L) {
         rc.texture.target = GL_TEXTURE_2D;
         rc.texture.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
-        self->current_tex2d_id = handle;
+        self->current_tex2d_id = (int)handle;
     }
     return 0;
 }
@@ -211,7 +211,7 @@ static int l_Renderer__set_framebuffer(lua_State* L) {
         rc.target.target = GL_FRAMEBUFFER;
         rc.target.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
-        self->current_fbo_id = handle;
+        self->current_fbo_id = (int)handle;
     }
     return 0;
 }
@@ -224,7 +224,7 @@ static int l_Renderer__set_program(lua_State* L) {
         rc.type = RENDER_COMMAND_SET_PROGRAM;
         rc.program.handle = handle;
         RENDERLIST_PUSH(self->list_ptr, &rc);
-        self->current_program_id = handle;
+        self->current_program_id = (int)handle;
     }
     return 0;
 }
@@ -244,20 +244,15 @@ static int l_Renderer__set_viewport(lua_State* L) {
 static int l_Renderer__set_scissor(lua_State* L) {
     CHECK_META(Renderer);
     struct RenderCommand rc;
-    if (lua_isinteger(L, arg)) {
-        rc.type = RENDER_COMMAND_ENABLE_CLIP_RECT;
-        CHECK_INTEGER(left);
-        CHECK_INTEGER(top);
-        CHECK_INTEGER(right);
-        CHECK_INTEGER(bottom);
-        rc.clip.x = left;
-        rc.clip.y = top;
-        rc.clip.width = right;
-        rc.clip.height = bottom;
-    } else if (lua_isnil(L, arg) || lua_gettop(L) < 2) {
-        rc.type = RENDER_COMMAND_DISABLE_CLIP_RECT;
-    } else
-        return luaL_argerror(L, arg, "must contains the rect values (x, y, w, h), or nil to disable");
+    rc.type = RENDER_COMMAND_SET_SCISSOR;
+    CHECK_INTEGER(left);
+    CHECK_INTEGER(top);
+    CHECK_INTEGER(right);
+    CHECK_INTEGER(bottom);
+    rc.clip.x = left;
+    rc.clip.y = top;
+    rc.clip.width = right;
+    rc.clip.height = bottom;
     RENDERLIST_PUSH(self->list_ptr, &rc);
     return 0;
 }
@@ -290,6 +285,8 @@ static int l_Renderer__set_blend_mode(lua_State* L) {
             rc.blend.func1 = GL_ZERO;
             rc.blend.equation = GL_FUNC_ADD;
             break;
+        default:
+            break;
     }
     RENDERLIST_PUSH(self->list_ptr, &rc);
     return 0;
@@ -301,8 +298,21 @@ static int l_Renderer__draw(lua_State* L) {
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_DRAW_VERTEX;
     rc.draw.mode = draw_modes_values[opt];
-    rc.draw.start = luaL_checkinteger(L, arg++);
-    rc.draw.count = luaL_checkinteger(L, arg++);
+    rc.draw.start = (int)luaL_checkinteger(L, arg++);
+    rc.draw.count = (int)luaL_checkinteger(L, arg++);
+    RENDERLIST_PUSH(self->list_ptr, &rc);
+    return 0;
+}
+
+static int l_Renderer__draw_instanced(lua_State* L) {
+    CHECK_META(Renderer);
+    int opt = luaL_checkoption(L, arg++, "triangles", draw_modes);
+    struct RenderCommand rc;
+    rc.type = RENDER_COMMAND_DRAW_VERTEX_INSTANCED;
+    rc.instanced.mode = draw_modes_values[opt];
+    rc.instanced.start = (int)luaL_checkinteger(L, arg++);
+    rc.instanced.count = (int)luaL_checkinteger(L, arg++);
+    rc.instanced.instance_count = (int)luaL_checkinteger(L, arg++);
     RENDERLIST_PUSH(self->list_ptr, &rc);
     return 0;
 }
@@ -313,7 +323,7 @@ static int l_Renderer__send_float(lua_State* L) {
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
     rc.uniform.location = glGetUniformLocation(self->current_program_id, name);
-    rc.uniform.f = luaL_checknumber(L, arg);
+    rc.uniform.f = (float)luaL_checknumber(L, arg);
     RENDERLIST_PUSH(self->list_ptr, &rc);
     return 0;
 }
@@ -330,7 +340,7 @@ static int l_Renderer__send_matrix(lua_State* L) {
         float* m = (float*)rc.uniform.m;
         for (int i = 0; i < 16; i++) {
             lua_rawgeti(L, arg, i+1);
-            m[i] = (int)luaL_checkinteger(L, -1);
+            m[i] = (float)luaL_checknumber(L, -1);
             lua_pop(L, 1);
         }
     } else {
@@ -355,7 +365,9 @@ static int l_Renderer_meta(lua_State* L) {
         REG_META_FIELD(Renderer, clear),
         REG_META_FIELD(Renderer, enable),
         REG_META_FIELD(Renderer, disable),
+        // set states
         REG_META_FIELD(Renderer, set_vao),
+        // REG_META_FIELD(Renderer, set_buffer),
         REG_META_FIELD(Renderer, set_texture2d),
         REG_META_FIELD(Renderer, set_framebuffer),
         REG_META_FIELD(Renderer, set_program),
@@ -365,10 +377,17 @@ static int l_Renderer_meta(lua_State* L) {
         // uniforms
         REG_META_FIELD(Renderer, send_float),
         REG_META_FIELD(Renderer, send_matrix),
+        // draw
         REG_META_FIELD(Renderer, draw),
+        REG_META_FIELD(Renderer, draw_instanced),
         {NULL, NULL}
     };
     luaL_setfuncs(L, reg, 0);
+    return 1;
+}
+
+static int l_selene_renderer_load_image(lua_State* L) {
+    INIT_ARG();
     return 1;
 }
 
@@ -400,7 +419,7 @@ int luaopen_renderer(lua_State* L) {
 
     const luaL_Reg reg[] = {
         // {"create_batch2D", l_renderer_create_Batch2D},
-        {"create", l_renderer_create},
+        // {"create", l_renderer_create},
         {"create_canvas", l_Canvas_create},
         {"create_texture", l_Texture2D_create},
         {"font8x8", l_Font_8x8},

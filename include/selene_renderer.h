@@ -167,8 +167,7 @@ enum RenderCommandType {
     RENDER_COMMAND_SET_FRAMEBUFFER,
     RENDER_COMMAND_SET_RENDERBUFFER,
 
-    RENDER_COMMAND_ENABLE_CLIP_RECT,
-    RENDER_COMMAND_DISABLE_CLIP_RECT,
+    RENDER_COMMAND_SET_SCISSOR,
 
     RENDER_COMMAND_SET_BLEND_MODE,
 
@@ -183,6 +182,9 @@ enum RenderCommandType {
     RENDER_COMMAND_DRAW_VERTEX_INSTANCED,
     RENDER_COMMAND_DRAW_INDEX_INSTANCED,
 
+    RENDER_COMMAND_ENABLE_CLIP_RECT,
+    RENDER_COMMAND_DISABLE_CLIP_RECT,
+
     RENDER_COMMAND_CUSTOM,
 
     RENDER_COMMAND_COUNT
@@ -193,16 +195,18 @@ struct RenderCommand {
     union {
         struct {
             Uint32 program;
-            Uint32 location;
-            Sint8 c;
-            Uint8 uc;
-            Sint16 s;
-            Uint16 us;
-            Sint32 i;
-            Uint32 ui;
-            float f;
-            double d;
-            mat4 m;
+            int location;
+            union {
+                Sint8 c;
+                Uint8 uc;
+                Sint16 s;
+                Uint16 us;
+                Sint32 i;
+                Uint32 ui;
+                float f;
+                double d;
+                mat4 m;
+            };
         } uniform;
         struct { Uint32 mask; float color[4]; } clear;
         struct { int x, y, width, height; } clip;
@@ -225,13 +229,13 @@ struct RenderCommand {
 
         struct {
             Uint32 mode;
-            Uint32 start, count;
+            int start, count;
         } draw;
 
         struct {
             Uint32 mode;
-            Uint32 start, count;
-            Uint32 instance_count;
+            int start, count;
+            int instance_count;
         } instanced;
     };
 };

@@ -1,4 +1,4 @@
-#include "../renderer.h"
+#include "selene_renderer.h"
 
 const char* c_vertex_header =
 #if defined(USE_GLES2)

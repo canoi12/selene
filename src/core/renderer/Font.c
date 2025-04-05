@@ -1,4 +1,4 @@
-#include "../renderer.h"
+#include "selene_renderer.h"
 
 //#include "font8x8/font8x8_latin.h"
 #define STB_TRUETYPE_IMPLEMENTATION
