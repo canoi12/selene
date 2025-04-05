@@ -44,18 +44,22 @@ static MODULE_FUNCTION(image, from_file) {
 
 static MODULE_FUNCTION(image, from_memory) {
     INIT_ARG();
-    CHECK_UDATA(Data, dt);
+    // CHECK_UDATA(Data, dt);
+    if (!lua_isuserdata(L, arg))
+        return luaL_argerror(L, arg, "userdata expected");
+    void* dt = lua_touserdata(L, arg++);
+    CHECK_INTEGER(dt_size);
     int w, h, comp;
     OPT_INTEGER(req_comp, 4);
-    stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)(&dt[1]), *dt, &w, &h, &comp, req_comp);
+    stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)dt, dt_size, &w, &h, &comp, req_comp);
     if (pixels == NULL)
         return luaL_error(L, "[selene] failed to load image from memory");
     lua_newtable(L);
     const size_t size = w*h*req_comp;
-    NEW_UDATA_ADD(Data, data, sizeof(Data)+size);
+    Uint8* data = (Uint8*)lua_newuserdata(L, size);
+    luaL_setmetatable(L, "uint8_t[]");
     lua_setfield(L, -2, "data");
-    *data = size;
-    memcpy(&data[1], pixels, *data);
+    memcpy(data, pixels, size);
     stbi_image_free(pixels);
 
     lua_pushinteger(L, w);

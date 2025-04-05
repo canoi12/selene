@@ -671,7 +671,8 @@ static MODULE_FUNCTION(sdl, rw_from_file) {
         return 1;
     }
     NEW_UDATA(sdlRWops, rwops);
-    memcpy(rwops, ops, sizeof(SDL_RWops));
+    *rwops = ops;
+    // memcpy(rwops, ops, sizeof(SDL_RWops));
 
     return 1;
 }
