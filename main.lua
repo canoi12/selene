@@ -1,10 +1,11 @@
 selene('My Game', '1.0.0', 'org.selene.MyGame')
+local ctx = selene.get_context()
 print(selene.renderer.Font)
 local font = selene.renderer.font8x8()
 print(font)
 print(selene.renderer)
 print(selene.get_renderer)
-local render = selene.renderer.RenderBatch2D(selene.get_renderer())
+local render = selene.renderer.RenderBatch2D(ctx.renderer)
 if not selene then
     error(err)
 end

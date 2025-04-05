@@ -1,33 +1,34 @@
 --- @meta
 --- @class selene
---- @field Data selene.Data
+--- @field __version string
 --- @field __dir string
 --- @field __exec string
 selene = {}
 
---- @return string
-function selene.get_version() end
+--- @param filename string
+--- @return userdata, integer
+function selene.load_file(filename) end
 
---- Get executable path
+--- @param filename string
 --- @return string
-function selene.get_exec_path() end
+function selene.read_file(filename) end
+
+--- @param size integer
+function selene.alloc(size) end
+
+--- Delay time in milliseconds
+--- @param ms integer
+function selene.delay(ms) end
+
+--- @return integer
+function selene.get_ticks() end
 
 --- Set state of selene main loop
 --- @param val boolean
 function selene.set_running(val) end
 
---- Create data
---- @param size integer
---- @param copy_data selene.Data|nil
---- @return selene.Data
-function selene.create_data(size, copy_data) end
-
---- Create cube data for simple examples
---- @return {vertices:userdata, indices:userdata, num_vertices:integer, num_indices:integer}
-function selene.cube_data() end
-
 --- Set the event callback
---- @param func function(string)
+--- @param func function(string, ...)
 function selene.set_event(func) end
 
 --- Set step callback
@@ -38,12 +39,28 @@ function selene.set_step(func) end
 --- @param func function
 function selene.set_quit(func) end
 
---- @enum host_name
-local host_name = {
-    'windows',
-    'linux',
-    'android'
-}
+--- Create a new Window
+--- @param title string
+--- @param width integer
+--- @param height integer
+--- @param opt table
+--- @return sdlWindow
+function selene.create_window(title, width, height, opt) end
+
+--- Create a new Renderer
+--- @param win sdlWindow
+function selene.create_renderer(win) end
+
+--- Get selene context
+--- @return {window:sdlWindow|nil,renderer:Renderer|nil,audio_system:AudioSystem|nil}
+function selene.get_context() end
+
+--- @alias host_name
+--- | 'windows'
+--- | 'linux'
+--- | 'macos'
+--- | 'android'
+--- | 'emscripten'
 
 --- Get system name
 --- @return host_name
@@ -53,59 +70,15 @@ function os.host() end
 --- @return string|nil
 function os.arch() end
 
---- @class selene.Data
-local Data = {}
-
---- @return integer
-function Data:size() end
-
---- @param offset integer
---- @return lightuserdata
-function Data:root(offset) end
-
---- @return string
-function Data:get_string() end
-
---- @param offset integer
---- @param count integer|nil
---- @return integer ...
-function Data:read_bytes(offset, count) end
-
---- @param offset integer
---- @param count integer|nil
---- @return integer ...
-function Data:read_ints(offset, count) end
-
---- @param offset integer
---- @param count integer|nil
---- @return integer ...
-function Data:read_floats(offset, count) end
-
---- @param offset integer
---- @vararg integer
---- @return integer
-function Data:write_bytes(offset, ...) end
-
---- @param offset integer
---- @vararg integer
---- @return integer
-function Data:write_ints(offset, ...) end
-
---- @param offset integer
---- @vararg number
---- @return integer
-function Data:write_floats(offset, ...) end
-
---- @param offset integer
---- @param str string
---- @return integer
-function Data:write_string(offset, str) end
-
---- @class selene.fs
-fs = {}
-
---- @param path string
-function fs.exists(path) end
-
+selene.filesystem = {}
+--- Read the content of the specified file
 --- @param filename string
-function fs.read_text(filename) end
+--- @param to_userdata boolean
+--- @return string|userdata
+function selene.filesystem.read(filename, to_userdata) end
+
+--- Write to the specified file
+--- @param filename string
+--- @param data string|userdata
+--- @param size integer|nil
+function selene.filesystem.write(filename, data, size) end
