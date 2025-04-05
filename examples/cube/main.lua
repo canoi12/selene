@@ -4,7 +4,8 @@ local conf = {
     }
 }
 selene('Cube Example', '1.0.0', 'org.selene.CubeExample', conf)
-local renderer = selene.renderer.RenderBatch2D(selene.get_renderer())
+local ctx = selene.get_context()
+local renderer = selene.renderer.RenderBatch2D(ctx.renderer)
 local canvas = selene.renderer.create_canvas(160, 95)
 print(renderer)
 -- print(renderer, renderer.get_white_texture)
