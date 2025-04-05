@@ -1,7 +1,7 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-#include "renderer/renderer.h"
+#include "selene_renderer.h"
 
 static const SeleneContext* selctx = &g_selene_context;
 

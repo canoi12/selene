@@ -1,5 +1,5 @@
 #include "selene.h"
-#include "renderer/renderer.h"
+#include "selene_renderer.h"
 
 #if defined(SELENE_USE_SDL3)
 int g_selene_process_events(lua_State* L, SDL_Event* event) {
@@ -176,20 +176,20 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushstring(L, "touch finger");
             lua_pushinteger(L, event->tfinger.touchId);
             lua_pushinteger(L, event->tfinger.fingerId);
-            lua_pushinteger(L, event->tfinger.x);
-            lua_pushinteger(L, event->tfinger.y);
-            lua_pushinteger(L, event->tfinger.pressure);
+            lua_pushnumber(L, event->tfinger.x);
+            lua_pushnumber(L, event->tfinger.y);
+            lua_pushnumber(L, event->tfinger.pressure);
             return 6;
         }
         case SDL_FINGERMOTION: {
             lua_pushstring(L, "touch finger motion");
             lua_pushinteger(L, event->tfinger.touchId);
             lua_pushinteger(L, event->tfinger.fingerId);
-            lua_pushinteger(L, event->tfinger.x);
-            lua_pushinteger(L, event->tfinger.y);
-            lua_pushinteger(L, event->tfinger.dx);
-            lua_pushinteger(L, event->tfinger.dy);
-            lua_pushinteger(L, event->tfinger.pressure);
+            lua_pushnumber(L, event->tfinger.x);
+            lua_pushnumber(L, event->tfinger.y);
+            lua_pushnumber(L, event->tfinger.dx);
+            lua_pushnumber(L, event->tfinger.dy);
+            lua_pushnumber(L, event->tfinger.pressure);
             return 8;
         }
         /* Gesture events */
@@ -199,8 +199,8 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushinteger(L, event->dgesture.gestureId);
             lua_pushinteger(L, event->dgesture.numFingers);
             lua_pushnumber(L, event->dgesture.error);
-            lua_pushinteger(L, event->dgesture.x);
-            lua_pushinteger(L, event->dgesture.y);
+            lua_pushnumber(L, event->dgesture.x);
+            lua_pushnumber(L, event->dgesture.y);
             return 7;
         }
         case SDL_DOLLARRECORD: {
@@ -209,8 +209,8 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushinteger(L, event->dgesture.gestureId);
             lua_pushinteger(L, event->dgesture.numFingers);
             lua_pushnumber(L, event->dgesture.error);
-            lua_pushinteger(L, event->dgesture.x);
-            lua_pushinteger(L, event->dgesture.y);
+            lua_pushnumber(L, event->dgesture.x);
+            lua_pushnumber(L, event->dgesture.y);
             return 7;
         }
         /* Drop events */

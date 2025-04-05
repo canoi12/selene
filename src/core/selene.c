@@ -1,7 +1,7 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-#include "renderer/renderer.h"
+#include "selene_renderer.h"
 
 extern int l_renderer_create(lua_State* L);
 extern int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win);
@@ -99,7 +99,7 @@ static int l_selene__call(lua_State *L) {
     int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
 
     if (lua_istable(L, 5)) {
-        fprintf(stdout, "is table\n");
+        // fprintf(stdout, "is table\n");
         lua_getfield(L, 5, "window");
         if (!lua_istable(L, -1)) {
             lua_pop(L, 1);
@@ -190,7 +190,7 @@ extern int luaopen_sdl(lua_State *L);
 extern int luaopen_ctypes(lua_State *L);
 
 static const luaL_Reg _global_modules_reg[] = {
-    {"fs", luaopen_fs},
+    // {"fs", luaopen_fs},
 #ifndef SELENE_NO_GL
     {"gl", luaopen_gl},
 #endif
@@ -212,13 +212,13 @@ static const luaL_Reg _global_modules_reg[] = {
 };
 
 // Selene Modules
-#ifndef SELENE_NO_AUDIO
 extern int luaopen_audio(lua_State *L);
-#endif
 extern int luaopen_renderer(lua_State *L);
+extern int luaopen_filesystem(lua_State* L);
 
 static const luaL_Reg _selene_modules_reg[] = {
     {"audio", luaopen_audio},
+    {"filesystem", luaopen_filesystem},
     {"renderer", luaopen_renderer},
     {NULL, NULL}
 };
@@ -257,8 +257,7 @@ static int l_load_from_sdl_rwops(lua_State *L) {
         rw = SDL_RWFromFile(path, "r");
 #endif
         if (!rw) {
-            lua_pushfstring(L, "[selene] RWops: failed to open module: %s",
-                      module_name);
+            lua_pushfstring(L, "[selene] RWops: failed to open module: %s", module_name);
             return 1;
         }
     }
@@ -336,17 +335,106 @@ static int l_selene_set_quit(lua_State *L) {
     return 0;
 }
 
-static int l_selene_get_renderer(lua_State *L) {
-    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
-    return 1;
-}
-
-static int l_selene_get_window(lua_State* L) {
-    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
-    return 1;
-}
-
 extern int selene_open_enums(lua_State *L);
+
+/**
+ * Alloc memory
+ */
+static int l_selene_alloc(lua_State* L) {
+    int size = (int)luaL_checkinteger(L, 1);
+    lua_newuserdata(L, size);
+    return 1;
+}
+
+/**
+ * Timer
+ */
+
+static int l_selene_delay(lua_State* L) {
+    Uint32 ms = (Uint32)luaL_checkinteger(L, 1);
+    SDL_Delay(ms);
+    return 0;
+}
+
+static int l_selene_get_ticks(lua_State* L) {
+    lua_pushinteger(L, SDL_GetTicks());
+    return 1;
+}
+
+/**
+ * Window
+ */
+
+static int l_selene_create_window(lua_State* L) {
+    INIT_ARG();
+    CHECK_STRING(title);
+    CHECK_INTEGER(width);
+    CHECK_INTEGER(height);
+    int x = SDL_WINDOWPOS_CENTERED;
+    int y = SDL_WINDOWPOS_CENTERED;
+    int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+    if (lua_istable(L, arg)) {
+        lua_getfield(L, arg, "x");
+        x = (int)luaL_optinteger(L, -1, x);
+        lua_pop(L, 1);
+
+        lua_getfield(L, arg, "y");
+        y = (int)luaL_optinteger(L, -1, y);
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "resizable");
+        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_RESIZABLE * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "always_on_top");
+        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_ALWAYS_ON_TOP * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "borderless");
+        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
+        lua_pop(L, 2);
+    }
+#if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#else
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
+SDL_Window *win = SDL_CreateWindow(
+        title,
+#if !defined(SELENE_USE_SDL3)
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+#endif
+        width, height, flags
+    );
+    if (win == NULL)
+        return luaL_error(L, "failed to create window: %s", SDL_GetError());
+    SDL_Window **win_ptr = (SDL_Window **)lua_newuserdata(L, sizeof(SDL_Window *));
+    luaL_setmetatable(L, "sdlWindow");
+    *win_ptr = win;
+    return 1;
+}
+
+static int l_selene_create_renderer(lua_State* L) {
+    return l_renderer_create(L);
+}
+
+extern int l_AudioSystem_create(lua_State* L);
+static int l_selene_create_audio_system(lua_State* L) {
+    return l_AudioSystem_create(L);
+}
+
+static int l_selene_get_context(lua_State* L) {
+    lua_newtable(L);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
+    lua_setfield(L, -2, "window");
+    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
+    lua_setfield(L, -2, "renderer");
+    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_audio_system_ref);
+    lua_setfield(L, -2, "audio_system");
+    return 1;
+}
 
 /**
  * Open and setup the selene module
@@ -355,6 +443,9 @@ extern int selene_open_enums(lua_State *L);
  */
 int luaopen_selene(lua_State *L) {
     const luaL_Reg reg[] = {
+        REG_FIELD(selene, alloc),
+        REG_FIELD(selene, delay),
+        REG_FIELD(selene, get_ticks),
         /* Runner functions */
         REG_FIELD(selene, set_running),
         // Set callbacks
@@ -362,22 +453,21 @@ int luaopen_selene(lua_State *L) {
         REG_FIELD(selene, set_step),
         REG_FIELD(selene, set_quit),
         // Get data
-        REG_FIELD(selene, get_window),
-        REG_FIELD(selene, get_renderer),
-        // REG_FIELD(selene, get_audio_system),
+        REG_FIELD(selene, create_window),
+        REG_FIELD(selene, create_renderer),
+        REG_FIELD(selene, create_audio_system),
+        REG_FIELD(selene, get_context),
         {NULL, NULL}
     };
     luaL_newlib(L, reg);
     selene_open_enums(L);
-    // LOAD_MODULE(AudioDecoder);
     lua_pushstring(L, SELENE_VERSION);
     lua_setfield(L, -2, "__version");
-    // LOAD_MODULE(Data);
 
     /* Load selene internal modules */
     int i;
     for (i = 0; _selene_modules_reg[i].name != NULL; i++) {
-        luaL_requiref(L, _selene_modules_reg[i].name, _selene_modules_reg[i].func, 0);
+        _selene_modules_reg[i].func(L);
         lua_setfield(L, -2, _selene_modules_reg[i].name);
     }
 
@@ -406,7 +496,7 @@ int luaopen_selene(lua_State *L) {
     /* Setup global modules */
     for (i = 0; _global_modules_reg[i].name != NULL; i++) {
         luaL_requiref(L, _global_modules_reg[i].name, _global_modules_reg[i].func, 1);
-      lua_pop(L, 1);
+        lua_pop(L, 1);
     }
 
     /* Setup call function */

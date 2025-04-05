@@ -12,6 +12,8 @@
             #define SELENE_API __declspec(dllexport)
         #elif defined(SELENE_IMPORT_DLL)
             #define SELENE_API __declspec(dllimport)
+        #else
+            #define SELENE_API 
         #endif
     #else
         #define SELENE_API extern
