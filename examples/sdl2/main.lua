@@ -9,8 +9,6 @@ local event = sdl.create_event()
 local keys = sdl.get_keyboard_state()
 local pos = {8, 64}
 print(selene.__dir, selene.__exec)
-print(fs.exists(selene.__dir .. '/perceba.jpg'))
-print(fs.exists('tuiteiro.jpg'))
 
 local current = sdl.get_ticks()
 local last = sdl.get_ticks()

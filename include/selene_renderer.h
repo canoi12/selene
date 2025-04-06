@@ -321,4 +321,6 @@ struct Renderer {
 
 #define RENDER_BATCH2D_CLASS LUA_META_CLASS(RenderBatch2D)
 
+#include "stb_image.h"
+
 #endif /* SELENE_RENDERER_H_ */

@@ -29,6 +29,41 @@
     return 1;
 }
 
+int l_Texture2D_load(lua_State* L) {
+    INIT_ARG();
+    CHECK_STRING(filename);
+    int format = luaL_checkoption(L, arg++, "rgba", pixel_formats);
+    SDL_RWops* rw = SDL_RWFromFile(filename, "rb");
+    if (!rw) return luaL_error(L, "[selene] failed to load image: %s", filename);
+    size_t size = SDL_RWsize(rw);
+    void* dt = malloc(size);
+    SDL_RWread(rw, dt, 1, size);
+    SDL_RWclose(rw);
+    int width, height, comp;
+    int req_comp = STBI_rgb;
+    if (format == 0) req_comp = STBI_rgb;
+    else if (format == 1) req_comp = STBI_rgb_alpha;
+    stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)dt, size, &width, &height, &comp, req_comp);
+    free(dt);
+    if (pixels == NULL)
+        return luaL_error(L, "[selene] failed to load image from memory");
+    Uint32 tex;
+    glGenTextures(1, &tex);
+    NEW_UDATA(Texture2D, texture);
+    texture->handle = tex;
+    texture->width = width;
+    texture->height = height;
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, pixel_formats_values[format], width, height, 0, pixel_formats_values[format], GL_UNSIGNED_BYTE, pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(pixels);
+    return 1;
+}
+
 static inline int l_Texture2D_destroy(lua_State* L) {
     CHECK_META(Texture2D);
     if (self->handle != 0) glDeleteTextures(1, &(self->handle));

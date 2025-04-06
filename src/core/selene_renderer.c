@@ -28,6 +28,7 @@ extern int l_RenderList_create(lua_State* L);
 extern int l_Effect2D_open_meta(lua_State* L);
 extern int l_Texture2D_open_meta(lua_State* L);
 extern int l_Texture2D_create(lua_State* L);
+extern int l_Texture2D_load(lua_State* L);
 
 extern int l_Font_open_meta(lua_State* L);
 extern int l_Font_8x8(lua_State* L);
@@ -422,6 +423,7 @@ int luaopen_renderer(lua_State* L) {
         // {"create", l_renderer_create},
         {"create_canvas", l_Canvas_create},
         {"create_texture", l_Texture2D_create},
+        {"load_texture", l_Texture2D_load},
         {"font8x8", l_Font_8x8},
         {"load_font", l_Font_load},
         {NULL, NULL}
