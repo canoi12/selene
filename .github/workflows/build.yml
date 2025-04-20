@@ -15,7 +15,7 @@ jobs:
 
       - name: Build project
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DEXPORT_APPIMAGE=ON
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
@@ -36,15 +36,10 @@ jobs:
           Start-Process msiexec -ArgumentList '/i cmake.msi /quiet /norestart' -Wait
           Remove-Item cmake.msi
 
-      - name: Download SDL2
-        run: |
-          Invoke-WebRequest -Uri https://www.libsdl.org/release/SDL2-devel-2.30.11-VC.zip -OutFile SDL2.zip
-          Expand-Archive -Path SDL2.zip -DestinationPath SDL2
-          echo "SDL2_DIR=$env:GITHUB_WORKSPACE\SDL2\SDL2-2.30.11" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
       - name: Build project
         run: |
-          cmake -S . -B build -DSDL_PRECOMP_DIR=$env:SDL2_DIR -DCMAKE_BUILD_TYPE=Release
+          cmake -P cmake/scripts/DownloadSDL2.cmake
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
@@ -87,11 +82,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libsdl2-dev
           sudo apt-get install openjdk-17-jre openjdk-17-jdk
-          bash misc/scripts/download_sdl.sh source
-          cmake -P cmake/scripts/SetupAndroidSDK.cmake
 
       - name: Build project
         run: |
+          cmake -P cmake/scripts/SetupAndroidSDK.cmake
           cmake -DCMAKE_BUILD_TYPE=Release -P cmake/scripts/GenerateAndroidApk.cmake
 
       - name: Upload artifacts
