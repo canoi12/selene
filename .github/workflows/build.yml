@@ -15,14 +15,17 @@ jobs:
 
       - name: Build project
         run: |
-          cmake -S . -B build -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64
+          cmake -P cmake/scripts/DownloadAppImage.cmake
+          cmake -S . -B build -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DEXPORT_APPIMAGE=ON
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-binaries
-          path: build/dist/*.tar.gz
+          path: |
+            build/dist/*.tar.gz
+            build/dist/*.AppImage
 
   build-windows:
     runs-on: windows-latest
