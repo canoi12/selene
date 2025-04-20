@@ -22,8 +22,8 @@ const int texture_targets_values[] = { GL_TEXTURE_2D, GL_TEXTURE_3D };
 const char* draw_modes[] = {"points", "lines", "triangles", NULL};
 const int draw_modes_values[] = {GL_POINTS, GL_LINES, GL_TRIANGLES};
 
-extern int l_RenderList_meta(lua_State* L);
-extern int l_RenderList_create(lua_State* L);
+extern int l_RenderCommandList_meta(lua_State* L);
+extern int l_RenderCommandList_create(lua_State* L);
 
 extern int l_Effect2D_open_meta(lua_State* L);
 extern int l_Texture2D_open_meta(lua_State* L);
@@ -39,6 +39,9 @@ extern int l_Canvas_create(lua_State* L);
 
 extern int l_RenderBatch2D_meta(lua_State* L);
 extern int l_RenderBatch2D_create(lua_State* L);
+
+extern int l_VertexBatch2D_meta(lua_State* L);
+extern int l_VertexBatch2D_create(lua_State* L);
 
 static void s_renderer_present(Renderer* r, lua_State* L) {
     // fprintf(stdout, "render present\n");
@@ -65,12 +68,11 @@ int l_renderer_create(lua_State* L) {
     if (gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress) == 0)
         return luaL_error(L, "Failed to init glad");
 #endif
-    lua_pushcfunction(L, l_RenderList_create);
-    lua_pushvalue(L, 2);
-    lua_call(L, 1, 1);
-    r->list_ptr = (RenderList*)lua_touserdata(L, -1);
+    lua_pushcfunction(L, l_RenderCommandList_create);
+    lua_call(L, 0, 1);
+    r->command_list = (RenderCommandList*)lua_touserdata(L, -1);
     // fprintf(stdout, "render list: %p\n", r->list_ptr);
-    r->l_render_list_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    r->l_command_list_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     r->l_gl_context_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     lua_pushvalue(L, 1);
     r->l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -92,13 +94,13 @@ static int l_Renderer__destroy(lua_State* L) {
 
 static int l_Renderer__begin(lua_State* L) {
     CHECK_META(Renderer);
-    RENDERLIST_CLEAR(self->list_ptr);
+    RENDERLIST_CLEAR(self->command_list);
     return 0;
 }
 
 static int l_Renderer__finish(lua_State* L) {
     CHECK_META(Renderer);
-    RENDERLIST_CALL(self->list_ptr);
+    RENDERLIST_CALL(self->command_list);
     return 0;
 }
 
@@ -131,7 +133,7 @@ static int l_Renderer__clear(lua_State* L) {
     rc.clear.color[1] = self->clear_color[1];
     rc.clear.color[2] = self->clear_color[2];
     rc.clear.color[3] = self->clear_color[3];
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -141,7 +143,7 @@ static int l_Renderer__enable(lua_State* L) {
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_ENABLE;
     rc.enable.attrib = enable_attribs_values[opt];
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -151,7 +153,7 @@ static int l_Renderer__disable(lua_State* L) {
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_DISABLE;
     rc.enable.attrib = enable_attribs_values[opt];
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -162,7 +164,7 @@ int l_Renderer__set_vao(lua_State* L) {
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_SET_VERTEX_ARRAY;
         rc.vao.handle = handle;
-        RENDERLIST_PUSH(self->list_ptr, &rc);
+        RENDERLIST_PUSH(self->command_list, &rc);
         self->current_vao_id = (int)handle;
     }
     return 0;
@@ -179,7 +181,7 @@ static int l_Renderer__set_texture(lua_State* L) {
         rc.texture.slot = slot;
         rc.texture.target = texture_targets_values[target];
         rc.texture.handle = handle;
-        RENDERLIST_PUSH(self->list_ptr, &rc);
+        RENDERLIST_PUSH(self->command_list, &rc);
         self->current_tex2d_id = (int)handle;
     }
 
@@ -196,7 +198,7 @@ static int l_Renderer__set_texture2d(lua_State* L) {
         rc.texture.slot = slot;
         rc.texture.target = GL_TEXTURE_2D;
         rc.texture.handle = handle;
-        RENDERLIST_PUSH(self->list_ptr, &rc);
+        RENDERLIST_PUSH(self->command_list, &rc);
         self->current_tex2d_id = (int)handle;
     }
     return 0;
@@ -211,7 +213,7 @@ static int l_Renderer__set_framebuffer(lua_State* L) {
         rc.type = RENDER_COMMAND_SET_FRAMEBUFFER;
         rc.target.target = GL_FRAMEBUFFER;
         rc.target.handle = handle;
-        RENDERLIST_PUSH(self->list_ptr, &rc);
+        RENDERLIST_PUSH(self->command_list, &rc);
         self->current_fbo_id = (int)handle;
     }
     return 0;
@@ -224,7 +226,7 @@ static int l_Renderer__set_program(lua_State* L) {
         struct RenderCommand rc;
         rc.type = RENDER_COMMAND_SET_PROGRAM;
         rc.program.handle = handle;
-        RENDERLIST_PUSH(self->list_ptr, &rc);
+        RENDERLIST_PUSH(self->command_list, &rc);
         self->current_program_id = (int)handle;
     }
     return 0;
@@ -238,7 +240,7 @@ static int l_Renderer__set_viewport(lua_State* L) {
     rc.viewport.y = (int)luaL_checkinteger(L, arg++);
     rc.viewport.width = (int)luaL_checkinteger(L, arg++);
     rc.viewport.height = (int)luaL_checkinteger(L, arg++);
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -254,7 +256,7 @@ static int l_Renderer__set_scissor(lua_State* L) {
     rc.clip.y = top;
     rc.clip.width = right;
     rc.clip.height = bottom;
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -289,7 +291,7 @@ static int l_Renderer__set_blend_mode(lua_State* L) {
         default:
             break;
     }
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -301,7 +303,7 @@ static int l_Renderer__draw(lua_State* L) {
     rc.draw.mode = draw_modes_values[opt];
     rc.draw.start = (int)luaL_checkinteger(L, arg++);
     rc.draw.count = (int)luaL_checkinteger(L, arg++);
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -314,7 +316,7 @@ static int l_Renderer__draw_instanced(lua_State* L) {
     rc.instanced.start = (int)luaL_checkinteger(L, arg++);
     rc.instanced.count = (int)luaL_checkinteger(L, arg++);
     rc.instanced.instance_count = (int)luaL_checkinteger(L, arg++);
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -325,7 +327,7 @@ static int l_Renderer__send_float(lua_State* L) {
     rc.type = RENDER_COMMAND_FLOAT_UNIFORM;
     rc.uniform.location = glGetUniformLocation(self->current_program_id, name);
     rc.uniform.f = (float)luaL_checknumber(L, arg);
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
@@ -351,12 +353,12 @@ static int l_Renderer__send_matrix(lua_State* L) {
             else m[i] = 0.f;
         }
     }
-    RENDERLIST_PUSH(self->list_ptr, &rc);
+    RENDERLIST_PUSH(self->command_list, &rc);
     return 0;
 }
 
 static int l_Renderer_meta(lua_State* L) {
-    luaL_newmetatable(L, "Renderer");
+    luaL_newmetatable(L, RENDERER_CLASS);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     const luaL_Reg reg[] = {
@@ -387,19 +389,14 @@ static int l_Renderer_meta(lua_State* L) {
     return 1;
 }
 
-static int l_selene_renderer_load_image(lua_State* L) {
-    INIT_ARG();
-    return 1;
-}
-
 int luaopen_renderer(lua_State* L) {
     lua_newtable(L);
     // Renderer meta
     l_Renderer_meta(L);
-    lua_setfield(L, -2, "Renderer");
+    lua_setfield(L, -2, RENDERER_CLASS);
     // RenderList meta
-    l_RenderList_meta(L);
-    lua_setfield(L, -2, "RenderList");
+    l_RenderCommandList_meta(L);
+    lua_setfield(L, -2, RENDERCOMMANDLIST_CLASS);
 
     // Effect2D
     l_Effect2D_open_meta(L);
@@ -412,15 +409,17 @@ int luaopen_renderer(lua_State* L) {
     lua_setfield(L, -2, CANVAS_CLASS);
 
     l_Font_open_meta(L);
-    lua_setfield(L, -2, "Font");
+    lua_setfield(L, -2, FONT_CLASS);
 
     // RenderBatch2D
     l_RenderBatch2D_meta(L);
-    lua_setfield(L, -2, "RenderBatch2D");
+    lua_setfield(L, -2, RENDER_BATCH2D_CLASS);
+
+    // VertexBatch2D
+    l_VertexBatch2D_meta(L);
+    lua_setfield(L, -2, VERTEX_BATCH2D_CLASS);
 
     const luaL_Reg reg[] = {
-        // {"create_batch2D", l_renderer_create_Batch2D},
-        // {"create", l_renderer_create},
         {"create_canvas", l_Canvas_create},
         {"create_texture", l_Texture2D_create},
         {"load_texture", l_Texture2D_load},

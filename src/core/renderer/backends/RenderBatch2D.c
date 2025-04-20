@@ -1,6 +1,8 @@
 #include "selene_renderer.h"
 
 extern int l_Effect2D_create(lua_State* L);
+extern int l_VertexBatch2D_create(lua_State* L);
+extern int l_VertexBatch2D__destroy(lua_State* L);
 extern int l_Font_8x8(lua_State* L);
 extern void char_rect(FontGlyph* glyphs, const int c, float *x, float *y, int* out_pos, int* out_rect, int width, int line_height);
 extern int utf8_codepoint(uint8_t* p, int* codepoint);
@@ -9,10 +11,12 @@ typedef struct RenderBatch2D RenderBatch2D;
 struct RenderBatch2D {
     Renderer* renderer;
     SDL_Window* window;
-    RenderList* list;
+    RenderCommandList* list;
 
+#if 0
     Uint32 vao;
     Uint32 vbo;
+#endif
     int white_texture_ref;
     int default_effect_ref;
     int default_font_ref;
@@ -25,42 +29,24 @@ struct RenderBatch2D {
     int current_canvas_ref;
 
     Vertex2D aux_vertex;
-    struct {
-        int offset, count;
-        Vertex2D* data;
-    } buffer;
+    int l_vertex_batch_ref;
+    VertexBatch2D* batch;
     int last_offset;
     
     int matrix_mode;
     mat4* matrix;
 };
 
-static void s_check_buffer(lua_State* L, RenderBatch2D* rb, int count) {
-    if ((rb->buffer.offset + count) > rb->buffer.count) {
-        // return luaL_error(L, "buffer overflow");
-        rb->buffer.count *= 2;
-        rb->buffer.data = realloc(rb->buffer.data, sizeof(Vertex2D) * rb->buffer.count);
-        if (!rb->buffer.data) {
-            fprintf(stderr, "Failed to realloc memory for vertex buffer\n");
-            exit(EXIT_FAILURE);
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, rb->vbo);
-        glBufferData(GL_ARRAY_BUFFER, rb->buffer.count*sizeof(Vertex2D), rb->buffer.data, GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-}
-
 static void s_push_draw_command(RenderBatch2D* r, lua_State* L) {
-    if (r->buffer.offset == r->last_offset) return;
+    if (r->batch->offset == r->last_offset) return;
     struct RenderCommand rc;
     rc.type = RENDER_COMMAND_DRAW_VERTEX;
     rc.draw.mode = draw_modes_values[r->current_draw_mode];
     rc.draw.start = r->last_offset;
-    rc.draw.count = r->buffer.offset - r->last_offset;
+    rc.draw.count = r->batch->offset - r->last_offset;
     // fprintf(stdout, "draw command: %d %d\n", rc.draw.start, rc.draw.count);
-    RENDERLIST_PUSH(r->renderer->list_ptr, &rc);
-    r->last_offset = r->buffer.offset;
+    RENDERLIST_PUSH(r->list, &rc);
+    r->last_offset = r->batch->offset;
 }
 
 static void s_push_update_size(RenderBatch2D* r, lua_State* L, int w, int h) {
@@ -90,7 +76,7 @@ static int l_RenderBatch2D_create(lua_State* L) {
     CHECK_UDATA(Renderer, r);
     NEW_UDATA(RenderBatch2D, self);
     self->renderer = r;
-    self->list = r->list_ptr;
+    self->list = r->command_list;
     self->current_draw_mode = 2;
     self->current_clear_mask = GL_COLOR_BUFFER_BIT;
     self->matrix = malloc(2 * sizeof(mat4));
@@ -110,11 +96,15 @@ static int l_RenderBatch2D_create(lua_State* L) {
     Effect2D* effect = (Effect2D*) lua_touserdata(L, -1);
     self->default_effect_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    self->buffer.offset = 0;
-    self->buffer.count = 1024;
-    self->buffer.data = malloc(sizeof(Vertex2D) * self->buffer.count);
+    lua_pushcfunction(L, l_VertexBatch2D_create);
+    if (lua_pcall(L, 0, 1, 0) != LUA_OK)
+        return luaL_error(L, "failed to create the vertex batch: %s", lua_tostring(L, -1));
+    self->batch = lua_touserdata(L, -1);
+    fprintf(stdout, "Batch: %p\n", self->batch);
+    fprintf(stdout, "size: %ld\n", self->batch->count);
+    self->l_vertex_batch_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 #if defined(DEBUG)
-    fprintf(stdout, "Batch buffer size: %d\n", self->buffer.count * sizeof(Vertex2D));
+    fprintf(stdout, "Batch buffer size: %ld\n", self->batch->count * sizeof(Vertex2D));
 #endif
 
     self->last_offset = 0;
@@ -124,12 +114,9 @@ static int l_RenderBatch2D_create(lua_State* L) {
 
     /* Initialize VAO and VBO */
 #if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
-    glGenVertexArrays(1, &self->vao);
-    glBindVertexArray(self->vao);
+    glBindVertexArray(self->batch->vao.handle);
 #endif
-    glGenBuffers(1, &self->vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, self->vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * self->buffer.count, NULL, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, self->batch->vbo.handle);
     glVertexAttribPointer(effect->position_location, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)0);
     glVertexAttribPointer(effect->color_location, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(3 * sizeof(float)));
     glVertexAttribPointer(effect->texcoord_location, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)(7 * sizeof(float)));
@@ -180,10 +167,12 @@ static int l_RenderBatch2D_create(lua_State* L) {
 
 static int l_RenderBatch2D__destroy(lua_State* L) {
     CHECK_META(RenderBatch2D);
+#if 0
     glDeleteBuffers(1, &self->vbo);
 
 #if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     glDeleteVertexArrays(1, &self->vao);
+#endif
 #endif
 
     if (self->white_texture_ref != LUA_NOREF) {
@@ -203,7 +192,12 @@ static int l_RenderBatch2D__destroy(lua_State* L) {
     }
 
     if (self->matrix) free(self->matrix);
-    if (self->buffer.data) free(self->buffer.data);
+    if (self->l_vertex_batch_ref != LUA_NOREF) {
+        lua_pushcfunction(L, l_VertexBatch2D__destroy);
+        lua_rawgeti(L, LUA_REGISTRYINDEX, self->l_vertex_batch_ref);
+        lua_call(L, 1, 0);
+        luaL_unref(L, LUA_REGISTRYINDEX, self->l_vertex_batch_ref);
+    }
 
     return 0;
 }
@@ -248,9 +242,7 @@ static int l_RenderBatch2D__disable_3d(lua_State* L) {
 
 int l_RenderBatch2D__push_vertex(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if (self->buffer.offset + 1 > self->buffer.count) {
-        return luaL_error(L, "buffer overflow");
-    }
+    self->batch->check_size(self->batch, 1);
     Vertex2D v;
     memcpy(&(v), &(self->aux_vertex), sizeof(Vertex2D));
     v.x = (float)luaL_checknumber(L, arg++);
@@ -263,35 +255,35 @@ int l_RenderBatch2D__push_vertex(lua_State* L) {
     v.u = (float)luaL_checknumber(L, arg++);
     v.v = (float)luaL_checknumber(L, arg++);
     //fprintf(stdout, "%f %f %f %f %f %f %f %f %f\n", v.x, v.y, v.z, v.r, v.g, v.b, v.a, v.u, v.v);
-    memcpy(&(self->buffer.data[self->buffer.offset]), &v, sizeof(Vertex2D));
-    self->buffer.offset += 1;
+    memcpy(&(self->batch->data[self->batch->offset]), &v, sizeof(Vertex2D));
+    self->batch->offset += 1;
     memcpy(&(self->aux_vertex), &v, sizeof(Vertex2D));
     return 0;
 }
 
 int l_RenderBatch2D__draw_point(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    s_check_buffer(L, self, 1);
+    self->batch->check_size(self->batch, 1);
     if (self->current_draw_mode != 0) {
         s_push_draw_command(self, L);
         self->current_draw_mode = 0;
     }
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    Vertex2D* v = self->batch->data + self->batch->offset;
     memcpy(v, &(self->aux_vertex), sizeof(Vertex2D));
     v->x = (float)luaL_checknumber(L, 2);
     v->y = (float)luaL_checknumber(L, 3);
-    self->buffer.offset += 1;
+    self->batch->offset += 1;
     return 0;
 }
 
 int l_RenderBatch2D__draw_line(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    s_check_buffer(L, self, 2);
+    self->batch->check_size(self->batch, 2);
     if (self->current_draw_mode != 1) {
         s_push_draw_command(self, L);
         self->current_draw_mode = 1;
     }
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 2; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
@@ -300,14 +292,14 @@ int l_RenderBatch2D__draw_line(lua_State* L) {
     v[1].x = (float)luaL_checknumber(L, 4);
     v[1].y = (float)luaL_checknumber(L, 5);
     // memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 3);
-    self->buffer.offset += 2;
+    self->batch->offset += 2;
     return 0;
 }
 
 static int l_RenderBatch2D__line_triangle(lua_State* L) {
     RenderBatch2D* self = (RenderBatch2D*)lua_touserdata(L, 1);
-    s_check_buffer(L, self, 6);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 6);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 6; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
@@ -326,14 +318,14 @@ static int l_RenderBatch2D__line_triangle(lua_State* L) {
     v[5].x = v[3].x;
     v[5].y = v[3].y;
     // memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 3);
-    self->buffer.offset += 6;
+    self->batch->offset += 6;
     return 0;
 }
 
 static int l_RenderBatch2D__fill_triangle(lua_State* L) {
     RenderBatch2D* self = (RenderBatch2D*)lua_touserdata(L, 1);
-    s_check_buffer(L, self, 3);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 3);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 3; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
@@ -344,7 +336,7 @@ static int l_RenderBatch2D__fill_triangle(lua_State* L) {
     v[2].x = (float)luaL_checknumber(L, 6);
     v[2].y = (float)luaL_checknumber(L, 7);
     // memcpy(&(batch->buffer.data[batch->buffer.offset]), v, sizeof(Vertex2D) * 3);
-    self->buffer.offset += 3;
+    self->batch->offset += 3;
     return 0;
 }
 
@@ -368,8 +360,8 @@ int l_RenderBatch2D__draw_triangle(lua_State* L) {
 static int l_RenderBatch2D__point_rect(lua_State* L) {
     RenderBatch2D* self = (RenderBatch2D*)lua_touserdata(L, 1);
     int arg = 2;
-    s_check_buffer(L, self, 4);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 4);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 4; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
@@ -404,15 +396,15 @@ static int l_RenderBatch2D__point_rect(lua_State* L) {
     v[3].u = 0.f;
     v[3].v = 1.f-yy;
 
-    self->buffer.offset += 4;
+    self->batch->offset += 4;
     return 0;
 }
 
 static int l_RenderBatch2D__line_rect(lua_State* L) {
     RenderBatch2D* self = (RenderBatch2D*)lua_touserdata(L, 1);
     int arg = 2;
-    s_check_buffer(L, self, 8);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 8);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 8; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
@@ -471,15 +463,15 @@ static int l_RenderBatch2D__line_rect(lua_State* L) {
     v[7].u = 0.f;
     v[7].v = yy;
 
-    self->buffer.offset += 8;
+    self->batch->offset += 8;
     return 0;
 }
 
 static int l_RenderBatch2D__fill_rect(lua_State* L) {
     RenderBatch2D* self = (RenderBatch2D*)lua_touserdata(L, 1);
     int arg = 2;
-    s_check_buffer(L, self, 6);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 6);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 6; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
@@ -608,7 +600,7 @@ static int l_RenderBatch2D__fill_rect(lua_State* L) {
 
     } else return luaL_argerror(L, arg, "invalid argument, number or table expected");
 
-    self->buffer.offset += 6;
+    self->batch->offset += 6;
     return 0;
 }
 
@@ -636,8 +628,8 @@ int l_RenderBatch2D__line_circle(lua_State* L) {
     float cy = (float)luaL_checknumber(L, arg++);
     float radius = (float)luaL_checknumber(L, arg++);
     int segments = (int)luaL_optinteger(L, arg++, 16);
-    s_check_buffer(L, self, 2*segments);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 2*segments);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     float inc = M_PI2 / (float)segments;
     for (int i = 0; i < segments; i++) {
         memcpy(v, &self->aux_vertex, sizeof(Vertex2D));
@@ -652,7 +644,7 @@ int l_RenderBatch2D__line_circle(lua_State* L) {
 
         v += 2;
     }
-    self->buffer.offset += 2*segments;
+    self->batch->offset += 2*segments;
     return 0;
 }
 
@@ -664,8 +656,8 @@ int l_RenderBatch2D__fill_circle(lua_State* L) {
     float radius = (float)luaL_checknumber(L, arg++);
     int segments = (int)luaL_optinteger(L, arg++, 16);
 
-    s_check_buffer(L, self, 3*segments);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 3*segments);
+    Vertex2D* v = self->batch->data + self->batch->offset;
 
     float inc = M_PI2 / (float)segments;
     for (int i = 0; i < segments; i++) {
@@ -685,7 +677,7 @@ int l_RenderBatch2D__fill_circle(lua_State* L) {
 
         v += 3;
     }
-    self->buffer.offset += 3*segments;
+    self->batch->offset += 3*segments;
     return 0;
 }
 
@@ -704,8 +696,8 @@ int l_RenderBatch2D__draw_circle(lua_State* L) {
 
 int l_RenderBatch2D__draw_quad(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    s_check_buffer(L, self, 6);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 6);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 6; i++) {
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     }
@@ -763,7 +755,7 @@ int l_RenderBatch2D__draw_quad(lua_State* L) {
     v[4].v = (float)luaL_checknumber(L, -1);
     lua_pop(L, 4);
 
-    self->buffer.offset += 6;
+    self->batch->offset += 6;
     return 0;
 }
 
@@ -891,8 +883,8 @@ static int l_RenderBatch2D__draw_sprite(lua_State* L) {
         uv[2][1] = aux[1];
     }
     
-    s_check_buffer(L, self, 6);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, 6);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     for (int i = 0; i < 6; i++)
         memcpy(&(v[i]), &(self->aux_vertex), sizeof(Vertex2D));
     v[0].x = pos[0][0];
@@ -924,7 +916,7 @@ static int l_RenderBatch2D__draw_sprite(lua_State* L) {
     v[5].y = pos[2][1];
     v[5].u = uv[2][0];
     v[5].v = uv[2][1];
-    self->buffer.offset += 6;
+    self->batch->offset += 6;
 
     return 0;
 }
@@ -953,8 +945,8 @@ static int l_RenderBatch2D__draw_text(lua_State* L) {
         len++;
     }
     p = (uint8_t*)text;
-    s_check_buffer(L, self, len*6);
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    self->batch->check_size(self->batch, len*6);
+    Vertex2D* v = self->batch->data + self->batch->offset;
     while (*p != 0) {
         int codepoint;
         int n = utf8_codepoint(p, &codepoint);
@@ -1013,7 +1005,7 @@ static int l_RenderBatch2D__draw_text(lua_State* L) {
         v[5].v = t.y + t.h;
 
         v += 6;
-        self->buffer.offset += 6;
+        self->batch->offset += 6;
         x += src[2];
         //SDL_RenderCopyF(*self, *(font->texture), &t, &dest);
     }
@@ -1063,9 +1055,7 @@ static const int s_cube_indices[] = {
 };
 static int l_RenderBatch2D__draw_cube(lua_State* L) {
     CHECK_META(RenderBatch2D);
-    if ((self->buffer.offset + 36) > self->buffer.count) {
-        return luaL_error(L, "buffer overflow");
-    }
+    self->batch->check_size(self->batch, 36);
     mat4 m = GLM_MAT4_IDENTITY_INIT;
     if (lua_istable(L, arg)) {
         vec3 pos;
@@ -1116,7 +1106,7 @@ static int l_RenderBatch2D__draw_cube(lua_State* L) {
     arg++;
     int is_white = 0;
     if (lua_isboolean(L, arg)) {is_white = 1;}
-    Vertex2D* bv = self->buffer.data + self->buffer.offset;
+    Vertex2D* bv = self->batch->data + self->batch->offset;
     static const vec2 tex_uv[] = {
         {0.f, 0.f},
         {1.f, 0.f},
@@ -1137,7 +1127,7 @@ static int l_RenderBatch2D__draw_cube(lua_State* L) {
             bv[i].r = bv[i].g = bv[i].b = bv[i].a = 1.f;
         }
     }
-    self->buffer.offset += 36;
+    self->batch->offset += 36;
     return 0;
 }
 
@@ -1153,9 +1143,9 @@ int l_RenderBatch2D__fill_sphere(lua_State* L) {
 
     // Verifique se há espaço suficiente no buffer
     int totalVertices = 6 * slices * stacks; // 6 vértices por face (2 triângulos)
-    s_check_buffer(L, self, totalVertices);
-
-    Vertex2D* v = self->buffer.data + self->buffer.offset;
+    // s_check_buffer(L, self, totalVertices);
+    self->batch->check_size(self->batch, totalVertices);
+    Vertex2D* v = self->batch->data + self->batch->offset;
 
     float stackStep = M_PI / (float)stacks; // Angle between stacks
     float sliceStep = 2.0f * M_PI / (float)slices; // Angle between slices
@@ -1240,7 +1230,7 @@ int l_RenderBatch2D__fill_sphere(lua_State* L) {
         }
     }
 
-    self->buffer.offset += totalVertices;
+    self->batch->offset += totalVertices;
     return 0;
 }
 
@@ -1584,7 +1574,7 @@ static int l_RenderBatch2D__push_draw(lua_State* L) {
 static int l_RenderBatch2D__begin(lua_State* L) {
     CHECK_META(RenderBatch2D);
     RENDERLIST_CLEAR(self->list);
-    self->buffer.offset = 0;
+    self->batch->offset = 0;
     self->last_offset = 0;
     /* Set effect */
     lua_rawgeti(L, LUA_REGISTRYINDEX, self->default_effect_ref);
@@ -1598,11 +1588,11 @@ static int l_RenderBatch2D__begin(lua_State* L) {
     memset(&rc, 0, sizeof(rc));
 #if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
     rc.type = RENDER_COMMAND_SET_VERTEX_ARRAY;
-    rc.vao.handle = self->vao;
+    rc.vao.handle = self->batch->vao.handle;
 #else
     rc.type = RENDER_COMMAND_SET_BUFFER;
     rc.buffer.target = GL_ARRAY_BUFFER;
-    rc.buffer.handle = self->vbo;
+    rc.buffer.handle = self->batch->vbo.handle;
 #endif
     RENDERLIST_PUSH(self->list, &rc);
     /* Set texture */
@@ -1624,9 +1614,9 @@ static int l_RenderBatch2D__begin(lua_State* L) {
 
 static void s_draw_batch(RenderBatch2D* r, lua_State* L) {
     if (!r) return;
-    if (r->buffer.offset != 0) {
-        glBindBuffer(GL_ARRAY_BUFFER, r->vbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, r->buffer.offset*sizeof(Vertex2D), r->buffer.data);
+    if (r->batch->offset != 0) {
+        glBindBuffer(GL_ARRAY_BUFFER, r->batch->vbo.handle);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, r->batch->offset*sizeof(Vertex2D), r->batch->data);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         s_push_draw_command(r, L);
     }

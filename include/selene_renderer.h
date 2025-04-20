@@ -8,26 +8,46 @@
 #define SELENE_BATCH2D_PROJECTION_FAR 1000
 #endif
 
+#if 0
 #define RENDERLIST_CLEAR(list)\
 lua_pushcfunction(L, (list)->clear);\
 lua_pushlightuserdata(L, (list));\
 lua_call(L, 1, 0)
+#else
+#define RENDERLIST_CLEAR(list)\
+(list)->clear((list))
+#endif
 
+#if 0
 #define RENDERLIST_CALL(list)\
 lua_pushcfunction(L, (list)->call);\
 lua_pushlightuserdata(L, (list));\
 lua_call(L, 1, 0)
+#else
+#define RENDERLIST_CALL(list)\
+(list)->call((list))
+#endif
 
+#if 0
 #define RENDERLIST_PUSH(list, rc)\
 lua_pushcfunction(L, (list)->push);\
 lua_pushlightuserdata(L, (list));\
 lua_pushlightuserdata(L, (rc));\
 lua_call(L, 2, 0)
+#else
+#define RENDERLIST_PUSH(list, rc)\
+(list)->push((list), 1, rc)
+#endif
 
+#if 0
 #define RENDERLIST_POP(list)\
 lua_pushcfunction(L, (list)->pop);\
 lua_pushlightuserdata(L, (list));\
 lua_call(L, 1, 1)
+#else
+#define RENDERLIST_POP(list)\
+(list)->pop((list))
+#endif
 
 extern const char* pixel_formats[];
 extern const int pixel_formats_values[];
@@ -37,41 +57,6 @@ extern const int texture_filters_values[];
 
 extern const char* draw_modes[];
 extern const int draw_modes_values[];
-
-/**
- * Texture Types
- */
-
-typedef Uint32 Texture; // Generic texture
-
-typedef struct {
-    Uint32 handle;
-    int width, height;
-} Texture2D;
-
-typedef struct {
-    Uint32 handle; // Handle to the cube map texture
-    int size;      // Size of each face of the cube map
-} TextureCube;
-
-typedef struct {
-    Texture2D texture;
-    FontGlyph glyphs[256];
-} Font;
-
-/**
- * Framebuffer
- */
-
-typedef struct {
-    Uint32 handle;
-} Framebuffer;
-
-typedef struct {
-    Texture2D texture;
-    Uint32 fbo;
-    Uint32 depth;
-} Canvas;
 
 /**
  * Vertex Types
@@ -90,11 +75,95 @@ typedef struct {
 } Vertex3D;
 
 /**
+ * Buffer Types
+ */
+
+typedef Uint32 BufferID;
+typedef Uint32 VertexArrayID;
+
+typedef struct {
+    int vertex_stride;
+    struct {
+        int location;
+        int stride;
+        int type;
+    } attrib[16];
+} VertexFormat;
+
+typedef struct {
+    VertexArrayID handle;
+#if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
+    BufferID vertex_id;
+    BufferID index_id;
+#endif
+} VertexArray;
+
+typedef struct {
+    BufferID handle;
+} Buffer;
+
+typedef struct VertexBatch2D VertexBatch2D;
+struct VertexBatch2D {
+    VertexArray vao;
+    Buffer vbo;
+    int offset;
+    size_t count;
+    Vertex2D* data;
+
+    void(*check_size)(VertexBatch2D*,int);
+    void(*push)(VertexBatch2D*,int,Vertex2D*);
+    void(*send)(VertexBatch2D*,int,size_t);
+};
+
+/**
+ * Texture Types
+ */
+
+typedef Uint32 TextureID; // OpenGL TextureID
+
+typedef struct {
+    TextureID handle;
+    int width, height;
+} Texture2D;
+
+typedef struct {
+    TextureID handle; // Handle to the cube map texture
+    int size;      // Size of each face of the cube map
+} TextureCube;
+
+typedef struct {
+    Texture2D texture;
+    FontGlyph glyphs[256];
+} Font;
+
+/**
+ * Framebuffer
+ */
+
+// OpenGL IDs
+typedef Uint32 FramebufferID;
+typedef Uint32 RenderbufferID;
+
+typedef struct {
+    FramebufferID handle;
+} Framebuffer;
+
+typedef struct {
+    Texture2D texture;
+    FramebufferID fbo;
+    FramebufferID depth;
+} Canvas;
+
+
+/**
  * Effect types
  */
 
+typedef Uint32 ShaderID;
+typedef Uint32 ProgramID;
+
 typedef struct {
-    Uint32 handle;
+    ProgramID handle;
     // attributes
     int position_location;
     int color_location;
@@ -105,7 +174,7 @@ typedef struct {
 } Effect2D;
 
 typedef struct {
-    Uint32 handle;
+    ProgramID handle;
     // attributes
     int position_location;
     int normal_position;
@@ -181,6 +250,12 @@ enum RenderCommandType {
     RENDER_COMMAND_DRAW_INDEX,
     RENDER_COMMAND_DRAW_VERTEX_INSTANCED,
     RENDER_COMMAND_DRAW_INDEX_INSTANCED,
+    
+    RENDER_COMMAND_ENABLE_ATTRIB,
+    RENDER_COMMAND_DISABLE_ATTRIB,
+    RENDER_COMMAND_DISABLE_ALL_ATTRIBS,
+
+    RENDER_COMMAND_VERTEX_ATTRIB_POINTER,
 
     RENDER_COMMAND_ENABLE_CLIP_RECT,
     RENDER_COMMAND_DISABLE_CLIP_RECT,
@@ -193,6 +268,14 @@ enum RenderCommandType {
 struct RenderCommand {
     enum RenderCommandType type;
     union {
+        struct {
+            int index;
+            int size;
+            int type;
+            int norm;
+            int stride;
+            int offset;
+        } attrib;
         struct {
             Uint32 program;
             int location;
@@ -278,16 +361,22 @@ struct RenderList {
     struct RenderCommandBlock* block_ptr;
 };
 
+typedef struct RenderCommandList RenderCommandList;
+struct RenderCommandList {
+    void(*clear)(RenderCommandList*);
+    void(*push)(RenderCommandList*, int count, struct RenderCommand*);
+    const struct RenderCommand*(*pop)(RenderCommandList*);
+    void(*call)(RenderCommandList*);
+
+    int offset, count;
+    struct RenderCommand* commands;
+};
+
 struct Renderer {
     int l_gl_context_ref;
     int l_window_ref;
     SDL_Window* window_ptr;
-#if 0
-    ClearRenderListFunc clear;
-    PushRenderListFunc push;
-    PopRenderListFunc pop;
-    CallRenderListFunc call;
-#endif
+
     vec4 clear_color;
 
     // vertex array
@@ -303,23 +392,26 @@ struct Renderer {
     int current_program_id;
 
     // render list
-    int l_render_list_ref;
-    RenderList* list_ptr;
+    int l_command_list_ref;
+    RenderCommandList* command_list;
 
     void(*present)(Renderer*, lua_State*);
-#if 0
-    struct RenderCommandPool* pool;
-    struct RenderCommandPool root;
-#endif
+
 };
+
+#define RENDERER_CLASS LUA_META_CLASS(Renderer)
+#define RENDERCOMMANDLIST_CLASS LUA_META_CLASS(RenderCommandList)
 
 #define TEXTURE2D_CLASS LUA_META_CLASS(Texture2D)
 #define FRAMEBUFFER_CLASS LUA_META_CLASS(Framebuffer)
 #define CANVAS_CLASS LUA_META_CLASS(Canvas)
 
+#define FONT_CLASS LUA_META_CLASS(Font)
+
 #define EFFECT2D_CLASS LUA_META_CLASS(Effect2D)
 
 #define RENDER_BATCH2D_CLASS LUA_META_CLASS(RenderBatch2D)
+#define VERTEX_BATCH2D_CLASS LUA_META_CLASS(VertexBatch2D)
 
 #include "stb_image.h"
 
