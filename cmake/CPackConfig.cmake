@@ -25,8 +25,8 @@ elseif(APPLE)
     set(CPACK_BUNDLE_NAME ${CPACK_PACKAGE_NAME})
 
     # Configurações avançadas do bundle
-    set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/cross/macos/icon.icns")
-    set(CPACK_BUNDLE_PLIST "${CMAKE_SOURCE_DIR}/cross/macos/Info.plist.in")
+    set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/misc/cross/macos/icon.icns")
+    set(CPACK_BUNDLE_PLIST "${CMAKE_SOURCE_DIR}/misc/cross/macos/Info.plist.in")
     configure_file("${CPACK_BUNDLE_PLIST}" "${CPACK_TOPLEVEL_DIRECTORY}/${CPACK_BUNDLE_NAME}.app/Contents/Info.plist" @ONLY)
 
     # Configurações específicas do Info.plist

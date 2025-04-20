@@ -22,7 +22,8 @@ android {
             cmake {
                 arguments "-DANDROID_APP_PLATFORM=@ANDROID_APP_PLATFORM@",
                           "-DANDROID_STL=@ANDROID_STL@",
-                          "-DBUILD_AS_LIBRARY=${buildAsLibrary}"
+                          "-DBUILD_AS_LIBRARY=${buildAsLibrary}",
+                          "-DUSE_SDL_SOURCE=ON"
                 abiFilters @ANDROID_ABI_FILTERS@
             }
         }
