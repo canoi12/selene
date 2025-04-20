@@ -113,7 +113,7 @@ message("Installing for Apple/macOS")
     )
     # Create Info.plist for the application bundle
     configure_file(
-            "${CMAKE_SOURCE_DIR}/cross/macOS/Info.plist.in"
+            "${CMAKE_SOURCE_DIR}/misc/cross/macos/Info.plist.in"
             "${CMAKE_BINARY_DIR}/Info.plist"
     )
     install(
