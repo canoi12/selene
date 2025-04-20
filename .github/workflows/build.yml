@@ -15,14 +15,14 @@ jobs:
 
       - name: Build project
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64
+          cmake -S . -B build -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-binaries
-          path: build/_CPack_Packages/
+          path: build/dist/*.tar.gz
 
   build-windows:
     runs-on: windows-latest
@@ -39,14 +39,16 @@ jobs:
       - name: Build project
         run: |
           cmake -P cmake/scripts/DownloadSDL2.cmake
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-binaries
-          path: build/_CPack_Packages/
+          path: |
+            build/dist/*.exe
+            build/dist/*.zip
 
   build-macos:
     runs-on: macos-latest
@@ -60,14 +62,17 @@ jobs:
 
       - name: Build project
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          mkdir dist/
+          cmake -S . -B build -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-binaries
-          path: build/_CPack_Packages/
+          path: |
+            build/dist/*.zip
+            build/dist/*.dmg
 
   build-android:
     runs-on: ubuntu-latest
@@ -93,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-binaries
-          path: build/android/app/build
+          path: build/android/app/build/outputs/apk/
   build-emscripten:
     runs-on: ubuntu-latest
     env:
@@ -112,11 +117,12 @@ jobs:
 
       - name: Build project
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Emscripten.cmake
+          mkdir dist/
+          cmake -B build -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Emscripten.cmake
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: emscripten-binaries
-          path: build/_CPack_Packages/
+          path: build/dist/*.zip
