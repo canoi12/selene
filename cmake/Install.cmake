@@ -106,7 +106,7 @@ message("Installing for Apple/macOS")
     )
     # macOS specific resources
     install(
-            FILES "${CMAKE_SOURCE_DIR}/misc/cross/AppImage/${PROJECT_NAME}_icon.png"
+            FILES "${CMAKE_SOURCE_DIR}/misc/cross/macos/${PROJECT_NAME}_icon.icns"
             DESTINATION "Resources"
             COMPONENT runtime
             RENAME "${PROJECT_NAME}.icns"
