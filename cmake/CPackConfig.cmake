@@ -28,7 +28,7 @@ elseif(APPLE)
     set(CPACK_BUNDLE_PLIST "${CPACK_PACKAGE_DIR}/Info.plist")
     # configure_file("${CPACK_BUNDLE_PLIST}" "${CPACK_PACKAGE_DIRECTORY}/${CPACK_BUNDLE_NAME}.app/Contents/Info.plist" @ONLY)
 
-    set(MACOSX_BUNDLE_INFO_PLIST "${CPACK_BUNDLE_PLIST}")
+    set(MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/Info.plist")
 elseif (EMSCRIPTEN)
     message("Building ZIP for Emscripten")
     list(APPEND CPACK_GENERATOR ZIP)
