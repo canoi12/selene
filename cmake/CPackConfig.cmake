@@ -21,7 +21,7 @@ if (WIN32)
     set(CPACK_GENERATOR "NSIS;ZIP")
 #    set(CPACK_COMPONENTS_ALL runtime)
 elseif(APPLE)
-    list(APPEND CPACK_GENERATOR "Bundle")
+    list(APPEND CPACK_GENERATOR "Bundle;ZIP")
     set(CPACK_BUNDLE_NAME ${CPACK_PACKAGE_NAME})
 
     set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/misc/cross/macos/selene_icon.icns")

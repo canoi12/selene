@@ -22,7 +22,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-binaries
-          path: build/
+          path: build/_CPack_Packages/
 
   build-windows:
     runs-on: windows-latest
@@ -46,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-binaries
-          path: build/
+          path: build/_CPack_Packages/
 
   build-macos:
     runs-on: macos-latest
@@ -67,7 +67,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-binaries
-          path: build/
+          path: build/_CPack_Packages/
 
   build-android:
     runs-on: ubuntu-latest
@@ -93,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-binaries
-          path: build/
+          path: build/android/app/build
   build-emscripten:
     runs-on: ubuntu-latest
     env:
@@ -114,3 +114,9 @@ jobs:
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Emscripten.cmake
           cmake --build build --target package --config Release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: emscripten-binaries
+          path: build/_CPack_Packages/
