@@ -67,14 +67,16 @@ if (NOT EXISTS ${SDL_FINAL_DIR})
             WORKING_DIRECTORY "${SDL_DOWNLOAD_DIR}"
         )
         set(SDL_ROOT "${SDL_DOWNLOAD_DIR}/SDL2-${SDL_VERSION}")
+        file(RENAME ${SDL_ROOT} ${SDL_FINAL_DIR})
     elseif(UNIX AND NOT APPLE)
+        file(MAKE_DIRECTORY "${SDL_FINAL_DIR}")
         execute_process(
             COMMAND tar -xzf "${SDL_DEST}" --strip-components=1
-            WORKING_DIRECTORY "${SDL_DOWNLOAD_DIR}"
+            WORKING_DIRECTORY "${SDL_FINAL_DIR}"
         )
         set(SDL_ROOT "${SDL_DOWNLOAD_DIR}/SDL2-${SDL_VERSION}")
     endif()
     if (NOT APPLE AND NOT DOWNLOAD_SDL_APPLE)
-        file(RENAME ${SDL_ROOT} ${SDL_FINAL_DIR})
+        # file(RENAME ${SDL_ROOT} ${SDL_FINAL_DIR})
     endif ()
 endif ()

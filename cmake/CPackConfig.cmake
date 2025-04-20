@@ -24,12 +24,10 @@ elseif(APPLE)
     list(APPEND CPACK_GENERATOR "Bundle")
     set(CPACK_BUNDLE_NAME ${CPACK_PACKAGE_NAME})
 
-    # Configurações avançadas do bundle
-    set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/misc/cross/macos/icon.icns")
+    set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/misc/cross/macos/selene_icon.png")
     set(CPACK_BUNDLE_PLIST "${CMAKE_SOURCE_DIR}/misc/cross/macos/Info.plist.in")
     # configure_file("${CPACK_BUNDLE_PLIST}" "${CPACK_PACKAGE_DIRECTORY}/${CPACK_BUNDLE_NAME}.app/Contents/Info.plist" @ONLY)
 
-    # Configurações específicas do Info.plist
     set(MACOSX_BUNDLE_INFO_PLIST "${CPACK_BUNDLE_PLIST}")
 elseif (EMSCRIPTEN)
     message("Building ZIP for Emscripten")
