@@ -1,0 +1,51 @@
+message("Include CPackConfig")
+set(CPACK_PACKAGE_NAME "selene")
+set(CPACK_PACKAGE_VENDOR "org.selene")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Selene game framework, written in Lua and C")
+set(CPACK_PACKAGE_VERSION "${SELENE_VERSION}")
+set(CPACK_PACKAGE_VERSION_MAJOR "${SELENE_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${SELENE_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${SELENE_VERSION_PATCH}")
+
+set(CPACK_COMPONENTS_GROUPING IGNORE)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-dev;liblua5.4-dev")
+
+set(CPACK_PACKAGE_CONTACT "canoiaguiar@gmail.com")
+
+if (WIN32)
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "selene")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+    set(CPACK_GENERATOR "NSIS;ZIP")
+#    set(CPACK_COMPONENTS_ALL runtime)
+elseif(APPLE)
+    list(APPEND CPACK_GENERATOR "Bundle")
+    set(CPACK_BUNDLE_NAME ${CPACK_PACKAGE_NAME})
+
+    # Configurações avançadas do bundle
+    set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/cross/macos/icon.icns")
+    set(CPACK_BUNDLE_PLIST "${CMAKE_SOURCE_DIR}/cross/macos/Info.plist.in")
+    configure_file("${CPACK_BUNDLE_PLIST}" "${CPACK_TOPLEVEL_DIRECTORY}/${CPACK_BUNDLE_NAME}.app/Contents/Info.plist" @ONLY)
+
+    # Configurações específicas do Info.plist
+    set(MACOSX_BUNDLE_INFO_PLIST "${CPACK_BUNDLE_PLIST}")
+elseif (EMSCRIPTEN)
+    message("Building ZIP for Emscripten")
+    list(APPEND CPACK_GENERATOR ZIP)
+    set(CPACK_EXTERNAL_ENABLE_STAGING YES)
+elseif (UNIX)
+    list(APPEND CPACK_GENERATOR TGZ)
+    if (EXPORT_APPIMAGE)
+        message("Building AppImage")
+        list(APPEND CPACK_GENERATOR External)
+        set(CPACK_EXTERNAL_PACKAGE_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/scripts/GenerateAppImage.cmake")
+        set(CPACK_PACKAGE_PREFIX "usr")
+        set(CPACK_EXTERNAL_ENABLE_STAGING YES)
+        set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}")
+        set(CPACK_TOPLEVEL_DIRECTORY "${CMAKE_BINARY_DIR}/AppImage")
+    endif ()
+endif()
+
+INCLUDE(CPack)

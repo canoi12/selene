@@ -1,0 +1,47 @@
+set(SELENE_NAME "selene")
+set(SELENE_VERSION_MAJOR 0)
+set(SELENE_VERSION_MINOR 4)
+set(SELENE_VERSION_PATCH 1)
+set(SELENE_VERSION "${SELENE_VERSION_MAJOR}.${SELENE_VERSION_MINOR}.${SELENE_VERSION_PATCH}")
+
+set (SELENE_USE_SDL3 OFF CACHE BOOL "Use SDL3 instead of SDL2")
+# if (ANDROID)
+#     set(ANDROID_HOME "$ENV{ANDROID_HOME}" CACHE STRING "Set Android SDK home path")
+# endif ()
+
+set(CACHE_DIR "${CMAKE_SOURCE_DIR}/.cache" CACHE STRING "Set the cache dir where the files will be downloaded")
+set(BUILDS_DIR "${CMAKE_SOURCE_DIR}/builds" CACHE STRING "Set the dir where the builds will be installed")
+set(EXPORT_APPIMAGE OFF CACHE BOOL "Use this to export an AppImage for Linux")
+# set(EXPORT_ANDROIDAPK OFF CACHE BOOL "Use this to export an Android APK")
+# set(USE_SDL_SOURCE OFF CACHE BOOL "Force to compile with the SDL source")
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+
+set(SDL_VERSION "2.32.4")
+option(SDL_SHARED "Build SDL as shared library" ON)
+set (SDL_SOURCE_DIR "${CACHE_DIR}/SDL2-${SDL_VERSION}/source" CACHE STRING "Set SDL2 source dir")
+
+set(EMSCRIPTEN_VERSION "latest" CACHE STRING "Emscripten version")
+set(EMSDK_DIR "${CACHE_DIR}/emsdk-${EMSCRIPTEN_VERSION}" CACHE STRING "Set the Emscripten SDK directory")
+
+set(LUA_VERSION "5.4" CACHE STRING "Set the Lua version to use")
+set(LUA_LIB "lua${LUA_VERSION}")
+set(LUA_SHARED_LIB "lua${LUA_VERSION}Shared")
+set(LUA_STATIC_LIB "lua${LUA_VERSION}Static")
+
+set(ANDROID_NAMESPACE "org.selene.app")
+set(ANDROID_NDK_VERSION "25.2.9519653") 
+set(ANDROID_COMPILE_SDK_VERSION 34)
+set(ANDROID_MIN_SDK_VERSION 21)
+set(ANDROID_TARGET_SDK_VERSION 34)
+set(ANDROID_APP_PLATFORM "android-21")
+set(ANDROID_STL "c++_static")
+set(ANDROID_ABIS "armeabi-v7a;arm64-v8a;x86;x86_64")
+set(PROJECT_VERSION_CODE 1)
+set(PROJECT_VERSION_NAME "1.0")
+set(LIBRARY_OUTPUT_NAME "org.selene.app")
+
+set(ANDROID_PLATFORM 21 CACHE STRING "Minimal Android API")
+set(ANDROID_BUILD_TOOLS_VERSION "34.0.0" CACHE STRING "Build Tools version")
+set(ANDROID_SDK_DIR "${CACHE_DIR}/AndroidSDK" CACHE PATH "Android SDK folder")
+
+message("Build Type: ${CMAKE_BUILD_TYPE}")

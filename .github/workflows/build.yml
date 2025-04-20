@@ -15,8 +15,8 @@ jobs:
 
       - name: Build project
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DEXPORT_APPIMAGE=ON
+          cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -45,13 +45,13 @@ jobs:
       - name: Build project
         run: |
           cmake -S . -B build -DSDL_PRECOMP_DIR=$env:SDL2_DIR -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release
+          cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-binaries
-          path: build/Release/
+          path: build/
 
   build-macos:
     runs-on: macos-latest
@@ -66,7 +66,7 @@ jobs:
       - name: Build project
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build
+          cmake --build build --target package --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -88,12 +88,17 @@ jobs:
           sudo apt-get install -y build-essential cmake libsdl2-dev
           sudo apt-get install openjdk-17-jre openjdk-17-jdk
           bash misc/scripts/download_sdl.sh source
-          bash misc/scripts/setup.sh android
+          cmake -P cmake/scripts/SetupAndroidApk.cmake
 
       - name: Build project
         run: |
-          bash misc/scripts/build.sh android
+          cmake -DCMAKE_BUILD_TYPE=Release -P cmake/scripts/GenerateAndroidApk.cmake
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-binaries
+          path: build/
   build-emscripten:
     runs-on: ubuntu-latest
     env:
@@ -106,10 +111,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake git
-          bash misc/scripts/setup.sh emscripten
+          cmake -P cmake/scripts/SetupEmscripten.cmake
 
           echo "${EMSDK_ROOT_DIR}" >> $GITHUB_PATH
 
       - name: Build project
         run: |
-          bash misc/scripts/build.sh emscripten
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Emscripten.cmake
+          cmake --build build --target package --config Release
