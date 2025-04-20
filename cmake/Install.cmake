@@ -69,73 +69,73 @@ if (WIN32)
 elseif (EMSCRIPTEN)
     message("Installing for Emscripten")
     install(
-            TARGETS ${PROJECT_NAME}Static ${LUA_SHARED_LIB}
-            LIBRARY DESTINATION "lib"
-            ARCHIVE DESTINATION "lib"
-            COMPONENT dev
+        TARGETS ${PROJECT_NAME}Static ${LUA_SHARED_LIB}
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib"
+        COMPONENT dev
     )
 
     install(
-            FILES $<TARGET_FILE:${PROJECT_NAME}Bin>
-            DESTINATION "."
-            RENAME "index.html"
-            COMPONENT runtime
+        FILES $<TARGET_FILE:${PROJECT_NAME}Bin>
+        DESTINATION "."
+        RENAME "index.html"
+        COMPONENT runtime
     )
     install(
-            FILES "$<TARGET_FILE_DIR:${PROJECT_NAME}Bin>/${PROJECT_NAME}.js" "$<TARGET_FILE_DIR:${PROJECT_NAME}Bin>/${PROJECT_NAME}.wasm"
-            DESTINATION "."
-            COMPONENT runtime
+        FILES "$<TARGET_FILE_DIR:${PROJECT_NAME}Bin>/${PROJECT_NAME}.js" "$<TARGET_FILE_DIR:${PROJECT_NAME}Bin>/${PROJECT_NAME}.wasm"
+        DESTINATION "."
+        COMPONENT runtime
     )
     # set(CPACK_COMPONENTS_ALL runtime)
 elseif (APPLE)
-message("Installing for Apple/macOS")
+    message("Installing for Apple/macOS")
     install(
-            TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Bin ${LUA_SHARED_LIB}
-            COMPONENT runtime
-            RUNTIME DESTINATION "MacOS"
-            LIBRARY DESTINATION "lib"
-            ARCHIVE DESTINATION "lib"
-            BUNDLE DESTINATION "."
+        TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Bin ${LUA_SHARED_LIB}
+        COMPONENT runtime
+        RUNTIME DESTINATION "MacOS"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib"
+        BUNDLE DESTINATION "."
     )
     install(
-            TARGETS ${PROJECT_NAME}Shared ${LUA_SHARED_LIB}
-            COMPONENT dev
-            RUNTIME DESTINATION "lib"
-            LIBRARY DESTINATION "lib"
-            ARCHIVE DESTINATION "lib"
+        TARGETS ${PROJECT_NAME}Shared ${LUA_SHARED_LIB}
+        COMPONENT dev
+        RUNTIME DESTINATION "lib"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib"
     )
     # macOS specific resources
     install(
-            FILES "${CMAKE_SOURCE_DIR}/misc/cross/macos/${PROJECT_NAME}_icon.icns"
-            DESTINATION "Resources"
-            COMPONENT runtime
-            RENAME "${PROJECT_NAME}.icns"
+        FILES "${CMAKE_SOURCE_DIR}/misc/cross/macos/${PROJECT_NAME}_icon.icns"
+        DESTINATION "Resources"
+        COMPONENT runtime
+        RENAME "${PROJECT_NAME}.icns"
     )
     # Create Info.plist for the application bundle
     configure_file(
-            "${CMAKE_SOURCE_DIR}/misc/cross/macos/Info.plist.in"
-            "${CMAKE_BINARY_DIR}/Info.plist"
+        "${CMAKE_SOURCE_DIR}/misc/cross/macos/Info.plist.in"
+        "${CMAKE_BINARY_DIR}/Info.plist"
     )
     install(
-            FILES "${CMAKE_BINARY_DIR}/Info.plist"
-            DESTINATION "."
-            COMPONENT runtime
+        FILES "${CMAKE_BINARY_DIR}/Info.plist"
+        DESTINATION "."
+        COMPONENT runtime
     )
 elseif (UNIX)
     message("Installing for Unix")
     install(
-            TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Bin ${LUA_SHARED_LIB}
-            COMPONENT runtime
-            RUNTIME DESTINATION "bin"
-            LIBRARY DESTINATION "lib"
-            ARCHIVE DESTINATION "lib"
+        TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Bin ${LUA_SHARED_LIB}
+        COMPONENT runtime
+        RUNTIME DESTINATION "bin"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib"
     )
     install(
-            TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Static ${LUA_SHARED_LIB}
-            COMPONENT dev
-            RUNTIME DESTINATION "lib"
-            LIBRARY DESTINATION "lib"
-            ARCHIVE DESTINATION "lib"
+        TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Static ${LUA_SHARED_LIB}
+        COMPONENT dev
+        RUNTIME DESTINATION "lib"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib"
     )
     if (EXPORT_APPIMAGE)
         install(FILES "${CMAKE_SOURCE_DIR}/misc/cross/AppImage/${PROJECT_NAME}_icon.png" DESTINATION "." COMPONENT runtime)
@@ -151,14 +151,14 @@ endif ()
 include(CPackConfig)
 
 cpack_add_component(dev
-        DISPLAY_NAME "Development library"
-        DESCRIPTION "Install library for development"
+    DISPLAY_NAME "Development library"
+    DESCRIPTION "Install library for development"
 )
 
 cpack_add_component(runtime
-        REQUIRED
-        DISPLAY_NAME "Runtime binaries"
-        DESCRIPTION "Install binary for runtime"
+    REQUIRED
+    DISPLAY_NAME "Runtime binaries"
+    DESCRIPTION "Install binary for runtime"
 )
 
 if (APPLE)
