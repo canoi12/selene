@@ -24,8 +24,8 @@ elseif(APPLE)
     list(APPEND CPACK_GENERATOR "Bundle")
     set(CPACK_BUNDLE_NAME ${CPACK_PACKAGE_NAME})
 
-    set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/misc/cross/macos/selene_icon.png")
-    set(CPACK_BUNDLE_PLIST "${CMAKE_SOURCE_DIR}/misc/cross/macos/Info.plist.in")
+    set(CPACK_BUNDLE_ICON "${CPACK_PACKAGE_DIR}/Resources/selene_icon.icns")
+    set(CPACK_BUNDLE_PLIST "${CPACK_PACKAGE_DIR}/Info.plist")
     # configure_file("${CPACK_BUNDLE_PLIST}" "${CPACK_PACKAGE_DIRECTORY}/${CPACK_BUNDLE_NAME}.app/Contents/Info.plist" @ONLY)
 
     set(MACOSX_BUNDLE_INFO_PLIST "${CPACK_BUNDLE_PLIST}")
