@@ -72,7 +72,7 @@ if (NOT EXISTS ${SDL_FINAL_DIR})
             COMMAND tar -xzf "${SDL_DEST}" --strip-components=1
             WORKING_DIRECTORY "${SDL_DOWNLOAD_DIR}"
         )
-        set(SDL_ROOT "${SDL_DOWNLOAD_DIR}")
+        set(SDL_ROOT "${SDL_DOWNLOAD_DIR}/SDL2-${SDL_VERSION}")
     endif()
     if (NOT APPLE AND NOT DOWNLOAD_SDL_APPLE)
         file(RENAME ${SDL_ROOT} ${SDL_FINAL_DIR})
