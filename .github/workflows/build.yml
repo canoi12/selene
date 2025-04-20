@@ -85,6 +85,7 @@ jobs:
 
       - name: Build project
         run: |
+          cmake -P cmake/scripts/DownloadSDL2.cmake
           cmake -P cmake/scripts/SetupAndroidSDK.cmake
           cmake -DCMAKE_BUILD_TYPE=Release -P cmake/scripts/GenerateAndroidApk.cmake
 
