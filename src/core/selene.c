@@ -3,12 +3,24 @@
 
 #include "selene_renderer.h"
 
+int g_sdl_modules = 0;
+
 extern int l_renderer_create(lua_State* L);
 extern int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win);
 
-static int s_default_event_callback(lua_State *L);
-static int s_default_step_callback(lua_State* L);
-static void s_default_quit_callback(lua_State* L, int status);
+int s_default_event_callback(lua_State *L);
+int s_default_step_callback(lua_State* L);
+void s_default_quit_callback(lua_State* L, int status);
+
+static const char* s_sdl_init_flags_options[] = {
+    "timer", "audio", "video", "joystick", "haptic", "gamepad", "events", "sensor", "all", NULL
+};
+
+static const int s_sdl_init_flags_values[] = {
+    SDL_INIT_TIMER, SDL_INIT_AUDIO, SDL_INIT_VIDEO, SDL_INIT_JOYSTICK,
+    SDL_INIT_HAPTIC, SDL_INIT_GAMECONTROLLER, SDL_INIT_EVENTS, SDL_INIT_SENSOR,
+    SDL_INIT_EVERYTHING
+};
 
 SeleneContext g_selene_context = {
     .is_running = 0,
@@ -16,17 +28,20 @@ SeleneContext g_selene_context = {
     .l_step_callback_ref = LUA_NOREF,
     .l_quit_callback_ref = LUA_NOREF,
     .l_event_callback_ref = LUA_NOREF,
-
+#if 0
     .l_audio_system_ref = LUA_NOREF,
     .l_window_ref = LUA_NOREF,
     .l_renderer_ref = LUA_NOREF,
 
+
     .c_event_callback = NULL,
     .c_step_callback = s_default_step_callback,
     .c_quit_callback = s_default_quit_callback
+#endif
 };
 SeleneContext *s_ctx = &g_selene_context;
 
+#if 0
 static int s_selene_step_callback(lua_State *L) {
     const int res = s_default_step_callback(L);
 #if 0
@@ -35,7 +50,7 @@ static int s_selene_step_callback(lua_State *L) {
     lua_pop(L, 1);
     if (r && r->present) r->present(r, L);
 #endif
-    SDL_Delay(16);
+    // SDL_Delay(16);
     return res;
 }
 
@@ -77,14 +92,32 @@ static void s_selene_quit_callback(lua_State *L, int status) {
     SDL_Log("[selene] exiting...");
 #endif
 }
+#endif
 
 static int l_selene__call(lua_State *L) {
+    INIT_ARG();
+    arg++;
+#if 0
     const char *name = luaL_checkstring(L, 2);
     const char *version = luaL_checkstring(L, 3);
     const char *org = luaL_checkstring(L, 4);
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER) < 0) {
+#endif
+    int flags = 0;
+    if (!lua_istable(L, arg)) {
+        flags = SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER;
+    }
+    else {
+        int len = lua_rawlen(L, 1);
+        for (int i = 0; i < len; i++) {
+            int opt = luaL_checkoption(L, arg, NULL, s_sdl_init_flags_options);
+            flags |= s_sdl_init_flags_values[opt];
+        }
+    }
+    
+    if (SDL_Init(flags) < 0) {
         return luaL_error(L, "failed to initialize SDL: %s", SDL_GetError());
     }
+#if 0
 #if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -96,11 +129,13 @@ static int l_selene__call(lua_State *L) {
 #endif
     int width = 640;
     int height = 380;
-    int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+    int flags = SDL_WINDOW_SHOWN;
+    int backend = SELENE_RENDERER_OPENGL;
 
-    if (lua_istable(L, 5)) {
+    int config_table = lua_gettop(L);
+    if (lua_istable(L, config_table)) {
         // fprintf(stdout, "is table\n");
-        lua_getfield(L, 5, "window");
+        lua_getfield(L, config_table, "window");
         if (!lua_istable(L, -1)) {
             lua_pop(L, 1);
             lua_newtable(L);
@@ -120,7 +155,14 @@ static int l_selene__call(lua_State *L) {
         lua_getfield(L, -1, "borderless");
         if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
         lua_pop(L, 2);
+
+        if (lua_getfield(L, config_table, "renderer") == LUA_TTABLE) {
+            if (lua_getfield(L, -1, "backend") == LUA_TSTRING) backend = luaL_checkoption(L, -1, "opengl", renderer_backend_options);
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
     }
+    if (backend == SELENE_RENDERER_OPENGL) flags |= SDL_WINDOW_OPENGL;
 
     SDL_Window *win = SDL_CreateWindow(
         name,
@@ -145,11 +187,14 @@ static int l_selene__call(lua_State *L) {
 #endif
     lua_pushcfunction(L, l_renderer_create);
     lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_window_ref);
-    if (lua_pcall(L, 1, 1, 0) != LUA_OK)
+    lua_pushstring(L, renderer_backend_options[backend]);
+
+    if (lua_pcall(L, 2, 1, 0) != LUA_OK)
         return luaL_error(L, "failed to create renderer: %s", lua_tostring(L, -1));
     g_selene_context.l_renderer_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     g_selene_context.c_step_callback = s_selene_step_callback;
     g_selene_context.c_quit_callback = s_selene_quit_callback;
+#endif
     return 0;
 }
 
@@ -372,7 +417,7 @@ static int l_selene_create_window(lua_State* L) {
     CHECK_INTEGER(height);
     int x = SDL_WINDOWPOS_CENTERED;
     int y = SDL_WINDOWPOS_CENTERED;
-    int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+    int flags = SDL_WINDOW_SHOWN;
     if (lua_istable(L, arg)) {
         lua_getfield(L, arg, "x");
         x = (int)luaL_optinteger(L, -1, x);
@@ -382,26 +427,27 @@ static int l_selene_create_window(lua_State* L) {
         y = (int)luaL_optinteger(L, -1, y);
         lua_pop(L, 1);
 
-        lua_getfield(L, -1, "resizable");
-        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_RESIZABLE * lua_toboolean(L, -1);
+        if (lua_getfield(L, arg, "resizable") == LUA_TBOOLEAN) flags |= SDL_WINDOW_RESIZABLE * lua_toboolean(L, -1);
         lua_pop(L, 1);
-        lua_getfield(L, -1, "always_on_top");
-        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_ALWAYS_ON_TOP * lua_toboolean(L, -1);
+        if (lua_getfield(L, arg, "always_on_top") == LUA_TBOOLEAN) flags |= SDL_WINDOW_ALWAYS_ON_TOP * lua_toboolean(L, -1);
         lua_pop(L, 1);
-        lua_getfield(L, -1, "borderless");
-        if (lua_isboolean(L, -1)) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
+        if (lua_getfield(L, arg, "borderless") == LUA_TBOOLEAN) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "opengl") == LUA_TBOOLEAN) flags |= SDL_WINDOW_OPENGL * lua_toboolean(L, -1);
         lua_pop(L, 2);
     }
+    if (flags & SDL_WINDOW_OPENGL) {
 #if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 #else
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
-SDL_Window *win = SDL_CreateWindow(
+    }
+    SDL_Window *win = SDL_CreateWindow(
         title,
 #if !defined(SELENE_USE_SDL3)
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -425,6 +471,7 @@ static int l_selene_create_audio_system(lua_State* L) {
     return l_AudioSystem_create(L);
 }
 
+#if 0
 static int l_selene_get_context(lua_State* L) {
     lua_newtable(L);
     lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
@@ -435,6 +482,7 @@ static int l_selene_get_context(lua_State* L) {
     lua_setfield(L, -2, "audio_system");
     return 1;
 }
+#endif
 
 /**
  * Open and setup the selene module
@@ -456,7 +504,7 @@ int luaopen_selene(lua_State *L) {
         REG_FIELD(selene, create_window),
         REG_FIELD(selene, create_renderer),
         REG_FIELD(selene, create_audio_system),
-        REG_FIELD(selene, get_context),
+        // REG_FIELD(selene, get_context),
         {NULL, NULL}
     };
     luaL_newlib(L, reg);
@@ -499,11 +547,13 @@ int luaopen_selene(lua_State *L) {
         lua_pop(L, 1);
     }
 
+#if 1
     /* Setup call function */
     lua_newtable(L);
     lua_pushcfunction(L, l_selene__call);
     lua_setfield(L, -2, "__call");
     lua_setmetatable(L, -2);
+#endif
 
     return 1;
 }

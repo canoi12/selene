@@ -4,6 +4,11 @@
 #include "selene_renderer.h"
 
 static const SeleneContext* selctx = &g_selene_context;
+static int selene_exit_state = SELENE_APP_SUCCESS;
+
+extern int s_default_step_callback(lua_State* L);
+extern int s_default_event_callback(lua_State* L);
+extern void s_default_quit_callback(lua_State* L, int status);
 
 static const char* s_boot_script =
 "local status, err = pcall(function() require('main') end)\n"
@@ -79,7 +84,7 @@ int selene_init(void** userdata, int argc, char** argv) {
 
 int selene_iterate(void* userdata) {
     lua_State* L = (lua_State*)userdata;
-    return g_selene_context.c_step_callback(L);
+    return s_default_step_callback(L);
 }
 
 extern int g_selene_process_event(lua_State* L, SDL_Event* ev);
@@ -101,7 +106,8 @@ int selene_event(void* userdata, SDL_Event* event) {
 
 void selene_quit(void* userdata, int status) {
     lua_State* L = (lua_State*)userdata;
-    g_selene_context.c_quit_callback(L, status);
+    s_default_quit_callback(L, status);
+    SDL_Quit();
 }
 
 static void selene_run_step(void* userdata) {
@@ -117,7 +123,8 @@ static void selene_run_step(void* userdata) {
 #endif
     }
     lua_pop(L, 1);
-    selene_iterate(L);
+    selene_exit_state = selene_iterate(L);
+    if (selene_exit_state != SELENE_APP_CONTINUE) g_selene_context.is_running = 0;
 }
 
 int selene_main_loop(lua_State* L) {
@@ -130,15 +137,17 @@ int selene_main_loop(lua_State* L) {
     while (selctx->is_running)
         selene_run_step(L);
 #endif
-    return 0;
+    return selene_exit_state;
 }
 
 int selene_main(int argc, char** argv) {
     lua_State* L = luaL_newstate();
-    selene_init((void**)&L, argc, argv);
-    selene_main_loop(L);
-    selene_quit((void*)L, SELENE_APP_SUCCESS);
-    fprintf(stdout, "[selene] exiting...\n");
+    int res = SELENE_APP_SUCCESS;
+    if ((res = selene_init((void**)&L, argc, argv)) == SELENE_APP_FAILURE) goto QUIT;
+    res = selene_main_loop(L);
+    selene_quit((void*)L, res);
+QUIT:
+    fprintf(stdout, "[selene] exiting(%d)...\n", res);
     lua_close(L);
-    return 0;
+    return res-1;
 }

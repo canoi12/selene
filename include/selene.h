@@ -1,7 +1,7 @@
 #ifndef SELENE_H_
 #define SELENE_H_
 
-#define SELENE_VERSION "0.4.1"
+#define SELENE_VERSION "0.5.0"
 
 #include <platforms.h>
 #include <common.h>
@@ -105,17 +105,12 @@ typedef struct {
     int l_step_callback_ref;
     int l_quit_callback_ref;
     int l_event_callback_ref;
-
-    int l_window_ref;
-    int l_renderer_ref;
-    int l_audio_system_ref;
-
-    int(*c_event_callback)(lua_State* L);
-    int(*c_step_callback)(lua_State* L);
-    void(*c_quit_callback)(lua_State* L, int status);
 } SeleneContext;
 
 extern SeleneContext g_selene_context;
+
+// Mask for the initiated SDL modules
+extern int g_sdl_modules;
 
 #if defined(__cplusplus)
 extern "C" {
