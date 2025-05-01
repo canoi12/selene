@@ -2,6 +2,9 @@
 #include "selene.h"
 #include "lua_helper.h"
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
 #include "font8x8/font8x8_latin.h"
 
 static MODULE_FUNCTION(FontGlyph, __index) {
@@ -90,14 +93,12 @@ static MODULE_FUNCTION(font, create8x8) {
     lua_setfield(L, -2, "width");
     lua_pushinteger(L, h);
     lua_setfield(L, -2, "height");
-    lua_pushinteger(L, 4);
-    lua_setfield(L, -2, "channels");
-    lua_pushinteger(L, SELENE_PIXEL_RGBA);
+    lua_pushstring(L, "rgba");
     lua_setfield(L, -2, "format");
     NEW_UDATA_ADD(FontGlyph, glyphs, sizeof(FontGlyph)*256);
     lua_setfield(L, -2, "glyphs");
     for (int i = 0; i < 256; i++) {
-        glyphs[i].ax = 8;
+        glyphs[i].ax = 8.f / (float)w;
         glyphs[i].ay = 0;
         glyphs[i].bl = 0;
         glyphs[i].bt = 0;
@@ -109,7 +110,7 @@ static MODULE_FUNCTION(font, create8x8) {
 }
 
 static MODULE_FUNCTION(font, from_ttf) {
-#if 0
+#if 1
     INIT_ARG();
     CHECK_STRING(path);
     OPT_INTEGER(font_size, 16);
@@ -174,17 +175,15 @@ static MODULE_FUNCTION(font, from_ttf) {
         th = MAX(th, h);
     }
     int height = th;
-    const int final_size = tw * th;
+    const int final_size = tw * th * 4;
     lua_newtable(L);
-    NEW_UDATA_ADD(Data, dt, final_size * sizeof(Data));
+    NEW_UDATA_ADD(Data, dt, final_size);
     lua_setfield(L, -2, "data");
     lua_pushinteger(L, tw);
     lua_setfield(L, -2, "width");
     lua_pushinteger(L, th);
     lua_setfield(L, -2, "height");
-    lua_pushinteger(L, 4);
-    lua_setfield(L, -2, "channels");
-    lua_pushinteger(L, SELENE_PIXEL_RGBA);
+    lua_pushstring(L, "rgba");
     lua_setfield(L, -2, "format");
 
     uint32_t* bitmap = &dt[1];
