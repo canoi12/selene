@@ -1,8 +1,33 @@
+#if defined(__cplusplus)
+extern "C" {
+#endif
 #include "selene.h"
 #include "lua_helper.h"
+#if defined(__cplusplus)
+}
+#endif
 
 #ifndef SELENE_RENDERER_H_
 #define SELENE_RENDERER_H_
+
+#ifndef SELENE_NO_VULKAN
+// #include <vulkan.h>
+#endif
+
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+    #include <d3d11.h>
+#endif
+#ifndef SELENE_NO_DX12
+    #include <d3d12.h>
+#endif
+#if !defined(SELENE_NO_DX11) && !defined(SELENE_NO_DX12)
+    #include <dxgi.h>
+    #include <dxgi1_2.h>
+    #include <dxgi1_3.h>
+    #include <d3dcompiler.h>
+#endif
+#endif
 
 #ifndef SELENE_BATCH2D_PROJECTION_FAR
 #define SELENE_BATCH2D_PROJECTION_FAR 1000
@@ -49,14 +74,47 @@ lua_call(L, 1, 1)
 (list)->pop((list))
 #endif
 
-extern const char* pixel_formats[];
-extern const int pixel_formats_values[];
+#if defined(__cplusplus)
+#define EXTERN extern "C"
+#else
+#define EXTERN extern
+#endif
+EXTERN const char* pixel_formats[];
+EXTERN const int pixel_formats_values[];
 
-extern const char* texture_filters[];
-extern const int texture_filters_values[];
+EXTERN const char* texture_filters[];
+EXTERN const int texture_filters_values[];
 
-extern const char* draw_modes[];
-extern const int draw_modes_values[];
+EXTERN const char* draw_modes[];
+EXTERN const int draw_modes_values[];
+
+EXTERN const char* shader_type_options[];
+
+EXTERN const char* buffer_target_options[];
+
+EXTERN const char* texture_target_options[];
+EXTERN const char* front_face_options[];
+EXTERN const char* cull_face_options[];
+
+EXTERN const char* polygon_mode_options[];
+
+enum {
+    SELENE_BYTE = 0,
+    SELENE_UBYTE,
+    SELENE_SHORT,
+    SELENE_USHORT,
+    SELENE_INT,
+    SELENE_UINT,
+    SELENE_FLOAT,
+    SELENE_DOUBLE
+};
+EXTERN const char* type_name_options[];
+EXTERN const char* comparison_func_options[];
+EXTERN const char* vertex_format_options[];
+
+EXTERN const char* renderer_backend_options[];
+
+#undef EXTERN
 
 /**
  * Vertex Types
@@ -79,10 +137,9 @@ typedef struct {
  */
 
 typedef Uint32 BufferID;
-typedef Uint32 VertexArrayID;
 
 typedef struct {
-    int vertex_stride;
+    int stride;
     struct {
         int location;
         int stride;
@@ -90,46 +147,100 @@ typedef struct {
     } attrib[16];
 } VertexFormat;
 
-typedef struct {
-    VertexArrayID handle;
-#if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
-    BufferID vertex_id;
-    BufferID index_id;
+enum {
+    SELENE_GPU_BUFFER_NO_TARGET = -1,
+    SELENE_GPU_BUFFER_VERTEX,
+    SELENE_GPU_BUFFER_INDEX,
+    SELENE_GPU_BUFFER_UNIFORM
+};
+
+#ifndef SELENE_NO_GL
+struct GLBuffer {
+    int type;
+    GLuint handle;
+    GLboolean usage;
+};
 #endif
-} VertexArray;
+
+#ifndef SELENE_NO_DX11
+enum DX11BufferType {
+    DX11_VERTEX_BUFFER,
+    DX11_INDEX_BUFFER,
+    DX11_CONSTANT_BUFFER,
+    DX11_STAGING_BUFFER
+};
+
+struct DX11Buffer {
+    enum DX11BufferType type;
+    ID3D11Buffer* handle;
+    D3D11_USAGE usage;
+};
+#endif
 
 typedef struct {
-    BufferID handle;
-} Buffer;
+    Uint32 type;
+    Uint32 stride, size;
+    union {
+#ifndef SELENE_NO_GL
+        struct GLBuffer gl;
+#endif
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+        struct DX11Buffer dx11;
+#endif
+#endif
+    };
+} GpuBuffer;
 
 typedef struct VertexBatch2D VertexBatch2D;
 struct VertexBatch2D {
-    VertexArray vao;
-    Buffer vbo;
+    GpuBuffer vbo;
     int offset;
     size_t count;
     Vertex2D* data;
 
     void(*check_size)(VertexBatch2D*,int);
     void(*push)(VertexBatch2D*,int,Vertex2D*);
-    void(*send)(VertexBatch2D*,int,size_t);
+    void(*flush)(VertexBatch2D*,int,size_t);
 };
 
 /**
  * Texture Types
  */
 
-typedef Uint32 TextureID; // OpenGL TextureID
+#ifndef SELENE_NO_GL
+struct GLTexture {
+    GLuint handle;
+};
+#endif
+
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+struct DX11Texture {
+    union {
+        ID3D11Texture2D* tex2d;
+        ID3D11Texture1D* tex1d;
+    };
+    ID3D11ShaderResourceView* srv;
+    ID3D11SamplerState* sampler;
+};
+#endif
+#endif
 
 typedef struct {
-    TextureID handle;
+    union {
+#ifndef SELENE_NO_GL
+        struct GLTexture gl;
+#endif
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+        struct DX11Texture dx11;
+#endif
+#endif
+    };
     int width, height;
+    int format;
 } Texture2D;
-
-typedef struct {
-    TextureID handle; // Handle to the cube map texture
-    int size;      // Size of each face of the cube map
-} TextureCube;
 
 typedef struct {
     Texture2D texture;
@@ -137,53 +248,74 @@ typedef struct {
 } Font;
 
 /**
- * Framebuffer
+ * Render Target
  */
 
-// OpenGL IDs
-typedef Uint32 FramebufferID;
-typedef Uint32 RenderbufferID;
-
 typedef struct {
-    FramebufferID handle;
-} Framebuffer;
-
-typedef struct {
-    Texture2D texture;
-    FramebufferID fbo;
-    FramebufferID depth;
-} Canvas;
+    union {
+#ifndef SELENE_NO_GL
+        struct {
+            GLuint fbo;
+        } gl;
+#endif
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+        struct {
+            ID3D11RenderTargetView* rtv;
+            ID3D11DepthStencilView* dsv;
+            ID3D11ShaderResourceView* srv;
+        } dx11;
+#endif
+#endif
+    };
+    Texture2D* color;
+    Texture2D* depth;
+    int width, height;
+} RenderTarget;
 
 
 /**
- * Effect types
+ * Shader
  */
 
-typedef Uint32 ShaderID;
-typedef Uint32 ProgramID;
+#ifndef SELENE_NO_GL
+struct GLShader {
+    Uint32 handle;
+};
+#endif
 
-typedef struct {
-    ProgramID handle;
-    // attributes
-    int position_location;
-    int color_location;
-    int texcoord_location;
-    // uniforms
-    int model_view_location;
-    int projection_location;
-} Effect2D;
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+struct DX11Shader {
+    union {
+        ID3D11VertexShader* vertex;
+        ID3D11PixelShader* pixel;
+    };
+    ID3DBlob* blob;
+};
+#endif
+#ifndef SELENE_NO_DX12
+struct DX12Shader {
+    ID3DBlob* blob;
+};
+#endif
+#endif
 
-typedef struct {
-    ProgramID handle;
-    // attributes
-    int position_location;
-    int normal_position;
-    int texcoord_position;
-    // uniforms
-    int model_location;
-    int view_location;
-    int projection_location;
-} Effect3D;
+typedef struct SeleneShader SeleneShader;
+struct SeleneShader {
+    Uint32 type;
+    union {
+        struct GLShader gl;
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+        struct DX11Shader dx11;
+#endif
+#ifndef SELENE_NO_DX12
+        struct DX12Shader dx12;
+#endif
+#endif
+    };
+};
 
 /**
  * Material
@@ -218,47 +350,126 @@ typedef struct {
 } Light;
 
 /**
+ * RenderPipeline
+ */
+
+struct InputLayout {
+    int count;
+    size_t vertex_stride;
+    struct {
+        char name[64];
+        int type;
+        int size;
+        int offset;
+        int binding;
+        int stride;
+    } attributes[8];
+};
+
+#ifndef SELENE_NO_GL
+struct GLBlendState {
+    GLboolean enabled;
+    GLenum func0, func1;
+    GLenum equation;
+};
+
+struct GLDepthStencilState {
+    GLboolean depth_enabled;
+    GLenum depth_func;
+    GLboolean stencil_enabled;
+    GLenum stencil_func;
+};
+
+struct GLRasterizerState {
+    GLboolean cull_enabled;
+    GLint front_face;
+    GLint cull_face;
+};
+
+struct GLPipeline {
+    GLuint vao;
+    GLuint program;
+    struct GLBlendState blend_state;
+    struct GLDepthStencilState depth_stencil_state;
+    struct GLRasterizerState rasterizer_state;
+};
+#endif
+
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+struct DX11Pipeline {
+    ID3D11VertexShader* vs;
+    ID3D11PixelShader* ps;
+    ID3D11InputLayout* input_layout;
+    ID3D11BlendState* blend_state;
+    ID3D11DepthStencilState* depth_stencil_state;
+    ID3D11RasterizerState* rasterizer_state;
+    D3D11_PRIMITIVE_TOPOLOGY topology;
+};
+#endif
+#ifndef SELENE_NO_DX12
+struct DX12Pipeline {
+    ID3D12PipelineState* handle;
+};
+#endif
+#endif
+
+typedef struct RenderPipeline RenderPipeline;
+struct RenderPipeline {
+    struct InputLayout layout;
+    union {
+#ifndef SELENE_NO_GL
+        struct GLPipeline gl;
+#endif
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+        struct DX11Pipeline dx11;
+#endif
+#ifndef SELENE_NO_DX12
+        struct DX12Pipeline dx12;
+#endif
+#endif
+    };
+};
+
+/**
  * Renderer
  */
 
 enum RenderCommandType {
     RENDER_COMMAND_CLEAR = 0,
-    RENDER_COMMAND_ENABLE,
-    RENDER_COMMAND_DISABLE,
+    RENDER_COMMAND_CLEAR_COLOR,
+    RENDER_COMMAND_CLEAR_DEPTH,
 
     RENDER_COMMAND_SET_PROJECTION,
     RENDER_COMMAND_SET_VIEW,
 
-    RENDER_COMMAND_SET_VERTEX_ARRAY,
-    RENDER_COMMAND_SET_BUFFER,
-    RENDER_COMMAND_SET_PROGRAM,
+    RENDER_COMMAND_SET_PIPELINE,
+    // Buffers
+    RENDER_COMMAND_SET_VERTEX_BUFFER,
+    RENDER_COMMAND_SET_INDEX_BUFFER,
+    RENDER_COMMAND_SET_UNIFORM_BUFFER,
+    // Shader (OpenGL and DX11)
+    RENDER_COMMAND_SET_SHADER,
+    // Texture
     RENDER_COMMAND_SET_TEXTURE,
-    RENDER_COMMAND_SET_FRAMEBUFFER,
-    RENDER_COMMAND_SET_RENDERBUFFER,
+    // Render Target
+    RENDER_COMMAND_SET_RENDER_TARGET,
 
     RENDER_COMMAND_SET_SCISSOR,
-
     RENDER_COMMAND_SET_BLEND_MODE,
+    RENDER_COMMAND_SET_CULL_FACE,
+    RENDER_COMMAND_SET_VIEWPORT,
 
     RENDER_COMMAND_INTEGER_UNIFORM,
     RENDER_COMMAND_FLOAT_UNIFORM,
-    RENDER_COMMAND_MATRIX_UNIFORM,
 
-    RENDER_COMMAND_SET_VIEWPORT,
+    RENDER_COMMAND_MATRIX_UNIFORM,
 
     RENDER_COMMAND_DRAW_VERTEX,
     RENDER_COMMAND_DRAW_INDEX,
     RENDER_COMMAND_DRAW_VERTEX_INSTANCED,
     RENDER_COMMAND_DRAW_INDEX_INSTANCED,
-    
-    RENDER_COMMAND_ENABLE_ATTRIB,
-    RENDER_COMMAND_DISABLE_ATTRIB,
-    RENDER_COMMAND_DISABLE_ALL_ATTRIBS,
-
-    RENDER_COMMAND_VERTEX_ATTRIB_POINTER,
-
-    RENDER_COMMAND_ENABLE_CLIP_RECT,
-    RENDER_COMMAND_DISABLE_CLIP_RECT,
 
     RENDER_COMMAND_CUSTOM,
 
@@ -268,14 +479,6 @@ enum RenderCommandType {
 struct RenderCommand {
     enum RenderCommandType type;
     union {
-        struct {
-            int index;
-            int size;
-            int type;
-            int norm;
-            int stride;
-            int offset;
-        } attrib;
         struct {
             Uint32 program;
             int location;
@@ -288,27 +491,30 @@ struct RenderCommand {
                 Uint32 ui;
                 float f;
                 double d;
+                vec2 v2;
+                vec3 v3;
+                vec4 v4;
                 mat4 m;
             };
         } uniform;
-        struct { Uint32 mask; float color[4]; } clear;
+        union { float depth; float color[4]; } clear;
         struct { int x, y, width, height; } clip;
-        struct { Uint32 attrib; } enable;
-        struct { Uint32 attrib; } disable;
 
         struct { int width, height; } size;
 
-        struct { Uint32 handle; } vao;
-        struct { Uint32 target; Uint32 handle; } buffer;
+        struct { Uint32 target; Uint32 handle; GpuBuffer* ptr; } buffer;
         struct { Uint32 handle; } program;
-        struct { Uint32 slot; Uint32 target; Uint32 handle; } texture;
-        struct { Uint32 target; Uint32 handle; } target;
+        struct { Uint32 slot; Uint32 target; Uint32 handle; void* ptr; } texture;
+        struct { int depth; Uint32 target; Uint32 handle; RenderTarget* ptr; } target;
 
         struct { int x, y, width, height; } viewport;
+        struct { int enabled; int x, y, width, height; } scissor;
         struct {
             int func0, func1;
             int equation;
         } blend;
+
+        RenderPipeline* pipeline;
 
         struct {
             Uint32 mode;
@@ -331,6 +537,23 @@ struct RenderCommandPool {
 };
 #endif
 
+typedef struct BatchBuffer BatchBuffer;
+struct BatchBuffer {
+    int offset, count;
+    int stride;
+    void* data;
+    vec4 color;
+    float z;
+};
+
+typedef struct VertexBatch VertexBatch;
+struct VertexBatch {
+    int offset, count;
+    int stride;
+    void* data;
+    vec4 color;
+};
+
 typedef struct RenderCommandBlock RenderCommandBlock;
 struct RenderCommandBlock {
     int current;
@@ -338,46 +561,88 @@ struct RenderCommandBlock {
 };
 
 typedef struct Renderer Renderer;
-typedef void(*ClearRenderListFunc)(Renderer*);
-typedef void(*PushRenderListFunc)(Renderer*, struct RenderCommand*);
-typedef struct RenderCommand*(*PopRenderListFunc)(Renderer*);
-typedef void(*CallRenderListFunc)(Renderer*);
+typedef struct SeleneRenderer SeleneRenderer;
 
-typedef struct RenderList RenderList;
-struct RenderList {
-#if 0
-    ClearRenderListFunc clear;
-    PushRenderListFunc push;
-    PopRenderListFunc pop;
-    CallRenderListFunc call;
+enum SeleneRendererBackend {
+    SELENE_RENDERER_OPENGL = 0,
+    SELENE_RENDERER_VULKAN,
+#if defined(OS_WIN)
+    SELENE_RENDERER_DIRECTX11,
+    SELENE_RENDERER_DIRECTX12,
 #endif
-    lua_CFunction clear;
-    lua_CFunction push;
-    lua_CFunction pop;
-    lua_CFunction call;
-
-    int l_render_blocks_table_ref;
-    int block_index;
-    struct RenderCommandBlock* block_ptr;
+#if defined(OS_MACOS)
+    SELENE_RENDERER_METAL
+#endif
 };
 
-typedef struct RenderCommandList RenderCommandList;
-struct RenderCommandList {
-    void(*clear)(RenderCommandList*);
-    void(*push)(RenderCommandList*, int count, struct RenderCommand*);
-    const struct RenderCommand*(*pop)(RenderCommandList*);
-    void(*call)(RenderCommandList*);
+struct SeleneRenderer {
+    enum SeleneRendererBackend backend;
+    LuaReference l_window_ref;
+    SDL_Window* window_ptr;
 
-    int offset, count;
-    struct RenderCommand* commands;
+    union {
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+        struct {
+            ID3D11Device* device;
+            ID3D11DeviceContext* context;
+            IDXGISwapChain* swap_chain;
+        } dx11;
+#endif
+#ifndef SELENE_NO_DX12
+        struct {
+            ID3D12Device* device;
+        } dx12;
+#endif
+#endif
+#ifndef SELENE_NO_GL
+        SDL_GLContext gl;
+#endif
+    };
+
+    RenderTarget default_target;
+
+    int command_offset;
+    int command_count;
+    struct RenderCommand* command_pool;
+
+    lua_CFunction destroy;
+
+    // pipeline
+    lua_CFunction create_pipeline;
+    lua_CFunction destroy_pipeline;
+    // buffers
+    lua_CFunction create_buffer;
+    lua_CFunction destroy_buffer;
+    lua_CFunction send_buffer_data;
+    // texture
+    lua_CFunction create_texture2d;
+    lua_CFunction create_depth_texture;
+    lua_CFunction destroy_texture;
+    // render target
+    lua_CFunction create_render_target;
+    lua_CFunction destroy_render_target;
+    // shader
+    lua_CFunction create_shader;
+    lua_CFunction destroy_shader;
+
+    lua_CFunction draw;
+
+    lua_CFunction flush;
+    lua_CFunction present;
 };
 
+#if 0
 struct Renderer {
-    int l_gl_context_ref;
     int l_window_ref;
     SDL_Window* window_ptr;
 
+    int l_gl_context_ref;
+
     vec4 clear_color;
+
+    int current_pipeline_ref;
+    int current_texture_ref;
 
     // vertex array
     int current_vao_id;
@@ -396,8 +661,8 @@ struct Renderer {
     RenderCommandList* command_list;
 
     void(*present)(Renderer*, lua_State*);
-
 };
+#endif
 
 #define RENDERER_CLASS LUA_META_CLASS(Renderer)
 #define RENDERCOMMANDLIST_CLASS LUA_META_CLASS(RenderCommandList)

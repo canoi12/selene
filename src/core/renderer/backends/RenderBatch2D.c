@@ -1,5 +1,5 @@
 #include "selene_renderer.h"
-
+#if 0
 extern int l_Effect2D_create(lua_State* L);
 extern int l_VertexBatch2D_create(lua_State* L);
 extern int l_VertexBatch2D__destroy(lua_State* L);
@@ -1695,3 +1695,4 @@ int l_RenderBatch2D_meta(lua_State* L) {
     lua_pushcfunction(L, l_RenderBatch2D_create);
     return 1;
 }
+#endif
