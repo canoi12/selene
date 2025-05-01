@@ -1,65 +1,81 @@
-selene('My Game', '1.0.0', 'org.selene.MyGame')
-local ctx = selene.get_context()
-print(selene.renderer.Font)
-local font = selene.renderer.font8x8()
-print(font)
-print(selene.renderer)
-print(selene.get_renderer)
-local render = selene.renderer.RenderBatch2D(ctx.renderer)
-if not selene then
-    error(err)
-end
-print(selene, selene.__version)
-print(_BOOT_SCRIPT)
-print(_VERSION)
-local i = 1
-local img = image.from_file('selene_icon.png')
-local tex = selene.renderer.create_texture(img.width, img.height, 'rgba', img.data)
-local t = 0
+﻿selene()
+local RenderBatch2D = require('plugins.RenderBatch2D')
+local Canvas = require('plugins.RenderBatch2D.Canvas')
+local Image = require('plugins.RenderBatch2D.Image')
+print("Testando")
+--selene('Testing', '1.0.0', 'org.selene.Testing', {renderer = {backend = 'opengl'}})
+--local ctx = selene.get_context()
+local win = selene.create_window('Testing', 640, 380, {resizable = true, opengl = true})
+local rb2d = RenderBatch2D.create(win, 'opengl')
+--local r = ctx.renderer
+print('Renderer backend:', rb2d.backend)--ctx.renderer)
+local x = 0
+local y = 32
+local keys = {}
+
+local image = Image.load(rb2d, 'selene_icon.png')
+local canvas = Canvas.create(rb2d, 320, 190, true)
+
 selene.set_event(function(name, ...)
-    if name == 'quit' or name == 'window close' then
-        selene.set_running(false)
+    if name == 'quit' or name == 'window closed' then selene.set_running(false) end
+    if name == 'key' then
+        local key, pressed = ...
+        keys[string.lower(key)] = pressed
     end
-    if name == 'gamepad added' then
-        local which = ...
-        sdl.gamepad_open(which)
-    elseif name == 'gamepad button' then
-        local which,button = ...
-        print('button', which, button)
-    elseif name == 'gamepad axis' then
-        local which,axis,value = ...
-        print('axis', which, axis, value)
+    if name == 'window resized' then
+        local w, h = ...
+        rb2d:on_resize(w, h)
     end
 end)
+rb2d.delta = 0
+rb2d.time = 0
+
+local last = selene.get_ticks()
 selene.set_step(function()
-    t = t + 0.5
-    if t > 360 then
-        t = 0
+    if keys['left'] then
+        x = x - 8
+    elseif keys['right'] then
+        x = x + 8
     end
-    render:begin()
-    render:set_draw_mode('triangles')
-    render:matrix_identity()
-    render:send_matrix()
-    render:clear(0.2, 0.3, 0.3)
-    render:set_blend_mode('alpha')
-    render:set_color(1, 0, 1)
-    render:draw_triangle(320, 0, 0, 320, 640, 320)
-    render:set_color(0, 1, 1)
-    render:set_draw_mode('triangles')
-    render:matrix_identity()
-    render:matrix_translate(t, 0)
-    render:send_matrix()
-    render:draw_rect(320, 160, 8, 8)
-    render:set_texture(tex)
-    render:set_color(1, 1, 1)
-    render:draw_sprite(320, 160, t, 0.5, 0.5, {256, 256})
-    render:set_texture()
-    render:set_draw_mode('lines')
-    render:draw_circle(32, 32, 16)
-    render:set_draw_mode('triangles')
-    render:set_texture(font)
-    render:draw_text(font, 'opa', 32, 32)
-    render:draw_text(font, 'então é isto, meu bom! até então tudo funcionando')
-    render:finish()
-    render:present()
+    local current = selene.get_ticks()
+    rb2d.delta = (current - last) / 1000
+    last = current
+    rb2d.time = rb2d.time + rb2d.delta
+    
+    rb2d:begin_frame()
+    --[[rb2d:set_target(canvas.target)
+    rb2d:clear(0.3, 0.4, 0.4, 1.0)
+    rb2d:draw_triangle(320, 0, 0, 380, 640, 380)
+    -- rb2d:draw_rectangle(196, 32, 192, 256)
+    rb2d:draw_circle(x, y, 16)
+    rb2d:enable_3d(true)
+    rb2d:draw_cube(x+128, y+32)
+    rb2d:draw_sphere(x+128, y+96, 32)
+    rb2d:enable_3d(false)
+    rb2d:set_target()]]
+    rb2d:set_canvas(canvas)
+    rb2d:clear(0.3, 0.4, 0.4, 1.0)
+    rb2d:draw_triangle(320, 0, 0, 380, 640, 380)
+    rb2d:enable_3d(true)
+    rb2d:draw_cube(x+128, y+32)
+    rb2d:draw_sphere(x+128, y+96, 32)
+    rb2d:enable_3d(false)
+    rb2d:set_canvas()
+    -- rb2d:draw_sprite(canvas.texture, 0, 0, 0, 1, 1, nil, {false, true})
+    rb2d:clear(0, 0, 0, 1.0)
+
+    rb2d:draw(canvas, 0, 0)
+    rb2d:set_clip_rect(0, 0, 320, 190)
+    rb2d:draw(image, 32, 32)
+    rb2d:set_clip_rect()
+    rb2d:draw_text(rb2d.font, 'olaaar', 0, 0)
+
+    rb2d:end_frame()
+    selene.delay(16)
+end)
+selene.set_quit(function()
+    image:destroy(rb2d)
+    canvas:destroy(rb2d)
+    rb2d:destroy()
+    win:destroy()
 end)
