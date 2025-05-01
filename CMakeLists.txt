@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 
 include(Config)
 
-project(${SELENE_NAME} VERSION ${SELENE_VERSION} LANGUAGES C)
+project(${SELENE_NAME} VERSION ${SELENE_VERSION} LANGUAGES C CXX)
 
 include(CheckLibraryExists)
 include(CheckIncludeFile)
@@ -97,7 +97,7 @@ if (${LUA_VERSION} STREQUAL "jit")
 endif ()
 
 file(GLOB SELENE_SOURCES 
-    src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c
+    src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c src/core/renderer/backends/*.cpp
     src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c
     src/modules/*.c third/glad/src/glad.c
 )
@@ -170,6 +170,7 @@ if (NOT DEFINED EMSCRIPTEN)
     target_link_libraries(${PROJECT_NAME}Shared ${LIBRARIES})
     if (MSVC)
         target_compile_definitions(${PROJECT_NAME}Shared PRIVATE -DSELENE_EXPORT_DLL)
+        target_link_libraries(${PROJECT_NAME}Shared d3d11 d3dcompiler dxgi)
     endif()
     if (${HAS_LUA51})
         target_link_libraries(${PROJECT_NAME}Shared lua51)
@@ -221,3 +222,6 @@ else ()
 endif ()
 
 include(Install)
+
+enable_testing()
+add_test(NAME ${PROJECT_NAME}Test COMMAND $<TARGET_FILE:${PROJECT_NAME}Bin> -d ${CMAKE_SOURCE_DIR}/examples/test)

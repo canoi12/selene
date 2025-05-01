@@ -42,7 +42,7 @@ install(
 
 if (WIN32)
     # install(FILES "${CMAKE_BINARY_DIR}//${PROJECT_NAME}.dll" DESTINATION "lib")
-    message("Installing for Win32")
+    message("-- Installing for Windows")
     install(
             TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Bin ${LUA_SHARED_LIB}
             RUNTIME DESTINATION "."
@@ -67,7 +67,7 @@ if (WIN32)
     )
     # message("TESTEEE $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}Bin>")
 elseif (EMSCRIPTEN)
-    message("Installing for Emscripten")
+    message("-- Installing for Emscripten")
     install(
         TARGETS ${PROJECT_NAME}Static ${LUA_SHARED_LIB}
         LIBRARY DESTINATION "lib"
@@ -88,7 +88,7 @@ elseif (EMSCRIPTEN)
     )
     # set(CPACK_COMPONENTS_ALL runtime)
 elseif (APPLE)
-    message("Installing for Apple/macOS")
+    message("-- Installing for Apple/macOS")
     install(
         TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Bin ${LUA_SHARED_LIB}
         COMPONENT runtime
@@ -122,7 +122,7 @@ elseif (APPLE)
         COMPONENT runtime
     )
 elseif (UNIX)
-    message("Installing for Unix")
+    message("-- Installing for Unix")
     install(
         TARGETS ${PROJECT_NAME}Shared ${PROJECT_NAME}Bin ${LUA_SHARED_LIB}
         COMPONENT runtime
@@ -138,11 +138,11 @@ elseif (UNIX)
         ARCHIVE DESTINATION "lib"
     )
     if (EXPORT_APPIMAGE)
-        install(FILES "${CMAKE_SOURCE_DIR}/misc/cross/AppImage/${PROJECT_NAME}_icon.png" DESTINATION "." COMPONENT runtime)
+        install(FILES "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}_icon.png" DESTINATION "." COMPONENT runtime)
         # file(WRITE "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.desktop""")
         install(FILES "${CMAKE_SOURCE_DIR}/misc/cross/AppImage/${PROJECT_NAME}.desktop" DESTINATION "." COMPONENT runtime)
     else ()
-        install(FILES "${CMAKE_SOURCE_DIR}/misc/cross/AppImage/${PROJECT_NAME}_icon.png" DESTINATION "share/icons" COMPONENT runtime)
+        install(FILES "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}_icon.png" DESTINATION "share/icons" COMPONENT runtime)
         # file(WRITE "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.desktop""")
         install(FILES "${CMAKE_SOURCE_DIR}/misc/cross/AppImage/${PROJECT_NAME}.desktop" DESTINATION "share/applications" COMPONENT runtime)
     endif ()
