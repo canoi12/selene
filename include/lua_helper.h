@@ -5,6 +5,11 @@
 
 #define LUA_META_CLASS(x) #x
 
+#define LuaReference int
+
+#define GET_LUA_REF(ref) \
+lua_rawgeti(L, LUA_REGISTRYINDEX, (ref))
+
 #define INIT_ARG()\
 int arg = 1
 
