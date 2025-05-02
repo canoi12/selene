@@ -162,6 +162,7 @@ struct GLBuffer {
 };
 #endif
 
+#if defined(OS_WIN)
 #ifndef SELENE_NO_DX11
 enum DX11BufferType {
     DX11_VERTEX_BUFFER,
@@ -175,6 +176,7 @@ struct DX11Buffer {
     ID3D11Buffer* handle;
     D3D11_USAGE usage;
 };
+#endif
 #endif
 
 typedef struct {
@@ -566,13 +568,9 @@ typedef struct SeleneRenderer SeleneRenderer;
 enum SeleneRendererBackend {
     SELENE_RENDERER_OPENGL = 0,
     SELENE_RENDERER_VULKAN,
-#if defined(OS_WIN)
     SELENE_RENDERER_DIRECTX11,
     SELENE_RENDERER_DIRECTX12,
-#endif
-#if defined(OS_MACOS)
     SELENE_RENDERER_METAL
-#endif
 };
 
 struct SeleneRenderer {

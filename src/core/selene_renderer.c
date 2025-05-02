@@ -62,9 +62,12 @@ int l_renderer_create(lua_State* L) {
     const char* api_name = luaL_checkstring(L, 2);
     if (strcmp(api_name, "opengl") == 0) {
         return l_GL_Renderer_create(L);
-    } else if (strcmp(api_name, "dx11") == 0) {
+    }
+#if defined(OS_WIN)
+    else if (strcmp(api_name, "dx11") == 0) {
         return l_DX11_Renderer_create(L);
     }
+#endif
     return luaL_argerror(L, 2, "invalid Renderer backend");
 }
 
