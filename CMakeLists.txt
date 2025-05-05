@@ -142,6 +142,24 @@ target_compile_definitions(cglm PRIVATE -DCGLM_STATIC)
 set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm)
 include_directories(third/cglm/include)
 
+if (NOT SELENE_NO_VULKAN)
+    find_library(VULKAN_LIBRARY NAMES vulkan vulkan-1)
+    find_path(VULKAN_INCLUDE_DIR NAMES vulkan/vulkan.h)
+
+    if (VULKAN_LIBRARY AND Vulkan_INCLUDE_DIR)
+        message("Using Vulkan: ${VULKAN_LIBRARY} ${Vulkan_INCLUDE_DIR}")
+        set(LIBRARIES ${LIBRARIES} ${VULKAN_LIBRARY})
+        include_directories(${VULKAN_INCLUDE_DIR})
+    else ()
+        add_compile_definitions(-DSELENE_NO_VULKAN)
+    endif ()
+else ()
+    message("Disabling support for Vulkan")
+    add_compile_definitions(SELENE_NO_VULKAN)
+endif()
+
+
+
 if (${SELENE_USE_SDL3})
     include_directories(${SDL3_INCLUDE_DIRS})
     set (LIBRARIES ${LIBRARIES} ${SDL3_LIBRARIES})
