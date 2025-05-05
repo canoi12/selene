@@ -5,11 +5,12 @@ RenderBatch2D.__index = RenderBatch2D
 function RenderBatch2D.create(win, backend)
     local r = {}
     r.window = win
+    r.width, r.height = win:get_size()
     backend = backend or 'opengl'
     r.handle = selene.create_renderer(win, backend)
     local renderer = r.handle
     r.backend = r.handle:get_backend()
-    r.batch = selene.renderer.BatchBuffer(9*4, 1024)
+    r.batch = selene.renderer.VertexBatch(9*4, 1024)
     print(renderer)
     r.vertex = renderer:create_buffer('vertex', 9*4*256)
     --renderer:send_triangle(r.vertex)
@@ -104,10 +105,9 @@ function RenderBatch2D:begin_frame()
     self.last_offset = 0
     self.batch:set_color(1, 1, 1, 1)
     self.batch:set_z(0)
-    local width, height = self.window:get_size()
     self.handle:set_vertex_buffer(self.vertex)
     self.handle:set_uniform_buffer(self.uniform)
-    self:on_resize(width, height)
+    self:on_resize(self.width, self.height)
     self.pipeline = nil
     self.texture = nil
     self.target = nil

@@ -6,7 +6,7 @@
 int g_sdl_modules = 0;
 
 extern int l_renderer_create(lua_State* L);
-extern int g_init_renderer(lua_State* L, Renderer* r, SDL_Window* win);
+extern int g_init_renderer(lua_State* L, selene_Renderer* r, SDL_Window* win);
 
 int s_default_event_callback(lua_State *L);
 int s_default_step_callback(lua_State* L);
@@ -434,6 +434,8 @@ static int l_selene_create_window(lua_State* L) {
         if (lua_getfield(L, arg, "borderless") == LUA_TBOOLEAN) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
         lua_pop(L, 1);
         if (lua_getfield(L, arg, "opengl") == LUA_TBOOLEAN) flags |= SDL_WINDOW_OPENGL * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "vulkan") == LUA_TBOOLEAN) flags |= SDL_WINDOW_VULKAN * lua_toboolean(L, -1);
         lua_pop(L, 2);
     }
     if (flags & SDL_WINDOW_OPENGL) {
@@ -447,6 +449,13 @@ static int l_selene_create_window(lua_State* L) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
     }
+#ifndef SELENE_NO_VULKAN
+    if (flags & SDL_WINDOW_VULKAN) {
+        if (SDL_Vulkan_LoadLibrary(NULL) != VK_TRUE) {
+            return luaL_error(L, "failed to load Vulkan library: %s", SDL_GetError());
+        }
+    }
+#endif
     SDL_Window *win = SDL_CreateWindow(
         title,
 #if !defined(SELENE_USE_SDL3)

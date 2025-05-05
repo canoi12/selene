@@ -1,79 +1,80 @@
 ﻿#include "selene_renderer.h"
+#include "helper.h"
 
-static inline int s_check_buf_size(BatchBuffer* buf, int size) {
+static inline int s_check_buf_size(VertexBatch* buf, int size) {
     if (buf->offset + size > buf->count) {
-        fprintf(stdout, "Resizing BatchBuffer %p, old count: %d, new count: %d\n", buf, buf->count, size);
+        fprintf(stdout, "Resizing VertexBatch %p, old count: %d, new count: %d\n", buf, buf->count, size);
         while (buf->offset + size > buf->count) buf->count *= 2;
         buf->data = realloc(buf->data, buf->count*buf->stride);
     }
     return 0;
 }
 
-int l_BatchBuffer_create(lua_State* L) {
+int l_VertexBatch_create(lua_State* L) {
     INIT_ARG();
     CHECK_INTEGER(stride);
     CHECK_INTEGER(count);
-    NEW_UDATA(BatchBuffer, buffer);
+    NEW_UDATA(VertexBatch, buffer);
     buffer->offset = 0;
     buffer->stride = stride;
     buffer->count = count;
     buffer->data = malloc(stride * count);
     buffer->z = 0.f;
     buffer->color[0] = buffer->color[1] =
-        buffer->color[2] = buffer->color[3] = 1.f;
+    buffer->color[2] = buffer->color[3] = 1.f;
     return 1;
 }
 
-int l_BatchBuffer__destroy(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__destroy(lua_State* L) {
+    CHECK_META(VertexBatch);
     free(self->data);
     return 0;
 }
 
-int l_BatchBuffer__get_offset(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__get_offset(lua_State* L) {
+    CHECK_META(VertexBatch);
     lua_pushinteger(L, self->offset);
     return 1;
 }
 
-int l_BatchBuffer__get_count(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__get_count(lua_State* L) {
+    CHECK_META(VertexBatch);
     lua_pushinteger(L, self->count);
     return 1;
 }
 
-int l_BatchBuffer__get_stride(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__get_stride(lua_State* L) {
+    CHECK_META(VertexBatch);
     lua_pushinteger(L, self->stride);
     return 1;
 }
 
-int l_BatchBuffer__get_data(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__get_data(lua_State* L) {
+    CHECK_META(VertexBatch);
     lua_pushlightuserdata(L, self->data);
     return 1;
 }
 
-int l_BatchBuffer__set_color(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__set_color(lua_State* L) {
+    CHECK_META(VertexBatch);
     for (int i = 0; i < 4; i++) self->color[i] = luaL_checknumber(L, arg++);
     return 0;
 }
 
-int l_BatchBuffer__set_z(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__set_z(lua_State* L) {
+    CHECK_META(VertexBatch);
     self->z = luaL_checknumber(L, arg++);
     return 0;
 }
 
-int l_BatchBuffer__reset(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__reset(lua_State* L) {
+    CHECK_META(VertexBatch);
     self->offset = 0;
     return 0;
 }
 
-int l_BatchBuffer__push_vertex2d(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__push_vertex2d(lua_State* L) {
+    CHECK_META(VertexBatch);
     Vertex2D v;
     v.x = (float)luaL_checknumber(L, arg++);
     v.y = (float)luaL_checknumber(L, arg++);
@@ -91,8 +92,8 @@ int l_BatchBuffer__push_vertex2d(lua_State* L) {
     return 0;
 }
 
-int l_BatchBuffer__push_line(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__push_line(lua_State* L) {
+    CHECK_META(VertexBatch);
     Vertex2D v[2];
     //memcpy(&(v), &(self->aux_vertex), sizeof(Vertex2D));
     v[0].x = (float)luaL_checknumber(L, arg++);
@@ -115,8 +116,8 @@ int l_BatchBuffer__push_line(lua_State* L) {
     return 0;
 }
 
-int l_BatchBuffer__push_line_triangle(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__push_line_triangle(lua_State* L) {
+    CHECK_META(VertexBatch);
     s_check_buf_size(self, 6);
     Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset+self->stride));
     for (int i = 0; i < 6; i++) {
@@ -147,8 +148,8 @@ int l_BatchBuffer__push_line_triangle(lua_State* L) {
     return 0;
 }
 
-static int l_BatchBuffer__push_fill_triangle(lua_State* L) {
-    CHECK_META(BatchBuffer);
+static int l_VertexBatch__push_fill_triangle(lua_State* L) {
+    CHECK_META(VertexBatch);
     s_check_buf_size(self, 3);
 
     Vertex2D* v = (Vertex2D*)self->data;
@@ -172,8 +173,8 @@ static int l_BatchBuffer__push_fill_triangle(lua_State* L) {
     return 0;
 }
 
-static int l_BatchBuffer__push_line_rect(lua_State* L) {
-    CHECK_META(BatchBuffer);
+static int l_VertexBatch__push_line_rect(lua_State* L) {
+    CHECK_META(VertexBatch);
     s_check_buf_size(self, 8);
     Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset*self->stride));
     for (int i = 0; i < 8; i++) {
@@ -241,8 +242,8 @@ static int l_BatchBuffer__push_line_rect(lua_State* L) {
     return 0;
 }
 
-static int l_BatchBuffer__push_fill_rect(lua_State* L) {
-    CHECK_META(BatchBuffer);
+static int l_VertexBatch__push_fill_rect(lua_State* L) {
+    CHECK_META(VertexBatch);
     s_check_buf_size(self, 6);
     Vertex2D* v = (char*)self->data + (self->offset*self->stride);
     for (int i = 0; i < 6; i++) {
@@ -385,8 +386,8 @@ static int l_BatchBuffer__push_fill_rect(lua_State* L) {
     return 0;
 }
 
-int l_BatchBuffer__push_line_circle(lua_State* L) {
-    BatchBuffer* self = (BatchBuffer*)lua_touserdata(L, 1);
+int l_VertexBatch__push_line_circle(lua_State* L) {
+    VertexBatch* self = (VertexBatch*)lua_touserdata(L, 1);
     int arg = 2;
     float cx = (float)luaL_checknumber(L, arg++);
     float cy = (float)luaL_checknumber(L, arg++);
@@ -422,8 +423,8 @@ int l_BatchBuffer__push_line_circle(lua_State* L) {
     return 0;
 }
 
-int l_BatchBuffer__push_fill_circle(lua_State* L) {
-    BatchBuffer* self = (BatchBuffer*)lua_touserdata(L, 1);
+int l_VertexBatch__push_fill_circle(lua_State* L) {
+    VertexBatch* self = (VertexBatch*)lua_touserdata(L, 1);
     int arg = 2;
     float cx = (float)luaL_checknumber(L, arg++);
     float cy = (float)luaL_checknumber(L, arg++);
@@ -470,8 +471,8 @@ int l_BatchBuffer__push_fill_circle(lua_State* L) {
     return 0;
 }
 
-int l_BatchBuffer__push_sprite(lua_State* L) {
-    CHECK_META(BatchBuffer);
+int l_VertexBatch__push_sprite(lua_State* L) {
+    CHECK_META(VertexBatch);
     CHECK_UDATA(Texture2D, tex);
     SDL_FRect src;
     if (lua_istable(L, arg)) {
@@ -669,8 +670,8 @@ static const int s_cube_indices[] = {
     16, 17, 18, 16, 18, 19,   //-- top face
     20, 21, 22, 20, 22, 23,   //-- bottom face
 };
-static int l_BatchBuffer__push_fill_cube(lua_State* L) {
-    CHECK_META(BatchBuffer);
+static int l_VertexBatch__push_fill_cube(lua_State* L) {
+    CHECK_META(VertexBatch);
     // self->batch->check_size(self->batch, 36);
     s_check_buf_size(self, 36);
     mat4 m = GLM_MAT4_IDENTITY_INIT;
@@ -748,8 +749,8 @@ static int l_BatchBuffer__push_fill_cube(lua_State* L) {
     return 0;
 }
 
-int l_BatchBuffer__push_fill_sphere(lua_State* L) {
-    BatchBuffer* self = (BatchBuffer*)lua_touserdata(L, 1);
+int l_VertexBatch__push_fill_sphere(lua_State* L) {
+    VertexBatch* self = (VertexBatch*)lua_touserdata(L, 1);
     int arg = 2;
     float cx = (float)luaL_checknumber(L, arg++);
     float cy = (float)luaL_checknumber(L, arg++);
@@ -851,8 +852,8 @@ int l_BatchBuffer__push_fill_sphere(lua_State* L) {
     return 0;
 }
 
-static int l_BatchBuffer__push_text(lua_State* L) {
-    CHECK_META(BatchBuffer);
+static int l_VertexBatch__push_text(lua_State* L) {
+    CHECK_META(VertexBatch);
     CHECK_UDATA(Texture2D, tex);
     CHECK_UDATA(FontGlyph, glyphs);
     CHECK_STRING(text);
@@ -965,31 +966,31 @@ static int l_BatchBuffer__push_text(lua_State* L) {
     return 0;
 }
 
-int l_BatchBuffer_meta(lua_State* L) {
-    luaL_newmetatable(L, "BatchBuffer");
+int l_VertexBatch_meta(lua_State* L) {
+    luaL_newmetatable(L, "VertexBatch");
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     const luaL_Reg _reg[] = {
-            REG_META_FIELD(BatchBuffer, destroy),
-            REG_META_FIELD(BatchBuffer, get_offset),
-            REG_META_FIELD(BatchBuffer, get_count),
-            REG_META_FIELD(BatchBuffer, get_stride),
-            REG_META_FIELD(BatchBuffer, get_data),
-            REG_META_FIELD(BatchBuffer, reset),
-            REG_META_FIELD(BatchBuffer, set_color),
-            REG_META_FIELD(BatchBuffer, set_z),
-            REG_META_FIELD(BatchBuffer, push_vertex2d),
-            REG_META_FIELD(BatchBuffer, push_line),
-            REG_META_FIELD(BatchBuffer, push_line_triangle),
-            REG_META_FIELD(BatchBuffer, push_fill_triangle),
-            REG_META_FIELD(BatchBuffer, push_line_rect),
-            REG_META_FIELD(BatchBuffer, push_fill_rect),
-            REG_META_FIELD(BatchBuffer, push_line_circle),
-            REG_META_FIELD(BatchBuffer, push_fill_circle),
-            REG_META_FIELD(BatchBuffer, push_sprite),
-            REG_META_FIELD(BatchBuffer, push_fill_cube),
-            REG_META_FIELD(BatchBuffer, push_fill_sphere),
-            REG_META_FIELD(BatchBuffer, push_text),
+            REG_META_FIELD(VertexBatch, destroy),
+            REG_META_FIELD(VertexBatch, get_offset),
+            REG_META_FIELD(VertexBatch, get_count),
+            REG_META_FIELD(VertexBatch, get_stride),
+            REG_META_FIELD(VertexBatch, get_data),
+            REG_META_FIELD(VertexBatch, reset),
+            REG_META_FIELD(VertexBatch, set_color),
+            REG_META_FIELD(VertexBatch, set_z),
+            REG_META_FIELD(VertexBatch, push_vertex2d),
+            REG_META_FIELD(VertexBatch, push_line),
+            REG_META_FIELD(VertexBatch, push_line_triangle),
+            REG_META_FIELD(VertexBatch, push_fill_triangle),
+            REG_META_FIELD(VertexBatch, push_line_rect),
+            REG_META_FIELD(VertexBatch, push_fill_rect),
+            REG_META_FIELD(VertexBatch, push_line_circle),
+            REG_META_FIELD(VertexBatch, push_fill_circle),
+            REG_META_FIELD(VertexBatch, push_sprite),
+            REG_META_FIELD(VertexBatch, push_fill_cube),
+            REG_META_FIELD(VertexBatch, push_fill_sphere),
+            REG_META_FIELD(VertexBatch, push_text),
             {NULL, NULL}
     };
     luaL_setfuncs(L, _reg, 0);

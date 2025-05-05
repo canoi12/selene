@@ -11,7 +11,8 @@ extern "C" {
 #define SELENE_RENDERER_H_
 
 #ifndef SELENE_NO_VULKAN
-// #include <vulkan.h>
+#include <SDL2/SDL_vulkan.h>
+#include <vulkan/vulkan.h>
 #endif
 
 #if defined(OS_WIN)
@@ -31,47 +32,6 @@ extern "C" {
 
 #ifndef SELENE_BATCH2D_PROJECTION_FAR
 #define SELENE_BATCH2D_PROJECTION_FAR 1000
-#endif
-
-#if 0
-#define RENDERLIST_CLEAR(list)\
-lua_pushcfunction(L, (list)->clear);\
-lua_pushlightuserdata(L, (list));\
-lua_call(L, 1, 0)
-#else
-#define RENDERLIST_CLEAR(list)\
-(list)->clear((list))
-#endif
-
-#if 0
-#define RENDERLIST_CALL(list)\
-lua_pushcfunction(L, (list)->call);\
-lua_pushlightuserdata(L, (list));\
-lua_call(L, 1, 0)
-#else
-#define RENDERLIST_CALL(list)\
-(list)->call((list))
-#endif
-
-#if 0
-#define RENDERLIST_PUSH(list, rc)\
-lua_pushcfunction(L, (list)->push);\
-lua_pushlightuserdata(L, (list));\
-lua_pushlightuserdata(L, (rc));\
-lua_call(L, 2, 0)
-#else
-#define RENDERLIST_PUSH(list, rc)\
-(list)->push((list), 1, rc)
-#endif
-
-#if 0
-#define RENDERLIST_POP(list)\
-lua_pushcfunction(L, (list)->pop);\
-lua_pushlightuserdata(L, (list));\
-lua_call(L, 1, 1)
-#else
-#define RENDERLIST_POP(list)\
-(list)->pop((list))
 #endif
 
 #if defined(__cplusplus)
@@ -136,8 +96,6 @@ typedef struct {
  * Buffer Types
  */
 
-typedef Uint32 BufferID;
-
 typedef struct {
     int stride;
     struct {
@@ -186,6 +144,12 @@ typedef struct {
 #ifndef SELENE_NO_GL
         struct GLBuffer gl;
 #endif
+#ifndef SELENE_NO_VULKAN
+        struct {
+            VkBuffer handle;
+            VkDeviceMemory mem;
+        } vk;
+#endif
 #if defined(OS_WIN)
 #ifndef SELENE_NO_DX11
         struct DX11Buffer dx11;
@@ -194,17 +158,23 @@ typedef struct {
     };
 } GpuBuffer;
 
-typedef struct VertexBatch2D VertexBatch2D;
-struct VertexBatch2D {
-    GpuBuffer vbo;
-    int offset;
-    size_t count;
-    Vertex2D* data;
-
-    void(*check_size)(VertexBatch2D*,int);
-    void(*push)(VertexBatch2D*,int,Vertex2D*);
-    void(*flush)(VertexBatch2D*,int,size_t);
-};
+typedef struct {
+    int type, usage;
+    int stride, size;
+    union {
+#ifndef SELENE_NO_GL
+        struct { GLuint handle; } gl;
+#endif
+#ifndef SELENE_NO_VULKAN
+        struct { VkBuffer handle; } vk;
+#endif
+#if defined(OS_WIN)
+#ifndef SELENE_NO_DX11
+        struct DX11Buffer dx11;
+#endif
+#endif
+    };
+} selene_GpuBuffer;
 
 /**
  * Texture Types
@@ -234,6 +204,12 @@ typedef struct {
 #ifndef SELENE_NO_GL
         struct GLTexture gl;
 #endif
+#ifndef SELENE_NO_VULKAN
+        struct {
+            VkImage handle;
+            VkDeviceMemory mem;
+        } vk;
+#endif
 #if defined(OS_WIN)
 #ifndef SELENE_NO_DX11
         struct DX11Texture dx11;
@@ -243,6 +219,30 @@ typedef struct {
     int width, height;
     int format;
 } Texture2D;
+
+typedef struct {
+    int type;
+    int width, height;
+    int depth;
+    int pixel_format;
+    union {
+#ifndef SELENE_NO_GL
+        struct { GLuint handle; } gl;
+#endif
+#ifndef SELENE_NO_VULKAN
+        struct { VkImage handle; } vk;
+#endif
+#ifdef OS_WIN
+#ifndef SELENE_NO_DX11
+        struct {
+            void* handle;
+            ID3D11ShaderResourceView* srv;
+            ID3D11SamplerState* sampler;
+        } dx11;
+#endif
+#endif
+    };
+} selene_Texture;
 
 typedef struct {
     Texture2D texture;
@@ -273,7 +273,7 @@ typedef struct {
     Texture2D* color;
     Texture2D* depth;
     int width, height;
-} RenderTarget;
+} selene_RenderTarget;
 
 
 /**
@@ -283,6 +283,12 @@ typedef struct {
 #ifndef SELENE_NO_GL
 struct GLShader {
     Uint32 handle;
+};
+#endif
+
+#ifndef SELENE_NO_VULKAN
+struct VKShader {
+    VkShaderModule handle;
 };
 #endif
 
@@ -303,11 +309,16 @@ struct DX12Shader {
 #endif
 #endif
 
-typedef struct SeleneShader SeleneShader;
-struct SeleneShader {
+typedef struct selene_Shader selene_Shader;
+struct selene_Shader {
     Uint32 type;
     union {
-        struct GLShader gl;
+#ifndef SELENE_NO_GL
+        struct { GLuint handle; } gl;
+#endif
+#ifndef SELENE_NO_VULKAN
+        struct { VkShaderModule handle; } vk;
+#endif
 #if defined(OS_WIN)
 #ifndef SELENE_NO_DX11
         struct DX11Shader dx11;
@@ -355,9 +366,10 @@ typedef struct {
  * RenderPipeline
  */
 
-struct InputLayout {
+struct selene_InputLayout {
     int count;
     size_t vertex_stride;
+    void* handle;
     struct {
         char name[64];
         int type;
@@ -391,9 +403,11 @@ struct GLRasterizerState {
 struct GLPipeline {
     GLuint vao;
     GLuint program;
+#if 0
     struct GLBlendState blend_state;
     struct GLDepthStencilState depth_stencil_state;
     struct GLRasterizerState rasterizer_state;
+#endif
 };
 #endif
 
@@ -416,12 +430,50 @@ struct DX12Pipeline {
 #endif
 #endif
 
-typedef struct RenderPipeline RenderPipeline;
-struct RenderPipeline {
-    struct InputLayout layout;
+struct selene_BlendState {
+    int enabled;
+    int src, dst;
+    int equation;
+    void* handle;
+};
+
+struct selene_DepthStencilState {
+    int depth_enabled, stencil_enabled;
+    int depth_func, stencil_func;
+    int depth_write_mask;
+    void* handle;
+};
+
+struct selene_RasterState {
+    int fill_mode;
+    int scissor_enabled;
+    int cull_enabled;
+    int cull_face, front_face;
+    void* handle;
+};
+
+typedef struct selene_RenderPipeline selene_RenderPipeline;
+struct selene_RenderPipeline {
+    struct selene_InputLayout layout;
+    selene_Shader* vs;
+    selene_Shader* ps;
+    struct selene_BlendState blend_state;
+    struct selene_DepthStencilState depth_stencil_state;
+    struct selene_RasterState raster_state;
     union {
 #ifndef SELENE_NO_GL
         struct GLPipeline gl;
+#endif
+#ifndef SELENE_NO_VULKAN
+        struct {
+            VkPipeline handle;
+            VkPipelineLayout layout;
+            VkDescriptorSetLayout descriptor_layout;
+            VkShaderModule vs;
+            VkShaderModule ps;
+            // Cache
+            VkPipelineVertexInputStateCreateInfo vertex_input_info;
+        } vk;
 #endif
 #if defined(OS_WIN)
 #ifndef SELENE_NO_DX11
@@ -432,6 +484,7 @@ struct RenderPipeline {
 #endif
 #endif
     };
+    void* handle;
 };
 
 /**
@@ -507,7 +560,7 @@ struct RenderCommand {
         struct { Uint32 target; Uint32 handle; GpuBuffer* ptr; } buffer;
         struct { Uint32 handle; } program;
         struct { Uint32 slot; Uint32 target; Uint32 handle; void* ptr; } texture;
-        struct { int depth; Uint32 target; Uint32 handle; RenderTarget* ptr; } target;
+        struct { int depth; Uint32 target; Uint32 handle; selene_RenderTarget* ptr; } target;
 
         struct { int x, y, width, height; } viewport;
         struct { int enabled; int x, y, width, height; } scissor;
@@ -516,7 +569,7 @@ struct RenderCommand {
             int equation;
         } blend;
 
-        RenderPipeline* pipeline;
+        selene_RenderPipeline* pipeline;
 
         struct {
             Uint32 mode;
@@ -530,40 +583,17 @@ struct RenderCommand {
         } instanced;
     };
 };
-#if 0
-struct RenderCommandPool {
-    int current;
-    struct RenderCommand commands[512];
-    struct RenderCommandPool* prev;
-    struct RenderCommandPool* next;
-};
-#endif
-
-typedef struct BatchBuffer BatchBuffer;
-struct BatchBuffer {
-    int offset, count;
-    int stride;
-    void* data;
-    vec4 color;
-    float z;
-};
 
 typedef struct VertexBatch VertexBatch;
 struct VertexBatch {
     int offset, count;
     int stride;
     void* data;
-    vec4 color;
+    float z;
+    float color[4];
 };
 
-typedef struct RenderCommandBlock RenderCommandBlock;
-struct RenderCommandBlock {
-    int current;
-    struct RenderCommand commands[512];
-};
-
-typedef struct Renderer Renderer;
-typedef struct SeleneRenderer SeleneRenderer;
+typedef struct selene_Renderer selene_Renderer;
 
 enum SeleneRendererBackend {
     SELENE_RENDERER_OPENGL = 0,
@@ -573,7 +603,7 @@ enum SeleneRendererBackend {
     SELENE_RENDERER_METAL
 };
 
-struct SeleneRenderer {
+struct selene_Renderer {
     enum SeleneRendererBackend backend;
     LuaReference l_window_ref;
     SDL_Window* window_ptr;
@@ -596,9 +626,20 @@ struct SeleneRenderer {
 #ifndef SELENE_NO_GL
         SDL_GLContext gl;
 #endif
+#ifndef SELENE_NO_VULKAN
+        struct {
+            VkInstance instance;
+            VkSurfaceKHR surface;
+            VkPhysicalDevice phys_device;
+            VkDevice device;
+            VkSwapchainKHR swap_chain;
+            VkRenderPass render_pass;
+        } vk;
+#endif
     };
 
-    RenderTarget default_target;
+    int width, height;
+    selene_RenderTarget default_target;
 
     int command_offset;
     int command_count;
@@ -629,38 +670,6 @@ struct SeleneRenderer {
     lua_CFunction flush;
     lua_CFunction present;
 };
-
-#if 0
-struct Renderer {
-    int l_window_ref;
-    SDL_Window* window_ptr;
-
-    int l_gl_context_ref;
-
-    vec4 clear_color;
-
-    int current_pipeline_ref;
-    int current_texture_ref;
-
-    // vertex array
-    int current_vao_id;
-    // buffer
-    int current_vbo_id;
-    int current_ibo_id;
-    // texture
-    int current_tex2d_id;
-    int current_fbo_id;
-    int current_rbo_id;
-    // program
-    int current_program_id;
-
-    // render list
-    int l_command_list_ref;
-    RenderCommandList* command_list;
-
-    void(*present)(Renderer*, lua_State*);
-};
-#endif
 
 #define RENDERER_CLASS LUA_META_CLASS(Renderer)
 #define RENDERCOMMANDLIST_CLASS LUA_META_CLASS(RenderCommandList)

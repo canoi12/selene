@@ -4,7 +4,7 @@
 #include "selene.h"
 #include "common.h"
 
-void char_rect(FontGlyph* glyphs, const int c, float *x, float *y, int* out_pos, int* out_rect, int width, int line_height) {
+inline void char_rect(FontGlyph* glyphs, const int c, float *x, float *y, int* out_pos, int* out_rect, int width, int line_height) {
     if (c == '\n') {
         *x = 0;
         *y += line_height;
@@ -44,7 +44,7 @@ void char_rect(FontGlyph* glyphs, const int c, float *x, float *y, int* out_pos,
 }
 
 
-int utf8_codepoint(uint8_t* p, int* codepoint) {
+inline int utf8_codepoint(uint8_t* p, int* codepoint) {
     //uint8_t* n = NULL;
     int n = 0;
     uint8_t c = *p;

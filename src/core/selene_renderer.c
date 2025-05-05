@@ -1,10 +1,12 @@
 ﻿#include "selene_renderer.h"
 
-extern int l_GL_Renderer_meta(lua_State* L);
+#ifndef SELENE_NO_OPENGL
 extern int l_GL_Renderer_create(lua_State* L);
 static int l_gl_renderer_functions_ref = LUA_NOREF;
-
-extern int l_Vk_Renderer_meta(lua_State* L);
+#endif             
+#ifndef SELENE_NO_VULKAN
+extern int l_VK_Renderer_create(lua_State* L);
+#endif
 static int l_vk_renderer_functions_ref = LUA_NOREF;
 #if defined(OS_WIN)
 extern int l_DX11_Renderer_meta(lua_State* L);
@@ -60,12 +62,19 @@ const char* renderer_backend_options[] = { "opengl", "vulkan", "dx11", "dx12", N
 
 int l_renderer_create(lua_State* L) {
     const char* api_name = luaL_checkstring(L, 2);
+#ifndef SELENE_NO_GL
     if (strcmp(api_name, "opengl") == 0) {
         return l_GL_Renderer_create(L);
     }
+#endif
 #if defined(OS_WIN)
     else if (strcmp(api_name, "dx11") == 0) {
         return l_DX11_Renderer_create(L);
+    }
+#endif
+#ifndef SELENE_NO_VULKAN
+    else if (strcmp(api_name, "vulkan") == 0) {
+        return l_VK_Renderer_create(L);
     }
 #endif
     return luaL_argerror(L, 2, "invalid Renderer backend");
@@ -73,8 +82,8 @@ int l_renderer_create(lua_State* L) {
 
 extern int l_Renderer_meta(lua_State* L);
 
-extern int l_BatchBuffer_meta(lua_State* L);
-extern int l_BatchBuffer_create(lua_State* L);
+extern int l_VertexBatch_meta(lua_State* L);
+extern int l_VertexBatch_create(lua_State* L);
 
 int luaopen_renderer(lua_State* L) {
     lua_newtable(L);
@@ -82,17 +91,17 @@ int luaopen_renderer(lua_State* L) {
     l_Renderer_meta(L);
     lua_setfield(L, -2, RENDERER_CLASS);
 
-    luaL_newmetatable(L, "SeleneShader");
-    lua_setfield(L, -2, "SeleneShader");
+    luaL_newmetatable(L, "selene_Shader");
+    lua_setfield(L, -2, "selene_Shader");
 
-    luaL_newmetatable(L, "RenderPipeline");
-    lua_setfield(L, -2, "RenderPipeline");
+    luaL_newmetatable(L, "selene_RenderPipeline");
+    lua_setfield(L, -2, "selene_RenderPipeline");
 
     luaL_newmetatable(L, "GpuBuffer");
     lua_setfield(L, -2, "GpuBuffer");
 
-    luaL_newmetatable(L, "RenderTarget");
-    lua_setfield(L, -2, "RenderTarget");
+    luaL_newmetatable(L, "selene_RenderTarget");
+    lua_setfield(L, -2, "selene_RenderTarget");
 
     luaL_newmetatable(L, "Texture2D");
     lua_setfield(L, -2, "Texture2D");
@@ -100,12 +109,12 @@ int luaopen_renderer(lua_State* L) {
     luaL_newmetatable(L, "Font");
     lua_setfield(L, -2, "Font");
 
-    l_BatchBuffer_meta(L);
+    l_VertexBatch_meta(L);
     luaL_ref(L, LUA_REGISTRYINDEX);
 
     const luaL_Reg reg[] = {
             REG_FIELD(renderer, create),
-            {"BatchBuffer", l_BatchBuffer_create},
+            {"VertexBatch", l_VertexBatch_create},
             {NULL, NULL}
     };
     luaL_setfuncs(L, reg, 0);

@@ -1,6 +1,6 @@
 #include "selene_renderer.h"
 
-static inline void s_push_commands(SeleneRenderer* r, int count, struct RenderCommand* cmd) {
+static inline void s_push_commands(selene_Renderer* r, int count, struct RenderCommand* cmd) {
     if (r->command_offset + count > r->command_count) {
         r->command_count *= 2;
         r->command_pool = (struct RenderCommand*)realloc(r->command_pool, sizeof(*cmd) * r->command_count);
@@ -11,19 +11,19 @@ static inline void s_push_commands(SeleneRenderer* r, int count, struct RenderCo
 #define PUSH_COMMAND(r, cmd) s_push_commands(r, 1, cmd)
 
 static int l_Renderer__get_backend(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     switch (self->backend) {
-    case SELENE_RENDERER_OPENGL: lua_pushstring(L, "opengl"); break;
-    case SELENE_RENDERER_DIRECTX11: lua_pushstring(L, "dx11"); break;
-    default:
-        lua_pushstring(L, "unknown");
+        case SELENE_RENDERER_OPENGL: lua_pushstring(L, "opengl"); break;
+        case SELENE_RENDERER_DIRECTX11: lua_pushstring(L, "dx11"); break;
+        case SELENE_RENDERER_VULKAN: lua_pushstring(L, "vulkan"); break;
+        default: lua_pushstring(L, "unknown");
     }
     return 1;
 }
 
 
 int l_Renderer__destroy(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->destroy(L);
 }
 
@@ -32,7 +32,7 @@ int l_Renderer__destroy(lua_State* L) {
  */
 
 int l_Renderer__clear_color(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_CLEAR_COLOR;
     int top = lua_gettop(L);
@@ -44,7 +44,7 @@ int l_Renderer__clear_color(lua_State* L) {
 }
 
 int l_Renderer__clear_depth(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_NUMBER(float, depth);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_CLEAR_DEPTH;
@@ -58,18 +58,18 @@ int l_Renderer__clear_depth(lua_State* L) {
  */
 
 int l_Renderer__create_pipeline(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->create_pipeline(L);
 }
 
 int l_Renderer__destroy_pipeline(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->destroy_pipeline(L);
 }
 
 static int l_Renderer__set_pipeline(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_UDATA(RenderPipeline, pipeline);
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_RenderPipeline, pipeline);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_PIPELINE;
     cmd.pipeline = pipeline;
@@ -81,17 +81,17 @@ static int l_Renderer__set_pipeline(lua_State* L) {
  * Buffer
  */
 int l_Renderer__create_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->create_buffer(L);
 }
 
 int l_Renderer__destroy_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->destroy_buffer(L);
 }
 
 int l_Renderer__set_vertex_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(GpuBuffer, buffer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_VERTEX_BUFFER;
@@ -101,7 +101,7 @@ int l_Renderer__set_vertex_buffer(lua_State* L) {
 }
 
 int l_Renderer__set_index_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(GpuBuffer, buffer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_INDEX_BUFFER;
@@ -111,7 +111,7 @@ int l_Renderer__set_index_buffer(lua_State* L) {
 }
 
 int l_Renderer__set_uniform_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(GpuBuffer, buffer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_UNIFORM_BUFFER;
@@ -121,12 +121,12 @@ int l_Renderer__set_uniform_buffer(lua_State* L) {
 }
 
 int l_Renderer__send_buffer_data(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->send_buffer_data(L);
 }
 
 int l_Renderer__send_buffer_ortho(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(GpuBuffer, buffer);
     CHECK_INTEGER(offset);
     CHECK_NUMBER(float, left);
@@ -152,22 +152,22 @@ int l_Renderer__send_buffer_ortho(lua_State* L) {
  */
 
 int l_Renderer__create_texture2d(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->create_texture2d(L);
 }
 
 int l_Renderer__create_depth_texture(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->create_depth_texture(L);
 }
 
 int l_Renderer__destroy_texture(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->destroy_texture(L);
 }
 
 static int l_Renderer__set_texture(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     TEST_UDATA(Texture2D, tex);
     OPT_INTEGER(slot, 0);
     struct RenderCommand cmd;
@@ -184,18 +184,18 @@ static int l_Renderer__set_texture(lua_State* L) {
  */
 
 int l_Renderer__create_render_target(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->create_render_target(L);
 }
 
 int l_Renderer__destroy_render_target(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->destroy_render_target(L);
 }
 
 static int l_Renderer__set_render_target(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    TEST_UDATA(RenderTarget, target);
+    CHECK_META(selene_Renderer);
+    TEST_UDATA(selene_RenderTarget, target);
     struct RenderCommand cmd;
     cmd.target.depth = 0;
     cmd.type = RENDER_COMMAND_SET_RENDER_TARGET;
@@ -210,12 +210,12 @@ static int l_Renderer__set_render_target(lua_State* L) {
  */
 
 int l_Renderer__create_shader(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->create_shader(L);
 }
 
 int l_Renderer__destroy_shader(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->destroy_shader(L);
 }
 
@@ -224,7 +224,7 @@ int l_Renderer__destroy_shader(lua_State* L) {
  */
 
 int l_Renderer__set_viewport(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_VIEWPORT;
     cmd.viewport.x = luaL_checkinteger(L, arg++);
@@ -236,7 +236,7 @@ int l_Renderer__set_viewport(lua_State* L) {
 }
 
 int l_Renderer__set_scissor(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_SCISSOR;
     cmd.scissor.x = (int)luaL_checkinteger(L, arg++);
@@ -269,7 +269,7 @@ int l_Renderer__set_scissor(lua_State* L) {
 }
 
 int l_Renderer__draw(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     int opt = luaL_checkoption(L, arg++, "triangles", draw_modes);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_DRAW_VERTEX;
@@ -281,17 +281,17 @@ int l_Renderer__draw(lua_State* L) {
 }
 
 int l_Renderer__flush(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->flush(L);
 }
 
 int l_Renderer__present(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     return self->present(L);
 }
 
 int l_Renderer_meta(lua_State* L) {
-    luaL_newmetatable(L, "SeleneRenderer");
+    luaL_newmetatable(L, "selene_Renderer");
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     const luaL_Reg _reg[] = {
