@@ -31,18 +31,8 @@ const D3D11_CULL_MODE dx11_cull_mode[] = {
 
 const DXGI_FORMAT dx11_pixel_formats_values[] = { DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_D32_FLOAT };
 
-static inline void dx11_push_commands(SeleneRenderer* r, int count, struct RenderCommand* cmd) {
-    if (r->command_offset+count > r->command_count) {
-        r->command_count *= 2;
-        r->command_pool = (struct RenderCommand*)realloc(r->command_pool, sizeof(*cmd)*r->command_count);
-    }
-    memcpy(r->command_pool+r->command_offset, cmd, sizeof(*cmd)*count);
-    r->command_offset += count;
-}
-#define dx11_push_command(r, cmd) dx11_push_commands(r, 1, cmd)
-
 int l_DX11_Renderer__destroy(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     luaL_unref(L, LUA_REGISTRYINDEX, self->l_window_ref);
     free(self->command_pool);
     if (self->default_target.dx11.rtv) self->default_target.dx11.rtv->Release();
@@ -57,44 +47,22 @@ int l_DX11_Renderer__destroy(lua_State* L) {
     return 0;
 }
 
-int l_DX11_Renderer__clear_color(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_CLEAR_COLOR;
-    int top = lua_gettop(L);
-    vec4 c = {0, 0, 0, 1};
-    memcpy(cmd.clear.color, c, sizeof(vec4));
-    for (int i = 0; i < (top-1); i++) cmd.clear.color[i] = (float) luaL_checknumber(L, i+2);
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
-int l_DX11_Renderer__clear_depth(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_NUMBER(float, depth);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_CLEAR_DEPTH;
-    cmd.clear.depth = depth;
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
 /**
- * RenderPipeline
+ * selene_RenderPipeline
  */
 
 int l_DX11_Renderer__create_pipeline(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     if (!lua_istable(L, arg)) return luaL_argerror(L, arg, "must be a table");
 
     lua_getfield(L, arg, "vs");
-    SeleneShader* vertex = (SeleneShader*)luaL_checkudata(L, -1, "SeleneShader");
+    selene_Shader* vertex = (selene_Shader*)luaL_checkudata(L, -1, "selene_Shader");
     lua_getfield(L, arg, "ps");
-    SeleneShader* pixel = (SeleneShader*)luaL_checkudata(L, -1, "SeleneShader");
+    selene_Shader* pixel = (selene_Shader*)luaL_checkudata(L, -1, "selene_Shader");
     lua_pop(L, 2);
 
     if (lua_getfield(L, arg, "layout") != LUA_TTABLE) return luaL_error(L, "invalid layout field");
-    NEW_UDATA(RenderPipeline, pipe);
+    NEW_UDATA(selene_RenderPipeline, pipe);
     memset(pipe, 0, sizeof(*pipe));
     if (lua_getfield(L, -2, "stride") == LUA_TNUMBER) pipe->layout.vertex_stride = lua_tointeger(L, -1);
     lua_pop(L, 1);
@@ -262,8 +230,8 @@ int l_DX11_Renderer__create_pipeline(lua_State* L) {
 }
 
 int l_DX11_Renderer__destroy_pipeline(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_UDATA(RenderPipeline, pipe);
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_RenderPipeline, pipe);
     if (pipe->dx11.blend_state) pipe->dx11.blend_state->Release();
     if (pipe->dx11.depth_stencil_state) pipe->dx11.depth_stencil_state->Release();
     if (pipe->dx11.rasterizer_state) pipe->dx11.rasterizer_state->Release();
@@ -271,19 +239,9 @@ int l_DX11_Renderer__destroy_pipeline(lua_State* L) {
     return 0;
 }
 
-int l_DX11_Renderer__set_pipeline(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    TEST_UDATA(RenderPipeline, pipe);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_SET_PIPELINE;
-    cmd.pipeline = pipe;
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
 // create vertex, index or uniform buffer
 int l_DX11_Renderer__create_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     int opt = luaL_checkoption(L, arg++, "vertex", buffer_target_options);
     int size = (int)luaL_checkinteger(L, arg++);
     D3D11_BUFFER_DESC desc = {0};
@@ -312,14 +270,14 @@ int l_DX11_Renderer__create_buffer(lua_State* L) {
 }
 
 int l_DX11_Renderer__destroy_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(GpuBuffer, buffer);
     buffer->dx11.handle->Release();
     return 1;
 }
 
 int l_DX11_Renderer__send_buffer_data(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(GpuBuffer, buffer);
     CHECK_INTEGER(size);
     if (!lua_isuserdata(L, arg)) return luaL_argerror(L, arg, "userdata or lightuserdata expected");
@@ -360,7 +318,7 @@ int l_DX11_Renderer__send_buffer_data(lua_State* L) {
 }
 
 int l_DX11_Renderer__send_buffer_ortho(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(GpuBuffer, buffer);
     CHECK_INTEGER(offset);
     CHECK_NUMBER(float, left);
@@ -386,45 +344,12 @@ int l_DX11_Renderer__send_buffer_ortho(lua_State* L) {
     return 0;
 }
 
-int l_DX11_Renderer__set_vertex_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_UDATA(GpuBuffer, buffer);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_SET_VERTEX_BUFFER;
-    //cmd.buffer.handle = buffer->gl.handle;
-    cmd.buffer.ptr = buffer;
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
-int l_DX11_Renderer__set_index_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_UDATA(GpuBuffer, buffer);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_SET_INDEX_BUFFER;
-    //cmd.buffer.handle = buffer->gl.handle;
-    cmd.buffer.ptr = buffer;
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
-int l_DX11_Renderer__set_uniform_buffer(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_UDATA(GpuBuffer, buffer);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_SET_UNIFORM_BUFFER;
-    //cmd.buffer.handle = buffer->gl.handle;
-    cmd.buffer.ptr = buffer;
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
 /**
  * Textures
  */
 
 int l_DX11_Renderer__create_font(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     int w = 2048;
     int h = 8;
     uint8_t* bitmap = (uint8_t*)malloc(w * h * 4);
@@ -555,7 +480,7 @@ int l_DX11_Renderer__create_font(lua_State* L) {
 }
 
 int l_DX11_Renderer__create_texture2d(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
     int opt = luaL_checkoption(L, arg++, "rgba", pixel_formats);
@@ -629,7 +554,7 @@ int l_DX11_Renderer__create_texture2d(lua_State* L) {
 }
 
 int l_DX11_Renderer__create_depth_texture(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
 
@@ -678,25 +603,11 @@ int l_DX11_Renderer__create_depth_texture(lua_State* L) {
 }
 
 int l_DX11_Renderer__destroy_texture(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(Texture2D, tex);
     if (tex->dx11.srv) tex->dx11.srv->Release();
     if (tex->dx11.sampler) tex->dx11.sampler->Release();
     if (tex->dx11.tex2d) tex->dx11.tex2d->Release();
-    return 0;
-}
-
-int l_DX11_Renderer__set_texture(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    TEST_UDATA(Texture2D, tex);
-    arg--;
-    TEST_UDATA(Font, font);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_SET_TEXTURE;
-    if (!tex && font) tex = &(font->texture);
-    cmd.texture.ptr = (void*)tex;
-    cmd.texture.slot = 0;
-    dx11_push_command(self, &cmd);
     return 0;
 }
 
@@ -705,7 +616,7 @@ int l_DX11_Renderer__set_texture(lua_State* L) {
  */
 
 int l_DX11_Renderer__create_render_target(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     CHECK_UDATA(Texture2D, color);
     TEST_UDATA(Texture2D, depth);
 
@@ -757,7 +668,7 @@ int l_DX11_Renderer__create_render_target(lua_State* L) {
         }
     }
 
-    NEW_UDATA(RenderTarget, target);
+    NEW_UDATA(selene_RenderTarget, target);
     // target->depth = depth ? 1 : 0;
     target->dx11.rtv = rtv;
     target->color = color;
@@ -768,17 +679,17 @@ int l_DX11_Renderer__create_render_target(lua_State* L) {
 }
 
 int l_DX11_Renderer__destroy_render_target(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_UDATA(RenderTarget, target);
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_RenderTarget, target);
     if (target->dx11.srv) target->dx11.srv->Release();
     if (target->dx11.rtv) target->dx11.rtv->Release();
     if (target->dx11.dsv) target->dx11.dsv->Release();
     return 0;
 }
-
+#if 0
 int l_DX11_Renderer__set_render_target(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    TEST_UDATA(RenderTarget, target);
+    CHECK_META(selene_Renderer);
+    TEST_UDATA(selene_RenderTarget, target);
     int depth = 0;
     if (lua_isboolean(L, arg)) {
         depth = lua_toboolean(L, arg++);
@@ -790,12 +701,12 @@ int l_DX11_Renderer__set_render_target(lua_State* L) {
     dx11_push_command(self, &cmd);
     return 0;
 }
-
+#endif
 /**
  * Shaders
  */
 int l_DX11_Renderer__create_shader(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     ID3D11Device* device = self->dx11.device;
     int opt = luaL_checkoption(L, arg++, "vertex", shader_type_options);
     const char* source = luaL_checkstring(L, arg++);
@@ -861,7 +772,7 @@ int l_DX11_Renderer__create_shader(lua_State* L) {
         return luaL_error(L, "failed to create %s shader", shader_type_options[opt]);
     }
 
-    NEW_UDATA(SeleneShader, shader);
+    NEW_UDATA(selene_Shader, shader);
     shader->type = opt;
     shader->dx11.vertex = (ID3D11VertexShader*)handle;
     shader->dx11.blob = shaderBlob;
@@ -870,8 +781,8 @@ int l_DX11_Renderer__create_shader(lua_State* L) {
 }
 
 int l_DX11_Renderer__destroy_shader(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    CHECK_UDATA(SeleneShader, shd);
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_Shader, shd);
 
     if (shd->dx11.vertex) {
         switch (shd->type) {
@@ -893,53 +804,19 @@ int l_DX11_Renderer__destroy_shader(lua_State* L) {
     return 0;
 }
 
-int l_DX11_Renderer__set_shader(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    TEST_UDATA(SeleneShader, shader);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_SET_SHADER;
-    cmd.program.handle = shader ? shader->gl.handle : 0;
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
 /**
  * Draw and flush
  */
-int l_DX11_Renderer__set_viewport(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_SET_VIEWPORT;
-    cmd.viewport.x = luaL_checkinteger(L, arg++);
-    cmd.viewport.y = luaL_checkinteger(L, arg++);
-    cmd.viewport.width = luaL_checkinteger(L, arg++);
-    cmd.viewport.height = luaL_checkinteger(L, arg++);
-    dx11_push_command(self, &cmd);
-    return 0;
-}
-
-int l_DX11_Renderer__draw(lua_State* L) {
-    CHECK_META(SeleneRenderer);
-    int opt = luaL_checkoption(L, arg++, "triangles", draw_modes);
-    int mode = dx11_primitive_topologies[opt];
-    struct RenderCommand cmd;
-    cmd.type = RENDER_COMMAND_DRAW_VERTEX;
-    cmd.draw.mode = mode;
-    cmd.draw.start = (int)luaL_checkinteger(L, arg++);
-    cmd.draw.count = (int)luaL_checkinteger(L, arg++);
-    dx11_push_command(self, &cmd);
-    return 0;
-}
 
 int l_DX11_Renderer__flush(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     struct {
-        RenderPipeline* pipe;
+        selene_RenderPipeline* pipe;
         GpuBuffer* vertex;
         GpuBuffer* index;
         GpuBuffer* uniform;
         Texture2D* texture;
-        RenderTarget* target;
+        selene_RenderTarget* target;
         UINT stride;
     } state;
     memset(&state, 0, sizeof(state));
@@ -974,7 +851,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_PIPELINE: {
-                RenderPipeline* rp = rc->pipeline;
+                selene_RenderPipeline* rp = rc->pipeline;
                 // fprintf(stdout, "Set Pipeline command\n");
                 ID3D11DeviceContext* context = self->dx11.context;
                 if (rp == state.pipe) break;
@@ -993,7 +870,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
                     break;
                 }
                 state.stride = rp->layout.vertex_stride;
-                RenderPipeline pipe;
+                selene_RenderPipeline pipe;
                 memset(&pipe, 0, sizeof(pipe));
                 if (!state.pipe) state.pipe = &pipe;
 
@@ -1034,7 +911,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_VERTEX_BUFFER: {
                 GpuBuffer* b = rc->buffer.ptr;
-                RenderPipeline* rp = state.pipe;
+                selene_RenderPipeline* rp = state.pipe;
                 UINT offset = 0;
                 UINT stride = state.stride;
                 self->dx11.context->IASetVertexBuffers(
@@ -1074,7 +951,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
                 //glUseProgram(rc->program.handle);
                 break;
             case RENDER_COMMAND_SET_RENDER_TARGET: {
-                RenderTarget* t = rc->target.ptr ? rc->target.ptr : &(self->default_target);
+                selene_RenderTarget* t = rc->target.ptr ? rc->target.ptr : &(self->default_target);
                 if (rc->target.depth) self->dx11.context->OMSetRenderTargets(1, &(t->dx11.rtv), t->dx11.dsv);
                 else self->dx11.context->OMSetRenderTargets(1, &(t->dx11.rtv), NULL);
                 state.target = t;
@@ -1140,7 +1017,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
 }
 
 int l_DX11_Renderer__present(lua_State* L) {
-    CHECK_META(SeleneRenderer);
+    CHECK_META(selene_Renderer);
     l_DX11_Renderer__flush(L);
     //SDL_GL_SwapWindow(self->window_ptr);
     self->dx11.swap_chain->Present(0, 0);
@@ -1364,7 +1241,7 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
         return 0;
     }
 
-    NEW_UDATA(SeleneRenderer, self);
+    NEW_UDATA(selene_Renderer, self);
     self->dx11.device = pD3DDevice;
     self->dx11.context = pD3DContext;
     self->dx11.swap_chain = swap_chain;
@@ -1400,8 +1277,6 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
     self->create_texture2d = l_DX11_Renderer__create_texture2d;
     self->create_depth_texture = l_DX11_Renderer__create_depth_texture;
     self->destroy_texture = l_DX11_Renderer__destroy_texture;
-
-    self->draw = l_DX11_Renderer__draw;
 
     self->flush = l_DX11_Renderer__flush;
     self->present = l_DX11_Renderer__present;

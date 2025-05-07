@@ -11,7 +11,7 @@ extern "C" {
 #define SELENE_RENDERER_H_
 
 #ifndef SELENE_NO_VULKAN
-#include <SDL2/SDL_vulkan.h>
+#include <SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 #endif
 
@@ -208,6 +208,8 @@ typedef struct {
         struct {
             VkImage handle;
             VkDeviceMemory mem;
+            VkImageView view;
+            VkSampler sampler;
         } vk;
 #endif
 #if defined(OS_WIN)
@@ -224,13 +226,19 @@ typedef struct {
     int type;
     int width, height;
     int depth;
+    int mip_level;
     int pixel_format;
     union {
 #ifndef SELENE_NO_GL
         struct { GLuint handle; } gl;
 #endif
 #ifndef SELENE_NO_VULKAN
-        struct { VkImage handle; } vk;
+        struct {
+            VkImage handle;
+            VkDeviceMemory mem;
+            VkImageView view;
+            VkSampler sampler;
+        } vk;
 #endif
 #ifdef OS_WIN
 #ifndef SELENE_NO_DX11
@@ -603,6 +611,29 @@ enum SeleneRendererBackend {
     SELENE_RENDERER_METAL
 };
 
+#ifndef SELENE_NO_VULKAN
+struct VulkanContext {
+    VkInstance instance;
+    VkSurfaceKHR surface;
+    VkPhysicalDevice phys_device;
+    VkDevice device;
+    VkCommandBuffer commands;
+    VkRenderPass render_pass;
+    // Queues
+    VkQueue graphics_queue;
+    VkQueue present_queue;
+};
+
+struct VulkanSwapchain {
+    VkSwapchainKHR handle;
+    VkImage* images;
+    VkImageView* views;
+    VkFormat format;
+    VkExtent2D extent;
+    uint32_t image_count;
+};
+#endif
+
 struct selene_Renderer {
     enum SeleneRendererBackend backend;
     LuaReference l_window_ref;
@@ -632,8 +663,15 @@ struct selene_Renderer {
             VkSurfaceKHR surface;
             VkPhysicalDevice phys_device;
             VkDevice device;
-            VkSwapchainKHR swap_chain;
             VkRenderPass render_pass;
+            VkCommandPool command_pool;
+            VkCommandBuffer command_buffer;
+            VkFramebuffer* framebuffers;
+            int current_framebuffer;
+            // Queues
+            VkQueue graphics_queue;
+            VkQueue present_queue;
+            struct VulkanSwapchain swapchain;
         } vk;
 #endif
     };

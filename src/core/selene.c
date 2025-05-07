@@ -451,7 +451,7 @@ static int l_selene_create_window(lua_State* L) {
     }
 #ifndef SELENE_NO_VULKAN
     if (flags & SDL_WINDOW_VULKAN) {
-        if (SDL_Vulkan_LoadLibrary(NULL) != VK_TRUE) {
+        if (SDL_Vulkan_LoadLibrary(NULL) != 0) {
             return luaL_error(L, "failed to load Vulkan library: %s", SDL_GetError());
         }
     }

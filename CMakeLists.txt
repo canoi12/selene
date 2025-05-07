@@ -143,22 +143,35 @@ set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm)
 include_directories(third/cglm/include)
 
 if (NOT SELENE_NO_VULKAN)
-    find_library(VULKAN_LIBRARY NAMES vulkan vulkan-1)
-    find_path(VULKAN_INCLUDE_DIR NAMES vulkan/vulkan.h)
+    if (WIN32)
+        find_library(VULKAN_LIBRARY
+            NAMES vulkan vulkan-1
+            PATHS
+            "$ENV{VULKAN_SDK}/Lib"   # Windows Vulkan SDK default location
+        )
+        find_path(VULKAN_INCLUDE_DIR
+            NAMES vulkan/vulkan.h
+            PATHS
+            "$ENV{VULKAN_SDK}/Include"  # Windows Vulkan SDK
+        )
+    else()
+        find_library(VULKAN_LIBRARY NAMES vulkan vulkan-1)
+        find_path(VULKAN_INCLUDE_DIR NAMES vulkan/vulkan.h)
+    endif()
 
-    if (VULKAN_LIBRARY AND Vulkan_INCLUDE_DIR)
-        message("Using Vulkan: ${VULKAN_LIBRARY} ${Vulkan_INCLUDE_DIR}")
+    #message("Vulkan paths: ${VULKAN_LIBRARY} ${VULKAN_INCLUDE_DIR}")
+    if (VULKAN_LIBRARY AND VULKAN_INCLUDE_DIR)
+        message("Using Vulkan: ${VULKAN_LIBRARY} ${VULKAN_INCLUDE_DIR}")
         set(LIBRARIES ${LIBRARIES} ${VULKAN_LIBRARY})
         include_directories(${VULKAN_INCLUDE_DIR})
     else ()
-        add_compile_definitions(-DSELENE_NO_VULKAN)
+        message("Failed to find Vulkan library")
+        add_definitions(-DSELENE_NO_VULKAN=1)
     endif ()
 else ()
     message("Disabling support for Vulkan")
-    add_compile_definitions(SELENE_NO_VULKAN)
+    add_definitions(-DSELENE_NO_VULKAN=1)
 endif()
-
-
 
 if (${SELENE_USE_SDL3})
     include_directories(${SDL3_INCLUDE_DIRS})
