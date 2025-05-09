@@ -5,8 +5,8 @@ const int vk_pixel_formats_values[] = {VK_FORMAT_R8G8B8_UNORM,
                                        VK_FORMAT_R8G8B8A8_UNORM};
 
 struct QueueFamilyIndices {
-  int graphics_family;
-  int present_family;
+    int graphics_family;
+    int present_family;
 };
 
 #if 0
@@ -32,30 +32,30 @@ int vk_create_buffer(selene_Renderer *self, int size, int usage, int flags,
 
 static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev,
                                                      VkSurfaceKHR surface) {
-  struct QueueFamilyIndices indices = {-1, -1};
+    struct QueueFamilyIndices indices = {-1, -1};
 
-  uint32_t count = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, NULL);
+    uint32_t count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, NULL);
 
-  VkQueueFamilyProperties *families =
-      malloc(sizeof(VkQueueFamilyProperties) * count);
-  vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, families);
-  for (int i = 0; i < count; i++) {
-    if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-      indices.graphics_family = i;
+    VkQueueFamilyProperties *families =
+        malloc(sizeof(VkQueueFamilyProperties) * count);
+    vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, families);
+    for (int i = 0; i < count; i++) {
+      if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        indices.graphics_family = i;
+      }
+      VkBool32 present_support = VK_FALSE;
+      vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &present_support);
+      if (present_support)
+        indices.present_family = i;
+
+      if (indices.present_family != -1 && indices.graphics_family != -1)
+        goto RETURN;
     }
-    VkBool32 present_support = VK_FALSE;
-    vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &present_support);
-    if (present_support)
-      indices.present_family = i;
-
-    if (indices.present_family != -1 && indices.graphics_family != -1)
-      goto RETURN;
-  }
-  fprintf(stderr, "No suitable queue family found\n");
+    fprintf(stderr, "No suitable queue family found\n");
 
 RETURN:
-  return indices;
+    return indices;
 }
 
 const int vk_buffer_target_types_values[] = {
@@ -112,184 +112,209 @@ int l_VK_Renderer__destroy(lua_State *L) {
 }
 
 int l_VK_Renderer__create_pipeline(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  if (!lua_istable(L, arg))
-    return luaL_argerror(L, arg, "must be a table");
-  lua_getfield(L, arg, "vs");
-  selene_Shader *vertex =
-      (selene_Shader *)luaL_checkudata(L, -1, "selene_Shader");
-  lua_getfield(L, arg, "ps");
-  selene_Shader *pixel =
-      (selene_Shader *)luaL_checkudata(L, -1, "selene_Shader");
-  lua_pop(L, 2);
+    CHECK_META(selene_Renderer);
+    if (!lua_istable(L, arg))
+      return luaL_argerror(L, arg, "must be a table");
+    lua_getfield(L, arg, "vs");
+    selene_Shader *vertex = (selene_Shader *)luaL_checkudata(L, -1, "selene_Shader");
+    lua_getfield(L, arg, "ps");
+    selene_Shader *pixel = (selene_Shader *)luaL_checkudata(L, -1, "selene_Shader");
+    lua_pop(L, 2);
 
-  VkPipelineShaderStageCreateInfo shader_stages[2] = {
-      {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-       .stage = VK_SHADER_STAGE_VERTEX_BIT,
-       .module = vertex->vk.handle,
-       .pName = "main"},
-      {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-       .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-       .module = pixel->vk.handle,
-       .pName = "main"}};
+    VkPipelineShaderStageCreateInfo shader_stages[2] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = vertex->vk.handle,
+            .pName = "main"
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = pixel->vk.handle,
+            .pName = "main"
+        }
+    };
 
-  if (lua_getfield(L, arg, "layout") != LUA_TTABLE)
-    return luaL_error(L, "invalid layout field");
-  NEW_UDATA(selene_RenderPipeline, pipe);
-  if (lua_getfield(L, -2, "stride") == LUA_TNUMBER)
-    pipe->layout.vertex_stride = lua_tointeger(L, -1);
-  lua_pop(L, 1);
-  int len = lua_rawlen(L, -2);
-  pipe->layout.count = len;
-  for (int i = 0; i < len; i++) {
-    lua_rawgeti(L, -2, i + 1);
-    lua_getfield(L, -1, "name");
-    const char *name = luaL_checkstring(L, -1);
-    // pipe->layout.attributes[i].binding = glGetAttribLocation(program, name);
-    pipe->layout.attributes[i].binding = 0;
-
+    if (lua_getfield(L, arg, "layout") != LUA_TTABLE)
+        return luaL_error(L, "invalid layout field");
+    NEW_UDATA(selene_RenderPipeline, pipe);
+    if (lua_getfield(L, -2, "stride") == LUA_TNUMBER)
+        pipe->layout.vertex_stride = lua_tointeger(L, -1);
     lua_pop(L, 1);
-    lua_getfield(L, -1, "offset");
-    pipe->layout.attributes[i].offset = lua_tointeger(L, -1);
-    lua_pop(L, 1);
+    int len = lua_rawlen(L, -2);
+    pipe->layout.count = len;
+    for (int i = 0; i < len; i++) {
+        lua_rawgeti(L, -2, i + 1);
+        lua_getfield(L, -1, "name");
+        const char *name = luaL_checkstring(L, -1);
+        // pipe->layout.attributes[i].binding = glGetAttribLocation(program, name);
+        pipe->layout.attributes[i].binding = 0;
 
-    lua_getfield(L, -1, "size");
-    const int size = lua_tointeger(L, -1);
-    pipe->layout.attributes[i].size = size;
-    lua_pop(L, 1);
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "offset");
+        pipe->layout.attributes[i].offset = lua_tointeger(L, -1);
+        lua_pop(L, 1);
 
-    lua_getfield(L, -1, "type");
-    int opt = luaL_checkoption(L, -1, NULL, type_name_options);
-    pipe->layout.attributes[i].type = opt;
-    lua_pop(L, 1);
-    fprintf(stdout, "name: %s, offset: %d, size: %d, type: %d\n", name,
-            pipe->layout.attributes[i].offset, size,
-            pipe->layout.attributes[i].type);
-    switch (opt) {
-    case 0:
-    case 1:
-      pipe->layout.attributes[i].stride = size;
-      break;
-    case 2:
-    case 3:
-      pipe->layout.attributes[i].stride = size * 2;
-      break;
-    default:
-      pipe->layout.attributes[i].stride = size * 4;
+        lua_getfield(L, -1, "size");
+        const int size = lua_tointeger(L, -1);
+        pipe->layout.attributes[i].size = size;
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "type");
+        int opt = luaL_checkoption(L, -1, NULL, type_name_options);
+        pipe->layout.attributes[i].type = opt;
+        lua_pop(L, 1);
+        fprintf(stdout, "name: %s, offset: %d, size: %d, type: %d\n", name,
+                pipe->layout.attributes[i].offset, size,
+                pipe->layout.attributes[i].type);
+        switch (opt) {
+        case 0:
+        case 1:
+            pipe->layout.attributes[i].stride = size;
+            break;
+        case 2:
+        case 3:
+            pipe->layout.attributes[i].stride = size * 2;
+            break;
+        default:
+            pipe->layout.attributes[i].stride = size * 4;
+        }
+        lua_pop(L, 1);
     }
-    lua_pop(L, 1);
-  }
 
-  VkVertexInputBindingDescription binding_desc = {
-      .binding = 0,
-      .stride = pipe->layout.vertex_stride,
-      .inputRate = VK_VERTEX_INPUT_RATE_VERTEX};
+    VkVertexInputBindingDescription binding_desc = {
+        .binding = 0,
+        .stride = pipe->layout.vertex_stride,
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX};
 
-  VkVertexInputAttributeDescription attrs_descs[8] = {0};
-  int offset_sum = 0;
-  for (int i = 0; i < len; i++) {
-    VkVertexInputAttributeDescription *attr = attrs_descs + i;
-    int binding = pipe->layout.attributes[i].binding;
-    int offset = pipe->layout.attributes[i].offset;
-    int size = pipe->layout.attributes[i].size;
-    int type = pipe->layout.attributes[i].type;
-    int stride = pipe->layout.vertex_stride;
-    switch (type) {
-    case SELENE_FLOAT: {
-      if (size == 1)
-        attr->format = VK_FORMAT_R32_SFLOAT;
-      else if (size == 2)
-        attr->format = VK_FORMAT_R32G32_SFLOAT;
-      else if (size == 3)
-        attr->format = VK_FORMAT_R32G32B32_SFLOAT;
-      else if (size == 4)
-        attr->format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    } break;
+    VkVertexInputAttributeDescription attrs_descs[8] = {0};
+    int offset_sum = 0;
+    for (int i = 0; i < len; i++) {
+        VkVertexInputAttributeDescription *attr = attrs_descs + i;
+        int binding = pipe->layout.attributes[i].binding;
+        int offset = pipe->layout.attributes[i].offset;
+        int size = pipe->layout.attributes[i].size;
+        int type = pipe->layout.attributes[i].type;
+        int stride = pipe->layout.vertex_stride;
+        switch (type) {
+            case SELENE_FLOAT: {
+                if (size == 1)
+                  attr->format = VK_FORMAT_R32_SFLOAT;
+                else if (size == 2)
+                  attr->format = VK_FORMAT_R32G32_SFLOAT;
+                else if (size == 3)
+                  attr->format = VK_FORMAT_R32G32B32_SFLOAT;
+                else if (size == 4)
+                  attr->format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            } break;
+        }
+        attr->binding = binding;
+        attr->location = offset;
+        attr->offset = offset_sum;
+        offset_sum += stride;
     }
-    attr->binding = binding;
-    attr->location = offset;
-    attr->offset = offset_sum;
-    offset_sum += stride;
-  }
 
-  VkPipelineVertexInputStateCreateInfo vert_input_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-      .vertexBindingDescriptionCount = len,
-      .pVertexBindingDescriptions = &binding_desc,
-      .vertexAttributeDescriptionCount = len,
-      .pVertexAttributeDescriptions = attrs_descs};
+    VkPipelineVertexInputStateCreateInfo vert_input_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &binding_desc,
+        .vertexAttributeDescriptionCount = len,
+        .pVertexAttributeDescriptions = attrs_descs};
 
-  VkDynamicState dyn_states[2] = {VK_DYNAMIC_STATE_VIEWPORT,
-                                  VK_DYNAMIC_STATE_SCISSOR};
-  VkPipelineDynamicStateCreateInfo dyn_state_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-      .dynamicStateCount = 2,
-      .pDynamicStates = dyn_states};
+    VkPipelineViewportStateCreateInfo viewport_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .scissorCount = 1
+    };
 
-  VkPipelineInputAssemblyStateCreateInfo input_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-      .primitiveRestartEnable = VK_FALSE};
+    VkDynamicState dyn_states[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 
-  VkPipelineRasterizationStateCreateInfo raster_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-      .depthClampEnable = VK_FALSE,
-      .rasterizerDiscardEnable = VK_FALSE,
-      .polygonMode = VK_POLYGON_MODE_FILL,
-      .cullMode = VK_CULL_MODE_BACK_BIT,
-      .frontFace = VK_FRONT_FACE_CLOCKWISE,
-      .depthBiasConstantFactor = VK_FALSE,
-      .lineWidth = 1.f};
+    VkPipelineDynamicStateCreateInfo dyn_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = 2,
+        .pDynamicStates = dyn_states
+    };
 
-  VkPipelineDepthStencilStateCreateInfo depth_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-      .depthTestEnable = VK_FALSE,
-      .depthWriteEnable = VK_FALSE,
-      .depthCompareOp = VK_COMPARE_OP_LESS,
-      .depthBoundsTestEnable = VK_FALSE,
-      .stencilTestEnable = VK_FALSE};
+    VkPipelineInputAssemblyStateCreateInfo input_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE
+    };
 
-  VkPipelineColorBlendAttachmentState color_blend_attach = {
-      .blendEnable = VK_FALSE,
-      .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
+    VkPipelineRasterizationStateCreateInfo raster_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable = VK_FALSE,
+        .depthBiasEnable = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .frontFace = VK_FRONT_FACE_CLOCKWISE,
+        .depthBiasConstantFactor = VK_FALSE,
+        .lineWidth = 1.f
+    };
 
-  VkPipelineColorBlendStateCreateInfo color_blend_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-      .logicOpEnable = VK_FALSE,
-      .attachmentCount = 1,
-      .pAttachments = &color_blend_attach};
+    VkPipelineDepthStencilStateCreateInfo depth_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable = VK_FALSE,
+        .depthWriteEnable = VK_FALSE,
+        .depthCompareOp = VK_COMPARE_OP_LESS,
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable = VK_FALSE
+    };
 
-  VkPipelineLayoutCreateInfo pipeline_layout_info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 0,
-  };
+    VkPipelineMultisampleStateCreateInfo multisampling_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .sampleShadingEnable = VK_FALSE,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
+    };
 
-  VkPipelineLayout pipeline_layout;
-  vkCreatePipelineLayout(self->vk.device, &pipeline_layout_info, NULL,
-                         &pipeline_layout);
+    VkPipelineColorBlendAttachmentState color_blend_attach = {
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
 
-  VkGraphicsPipelineCreateInfo pipeline_info = {
-      .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-      .stageCount = 2,
-      .pStages = shader_stages,
-      .pVertexInputState = &vert_input_info,
-      .pInputAssemblyState = &input_info,
-      .pRasterizationState = &raster_info,
-      .pDepthStencilState = &depth_info,
-      .pColorBlendState = &color_blend_info,
-      .pDynamicState = &dyn_state_info,
-      .layout = pipeline_layout,
-      .renderPass = self->vk.render_pass,
-      .subpass = 0,
-      .basePipelineHandle = VK_NULL_HANDLE,
-      .basePipelineIndex = -1};
+    VkPipelineColorBlendStateCreateInfo color_blend_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .attachmentCount = 1,
+        .pAttachments = &color_blend_attach
+    };
 
-  VkPipeline handle;
-  if (vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1,
-                                &pipeline_info, NULL, &handle) != VK_SUCCESS) {
-    return luaL_error(L, "failed to create Vulkan pipeline");
-  }
+    VkPipelineLayoutCreateInfo pipeline_layout_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 0,
+        .pushConstantRangeCount = 0,
+    };
+
+    VkPipelineLayout pipeline_layout;
+    if (vkCreatePipelineLayout(self->vk.device, &pipeline_layout_info, NULL, &pipeline_layout) != VK_FALSE) {
+        return luaL_error(L, "failed to create Vulkan pipeline layout");
+    }
+
+    VkGraphicsPipelineCreateInfo pipeline_info = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = 2,
+        .pStages = shader_stages,
+        .pVertexInputState = &vert_input_info,
+        .pInputAssemblyState = &input_info,
+        .pRasterizationState = &raster_info,
+        .pViewportState = &viewport_info,
+        .pMultisampleState = &multisampling_info,
+        .pDepthStencilState = &depth_info,
+        .pColorBlendState = &color_blend_info,
+        .pDynamicState = &dyn_state_info,
+        .layout = pipeline_layout,
+        .renderPass = self->vk.render_pass,
+        .subpass = 0,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex = -1
+    };
+
+    VkPipeline handle;
+    if (vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &handle) != VK_SUCCESS) {
+        return luaL_error(L, "failed to create Vulkan pipeline");
+    }
 
   NEW_UDATA(selene_RenderPipeline, pipeline);
   pipeline->vk.handle = handle;
@@ -315,56 +340,69 @@ static int l_VK_Renderer__destroy_pipeline(lua_State *L) {
  */
 
 int l_VK_Renderer__create_buffer(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  int opt = luaL_checkoption(L, arg++, "vertex", buffer_target_options);
-  int size = (int)luaL_checkinteger(L, arg++);
-  VkBufferCreateInfo buf_info = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                 .size = size,
-                                 .usage = vk_buffer_target_types_values[opt],
-                                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
-  VkBuffer handle;
-  if (vkCreateBuffer(self->vk.device, &buf_info, NULL, &handle) != VK_SUCCESS) {
-    return luaL_error(L, "failed to create Vulkan buffer");
-  }
-  VkDeviceMemory buff_memory;
-  VkMemoryRequirements mem_reqs;
-  vkGetBufferMemoryRequirements(self->vk.device, handle, &mem_reqs);
-  VkPhysicalDeviceMemoryProperties mem_properties;
-  vkGetPhysicalDeviceMemoryProperties(self->vk.phys_device, &mem_properties);
+    CHECK_META(selene_Renderer);
+    int opt = luaL_checkoption(L, arg++, "vertex", buffer_target_options);
+    int size = (int)luaL_checkinteger(L, arg++);
+    VkBufferCreateInfo buf_info = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                    .size = size,
+                                    .usage = vk_buffer_target_types_values[opt],
+                                    .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
+    VkBuffer handle;
+    if (vkCreateBuffer(self->vk.device, &buf_info, NULL, &handle) != VK_SUCCESS) {
+        return luaL_error(L, "failed to create Vulkan buffer");
+    }
+    VkDeviceMemory buff_memory;
+    VkMemoryRequirements mem_reqs;
+    vkGetBufferMemoryRequirements(self->vk.device, handle, &mem_reqs);
+    VkPhysicalDeviceMemoryProperties mem_properties;
+    vkGetPhysicalDeviceMemoryProperties(self->vk.phys_device, &mem_properties);
 
-  VkMemoryAllocateInfo alloc_info = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .allocationSize = mem_reqs.size,
-      .memoryTypeIndex =
-          find_memory_type(self->vk.phys_device, mem_reqs.memoryTypeBits,
-                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)};
+    VkMemoryAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = mem_reqs.size,
+        .memoryTypeIndex =
+            find_memory_type(self->vk.phys_device, mem_reqs.memoryTypeBits,
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)};
 
-  if (vkAllocateMemory(self->vk.device, &alloc_info, NULL, &buff_memory) !=
-      VK_SUCCESS) {
-    vkDestroyBuffer(self->vk.device, handle, NULL);
-    return luaL_error(L, "failed to alloc memory for Vulkan buffer");
-  }
-  vkBindBufferMemory(self->vk.device, handle, buff_memory, 0);
+    if (vkAllocateMemory(self->vk.device, &alloc_info, NULL, &buff_memory) !=
+        VK_SUCCESS) {
+        vkDestroyBuffer(self->vk.device, handle, NULL);
+        return luaL_error(L, "failed to alloc memory for Vulkan buffer");
+    }
+    vkBindBufferMemory(self->vk.device, handle, buff_memory, 0);
 
-  NEW_UDATA(GpuBuffer, buffer);
-  buffer->type = opt;
-  buffer->size = size;
-  buffer->vk.handle = handle;
-  buffer->vk.mem = buff_memory;
-  return 1;
+    NEW_UDATA(GpuBuffer, buffer);
+    buffer->type = opt;
+    buffer->size = size;
+    buffer->vk.handle = handle;
+    buffer->vk.mem = buff_memory;
+    return 1;
 }
 
 int l_VK_Renderer__destroy_buffer(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  CHECK_UDATA(GpuBuffer, buffer);
-  if (buffer->vk.handle)
-    vkDestroyBuffer(self->vk.device, buffer->vk.handle, NULL);
-  if (buffer->vk.mem)
-    vkFreeMemory(self->vk.device, buffer->vk.mem, NULL);
-  buffer->vk.handle = NULL;
-  buffer->vk.mem = NULL;
-  return 0;
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(GpuBuffer, buffer);
+    if (buffer->vk.handle)
+        vkDestroyBuffer(self->vk.device, buffer->vk.handle, NULL);
+    if (buffer->vk.mem)
+        vkFreeMemory(self->vk.device, buffer->vk.mem, NULL);
+    buffer->vk.handle = NULL;
+    buffer->vk.mem = NULL;
+    return 0;
+}
+
+int l_VK_Renderer__send_buffer_data(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_INTEGER(size);
+    if (!lua_isuserdata(L, arg)) return luaL_argerror(L, arg, "userdata or lightuserdata expected");
+    void* data = lua_touserdata(L, arg++);
+    void* out;
+    vkMapMemory(self->vk.device, buffer->vk.mem, 0, size, 0, &out);
+    memcpy(out, data, size);
+    vkUnmapMemory(self->vk.device, buffer->vk.mem);
+    return 0;
 }
 
 /**
@@ -513,11 +551,14 @@ int l_VK_Renderer__destroy_texture(lua_State *L) {
 int l_VK_Renderer__create_shader(lua_State *L) {
   CHECK_META(selene_Renderer);
   int opt = luaL_checkoption(L, arg++, "vertex", shader_type_options);
+  int size = 0;
+  if (lua_isinteger(L, arg)) size = luaL_checkinteger(L, arg++);
   const char *source = luaL_checkstring(L, arg++);
+  if (size == 0) size = strlen(source);
   VkShaderModule handle = NULL;
   VkShaderModuleCreateInfo shader_info = {
       .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = strlen(source),
+      .codeSize = size,
       .pCode = (void *)source};
   if (vkCreateShaderModule(self->vk.device, &shader_info, NULL, &handle) !=
       VK_SUCCESS) {
@@ -543,72 +584,80 @@ int l_VK_Renderer__destroy_shader(lua_State *L) {
  */
 
 int l_VK_Renderer__flush(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  struct {
-    selene_RenderPipeline *pipe;
-    GpuBuffer *vertex;
-    GpuBuffer *index;
-    GpuBuffer *uniform;
-    Texture2D *texture;
-    selene_RenderTarget *target;
-    UINT stride;
-  } state;
-  memset(&state, 0, sizeof(state));
-  state.stride = sizeof(Vertex2D);
-  state.target = &self->default_target;
-  VkCommandBufferBeginInfo begin_info = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = 0,
-  };
-  if (vkBeginCommandBuffer(self->vk.command_buffer, &begin_info) !=
-      VK_SUCCESS) {
-    return luaL_error(L, "failed to begin the Vulkan command buffer");
-  }
-  VkRenderPassBeginInfo render_pass_info = {
-      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-      .renderPass = self->vk.render_pass,
-      .framebuffer =
-          self->vk
-              .framebuffers[self->vk.current_framebuffer], // Current swapchain
-                                                           // image
-      .renderArea =
-          {
-              .offset = {0, 0},
-              .extent = self->vk.swapchain.extent,
-          },
-      .clearValueCount = 1,
-      .pClearValues = &(VkClearValue){.color = {0.5, 0.5, 0.5, 1}}};
-  vkCmdBeginRenderPass(self->vk.command_buffer, &render_pass_info,
-                       VK_SUBPASS_CONTENTS_INLINE);
-  for (int i = 0; i < self->command_offset; i++) {
-    struct RenderCommand *rc = self->command_pool + i;
-    switch (rc->type) {
-    case RENDER_COMMAND_CLEAR_COLOR: {
-      float *c = rc->clear.color;
-      // fprintf(stdout, "Clear Color command\n");
-      VkClearAttachment clear_attachment = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, // Clear color
-          .colorAttachment = 0, // Index of the color attachment to clear
-          .clearValue = {.color = {c[0], c[1], c[2], c[3]}},
-      };
-
-      VkClearRect clear_rect = {
-          .rect =
-              {
-                  .offset = {0, 0},
-                  .extent = self->vk.swapchain.extent,
-              },
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-      };
-
-      vkCmdClearAttachments(self->vk.command_buffer, 1, &clear_attachment, 1,
-                            &clear_rect);
-    } break;
-    default:
-      break;
+    CHECK_META(selene_Renderer);
+    struct {
+        selene_RenderPipeline *pipe;
+        GpuBuffer *vertex;
+        GpuBuffer *index;
+        GpuBuffer *uniform;
+        Texture2D *texture;
+        selene_RenderTarget *target;
+        int stride;
+    } state;
+    memset(&state, 0, sizeof(state));
+    state.stride = sizeof(Vertex2D);
+    state.target = &self->default_target;
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = 0,
+    };
+    if (vkBeginCommandBuffer(self->vk.command_buffer, &begin_info) != VK_SUCCESS) {
+        return luaL_error(L, "failed to begin the Vulkan command buffer");
     }
-  }
+    VkRenderPassBeginInfo render_pass_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = self->vk.render_pass,
+        .framebuffer =
+            self->vk.framebuffers[self->vk.current_framebuffer],
+        .renderArea =
+            {
+                .offset = {0, 0},
+                .extent = self->vk.swapchain.extent,
+            },
+        .clearValueCount = 1,
+        .pClearValues = &(VkClearValue){.color = {0.5, 0.5, 0.5, 1}}};
+    vkCmdBeginRenderPass(self->vk.command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    for (int i = 0; i < self->command_offset; i++) {
+        struct RenderCommand *rc = self->command_pool + i;
+    switch (rc->type) {
+        case RENDER_COMMAND_CLEAR_COLOR: {
+            float *c = rc->clear.color;
+            // fprintf(stdout, "Clear Color command\n");
+            VkClearAttachment clear_attachment = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, // Clear color
+                .colorAttachment = 0, // Index of the color attachment to clear
+                .clearValue = {.color = {c[0], c[1], c[2], c[3]}},
+            };
+
+            VkClearRect clear_rect = {
+                .rect =
+                    {
+                        .offset = {0, 0},
+                        .extent = self->vk.swapchain.extent,
+                    },
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            };
+
+            vkCmdClearAttachments(self->vk.command_buffer, 1, &clear_attachment, 1,
+                            &clear_rect);
+        } break;
+        case RENDER_COMMAND_SET_PIPELINE: {
+                vkCmdBindPipeline(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.handle);
+        } break; 
+        case RENDER_COMMAND_SET_VERTEX_BUFFER: {
+                GpuBuffer* buf = rc->buffer.ptr;
+                VkBuffer buffers[] = {buf->vk.handle};
+                VkDeviceSize offsets[1] = {0};
+                vkCmdBindVertexBuffers(self->vk.command_buffer, 0, 1, buffers, offsets);
+        } break;
+        case RENDER_COMMAND_DRAW_VERTEX: {
+            vkCmdDraw(self->vk.command_buffer, rc->draw.count, 1, rc->draw.start, 0);
+        } break;
+        default:
+            break;
+        }
+    }
   self->command_offset = 0;
   vkCmdEndRenderPass(self->vk.command_buffer);
 
@@ -619,31 +668,31 @@ int l_VK_Renderer__flush(lua_State *L) {
 }
 
 int l_VK_Renderer__present(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  l_VK_Renderer__flush(L);
-  VkSubmitInfo submit_info = {
-      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .commandBufferCount = 1,
-      .pCommandBuffers = &self->vk.command_buffer,
-  };
+    CHECK_META(selene_Renderer);
+    uint32_t image_index;
+    vkAcquireNextImageKHR(self->vk.device, self->vk.swapchain.handle, UINT64_MAX,
+                            VK_NULL_HANDLE, // Could use a semaphore
+                            VK_NULL_HANDLE, &image_index);
+    self->vk.current_framebuffer = image_index;
+    vkResetCommandBuffer(self->vk.command_buffer, 0);
+    l_VK_Renderer__flush(L);
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &self->vk.command_buffer,
+    };
 
-  vkQueueSubmit(self->vk.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-  vkQueueWaitIdle(
-      self->vk.graphics_queue); // Wait for GPU to finish (simplified)
+    vkQueueSubmit(self->vk.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(self->vk.graphics_queue); // Wait for GPU to finish (simplified)
 
-  VkPresentInfoKHR present_info = {
-      .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-      .swapchainCount = 1,
-      .pSwapchains = &self->vk.swapchain.handle,
-      .pImageIndices = &self->vk.current_framebuffer,
-  };
-  vkQueuePresentKHR(self->vk.present_queue, &present_info);
+    VkPresentInfoKHR present_info = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .swapchainCount = 1,
+        .pSwapchains = &self->vk.swapchain.handle,
+        .pImageIndices = &self->vk.current_framebuffer,
+    };
+    vkQueuePresentKHR(self->vk.present_queue, &present_info);
 
-  uint32_t image_index;
-  vkAcquireNextImageKHR(self->vk.device, self->vk.swapchain.handle, UINT64_MAX,
-                        VK_NULL_HANDLE, // Could use a semaphore
-                        VK_NULL_HANDLE, &image_index);
-  self->vk.current_framebuffer = image_index;
   return 0;
 }
 
@@ -810,8 +859,7 @@ int l_VK_Renderer_create(lua_State *L) {
 
   if (vkAllocateCommandBuffers(device, &alloc_info, &command_buffer) !=
       VK_SUCCESS) {
-    fprintf(stderr, "Failed to allocate command buffer!\n");
-    return;
+    return luaL_error(L, "failed to allocate command buffer");
   }
 
   VkFramebuffer *swapchain_framebuffers =
@@ -830,50 +878,52 @@ int l_VK_Renderer_create(lua_State *L) {
 
     if (vkCreateFramebuffer(device, &fb_info, NULL,
                             &swapchain_framebuffers[i]) != VK_SUCCESS) {
-      fprintf(stderr, "Failed to create framebuffer %u!\n", i);
-      return;
+      return luaL_error(L, "failed to create framebuffer %d", i);
     }
   }
 
-  NEW_UDATA(selene_Renderer, ren);
-  memset(ren, 0, sizeof(*ren));
-  ren->vk.device = device;
-  ren->vk.instance = instance;
-  ren->vk.surface = surface;
-  ren->vk.phys_device = phys;
-  ren->vk.render_pass = render_pass;
-  ren->vk.command_pool = command_pool;
-  ren->vk.command_buffer = command_buffer;
-  ren->vk.framebuffers = swapchain_framebuffers;
-  // ren->vk.swap_chain = swap_chain;
-  ren->vk.swapchain = swapchain;
-  ren->vk.graphics_queue = gfx_queue;
-  ren->vk.present_queue = present_queue;
-  ren->window_ptr = *win;
-  lua_pushvalue(L, 1);
-  ren->l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    NEW_UDATA(selene_Renderer, ren);
+    memset(ren, 0, sizeof(*ren));
+    ren->vk.device = device;
+    ren->vk.instance = instance;
+    ren->vk.surface = surface;
+    ren->vk.phys_device = phys;
+    ren->vk.render_pass = render_pass;
+    ren->vk.command_pool = command_pool;
+    ren->vk.command_buffer = command_buffer;
+    ren->vk.framebuffers = swapchain_framebuffers;
+    // ren->vk.swap_chain = swap_chain;
+    ren->vk.swapchain = swapchain;
+    ren->vk.graphics_queue = gfx_queue;
+    ren->vk.present_queue = present_queue;
+    ren->window_ptr = *win;
+    lua_pushvalue(L, 1);
+    ren->l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-  ren->command_offset = 0;
-  ren->command_count = 512;
-  ren->command_pool = (struct RenderCommand *)malloc(
-      sizeof(struct RenderCommand) * ren->command_count);
+    ren->command_offset = 0;
+    ren->command_count = 512;
+    ren->command_pool = (struct RenderCommand *)malloc(sizeof(struct RenderCommand) * ren->command_count);
 
-  ren->backend = SELENE_RENDERER_VULKAN;
+    ren->backend = SELENE_RENDERER_VULKAN;
 
-  ren->destroy = l_VK_Renderer__destroy;
-  ren->flush = l_VK_Renderer__flush;
-  ren->present = l_VK_Renderer__present;
+    ren->destroy = l_VK_Renderer__destroy;
+    ren->flush = l_VK_Renderer__flush;
+    ren->present = l_VK_Renderer__present;
 
-  ren->create_pipeline = l_VK_Renderer__create_pipeline;
-  ren->destroy_pipeline = l_VK_Renderer__destroy_pipeline;
+    ren->create_pipeline = l_VK_Renderer__create_pipeline;
+    ren->destroy_pipeline = l_VK_Renderer__destroy_pipeline;
 
-  ren->create_shader = l_VK_Renderer__create_shader;
-  ren->destroy_shader = l_VK_Renderer__destroy_shader;
+    ren->create_shader = l_VK_Renderer__create_shader;
+    ren->destroy_shader = l_VK_Renderer__destroy_shader;
 
-  fprintf(stdout, "Created the Vulkan renderer: instance(%p) device(%p)\n",
-          instance, device);
+    ren->create_buffer = l_VK_Renderer__create_buffer;
+    ren->destroy_buffer = l_VK_Renderer__destroy_buffer;
+    ren->send_buffer_data = l_VK_Renderer__send_buffer_data;
 
-  return 1;
+    fprintf(stdout, "Created the Vulkan renderer: instance(%p) device(%p)\n",
+            instance, device);
+
+    return 1;
 }
 
 void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
@@ -895,7 +945,7 @@ void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
 
   VkSurfaceFormatKHR surfaceFormat = formats[0];
   for (uint32_t i = 0; i < format_count; i++) {
-    if (formats[i].format == VK_FORMAT_R8G8B8A8_UNORM &&
+    if (formats[i].format == VK_FORMAT_B8G8R8A8_UNORM &&
         formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
       surfaceFormat = formats[i];
       fprintf(stdout, "found surface format in %d\n", i);
