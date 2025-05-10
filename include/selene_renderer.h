@@ -672,6 +672,10 @@ struct selene_Renderer {
             VkQueue graphics_queue;
             VkQueue present_queue;
             struct VulkanSwapchain swapchain;
+            // Sync
+            VkSemaphore image_semaphore;
+            VkSemaphore render_semaphore;
+            VkFence fence;
         } vk;
 #endif
     };

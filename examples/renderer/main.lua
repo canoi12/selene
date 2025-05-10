@@ -9,9 +9,9 @@ local batch = selene.renderer.VertexBatch(9*4, 1024)
 batch:set_color(1, 1, 1, 1)
 batch:set_z(0)
 
-batch:push_vertex2d(0, 0.5, 0, 1, 0, 1, 1, 0, 0)
-batch:push_vertex2d(0.5, -0.5, 0, 0, 1, 1, 1, 0, 0)
-batch:push_vertex2d(-0.5, -0.5, 0, 1, 1, 0, 1, 0, 0)
+batch:push_vertex2d(0, 0.5, 0.2, 1, 0, 1, 1, 0, 0)
+batch:push_vertex2d(0.5, -0.5, 0.2, 0, 1, 1, 1, 0, 0)
+batch:push_vertex2d(-0.5, -0.5, 0.2, 1, 1, 0, 1, 0, 0)
 
 ren:send_buffer_data(buffer, batch:get_offset()*batch:get_stride(), batch:get_data())
 
@@ -21,15 +21,15 @@ f:seek('set')
 local source = f:read('*a')
 f:close()
 
-local vert = ren:create_shader('vertex', size, source)
+local data, size = selene.filesystem.read(selene.__dir .. '/vert.spv', true)
+print(size, data)
+local vert = ren:create_shader('vertex', size, data)
 
-f = io.open(selene.__dir .. '/frag.spv')
-size = f:seek('end')
-f:seek('set')
-source = f:read('*a')
-f:close()
+data, size = selene.filesystem.read(selene.__dir .. '/frag.spv', true)
 
-local frag = ren:create_shader('pixel', size, source)
+print(size, data)
+
+local frag = ren:create_shader('pixel', size, data)
 
 print(vert, frag)
 
