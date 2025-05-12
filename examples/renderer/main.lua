@@ -5,6 +5,13 @@ local ren = selene.create_renderer(win, 'vulkan')
 local buffer = ren:create_buffer('vertex', 1024*1024)
 print(buffer)
 
+local pixels, size = selene.filesystem.read('selene_icon.png', true)
+local image = image.from_memory(pixels, size)
+print(pixels, size)
+
+local tex = ren:create_texture2d(image.width, image.height, 'rgba', image.data)
+print(tex)
+
 local batch = selene.renderer.VertexBatch(9*4, 1024)
 batch:set_color(1, 1, 1, 1)
 batch:set_z(0)

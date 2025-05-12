@@ -27,8 +27,9 @@ VkResult createTexture(VkDevice device, VkPhysicalDevice physicalDevice,
                        uint32_t width, uint32_t height, VkFormat format,
                        VkImageTiling tiling, VkImageUsageFlags usage,
                        VkMemoryPropertyFlags properties, Texture2D *outTexture);
-int vk_create_buffer(selene_Renderer *self, int size, int usage, int flags,
-                     VkBuffer *out_buf, VkDeviceMemory *out_mem);
+int vk_create_buffer(selene_Renderer *self, int size, int usage, int flags, VkBuffer *out_buf, VkDeviceMemory *out_mem);
+int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev,
                                                      VkSurfaceKHR surface) {
@@ -432,48 +433,46 @@ int l_VK_Renderer__send_buffer_data(lua_State* L) {
  */
 
 int l_VK_Renderer__create_texture2d(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  CHECK_INTEGER(width);
-  CHECK_INTEGER(height);
-  int opt = luaL_checkoption(L, arg++, "rgba", pixel_formats);
-  void *data = NULL;
-  if (lua_isuserdata(L, arg))
-    data = lua_touserdata(L, arg++);
-  int target = 0;
-  if (lua_isboolean(L, arg))
-    target = lua_toboolean(L, arg++);
-  VkFormat pixel_format = vk_pixel_formats_values[opt]; // Map to VkFormat
+    CHECK_META(selene_Renderer);
+    CHECK_INTEGER(width);
+    CHECK_INTEGER(height);
+    int opt = luaL_checkoption(L, arg++, "rgba", pixel_formats);
+    void *data = NULL;
+    if (lua_isuserdata(L, arg))
+        data = lua_touserdata(L, arg++);
+    int target = 0;
+    if (lua_isboolean(L, arg))
+        target = lua_toboolean(L, arg++);
+    VkFormat pixel_format = vk_pixel_formats_values[opt]; // Map to VkFormat
 
-  VkImageCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .imageType = VK_IMAGE_TYPE_2D,
-      .extent = {.width = width, .height = height, .depth = 1},
-      .mipLevels = 1,
-      .arrayLayers = 1,
-      .format = pixel_format,
-      .tiling = VK_IMAGE_TILING_OPTIMAL,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
-      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-      .samples = VK_SAMPLE_COUNT_1_BIT,
-      .flags = 0};
-  if (target)
-    create_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // Render target
+    VkImageCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .extent = {.width = width, .height = height, .depth = 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .format = pixel_format,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .flags = 0};
+    if (target)
+        create_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // Render target
 
-  VkImage handle;
-  if (vkCreateImage(self->vk.device, &create_info, NULL, &handle) !=
-      VK_SUCCESS) {
-    return luaL_error(L, "Failed to create Vulkan image");
-  }
+    VkImage handle;
+    if (vkCreateImage(self->vk.device, &create_info, NULL, &handle) != VK_SUCCESS) {
+        return luaL_error(L, "Failed to create Vulkan image");
+    }
 
-  VkMemoryRequirements memRequirements;
-  vkGetImageMemoryRequirements(self->vk.device, handle, &memRequirements);
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(self->vk.device, handle, &memRequirements);
 
-#if 0
     VkMemoryAllocateInfo allocInfo = {0};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(
+    allocInfo.memoryTypeIndex = find_memory_type(
         self->vk.phys_device,
         memRequirements.memoryTypeBits,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -499,71 +498,44 @@ int l_VK_Renderer__create_texture2d(lua_State *L) {
         );
         if (res < 0) return luaL_error(L, "failed to create the transfer buffer");
 
-        // (B) Copy data to staging buffer
         void* mappedData;
         vkMapMemory(self->vk.device, stagingBufferMemory, 0, width * height * 4, 0, &mappedData);
         memcpy(mappedData, data, width * height * 4);
         vkUnmapMemory(self->vk.device, stagingBufferMemory);
 
-        // (C) Copy staging buffer to image
-        transitionImageLayout(
-            self->vk.device,
-            self->vk.commandPool,
-            self->vk.queue,
-            textureImage,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-        );
-        copyBufferToImage(
-            self->vk.device,
-            self->vk.commandPool,
-            self->vk.queue,
-            stagingBuffer,
-            textureImage,
-            width,
-            height
-        );
-        transitionImageLayout(
-            self->vk.device,
-            self->vk.commandPool,
-            self->vk.queue,
-            textureImage,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-        );
+        transition_image_layout(self, handle, pixel_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copy_buffer_to_image(self, stagingBuffer, handle, width, height);
+        transition_image_layout(self, handle, pixel_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        vkDestroyBuffer(self->vk.device, stagingBuffer, nullptr);
-        vkFreeMemory(self->vk.device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(self->vk.device, stagingBuffer, NULL);
+        vkFreeMemory(self->vk.device, stagingBufferMemory, NULL);
+    } else {
+        transition_image_layout(self, handle, pixel_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
-    else {
-        transitionImageLayout(
-            self->vk.device,
-            self->vk.commandPool,
-            self->vk.queue,
-            textureImage,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-        );
-    }
-#endif
-  return 1;
+
+    NEW_UDATA(Texture2D, texture);
+    texture->width = width;
+    texture->height = height;
+    texture->vk.handle = handle;
+    texture->vk.mem = memory;
+    return 1;
 }
 
 int l_VK_Renderer__destroy_texture(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  CHECK_UDATA(Texture2D, tex);
-  if (tex->vk.view)
-    vkDestroyImageView(self->vk.device, tex->vk.view, NULL);
-  if (tex->vk.handle)
-    vkDestroyImage(self->vk.device, tex->vk.handle, NULL);
-  if (tex->vk.mem)
-    vkFreeMemory(self->vk.device, tex->vk.mem, NULL);
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(Texture2D, tex);
+    if (tex->vk.view)
+        vkDestroyImageView(self->vk.device, tex->vk.view, NULL);
+    if (tex->vk.handle)
+        vkDestroyImage(self->vk.device, tex->vk.handle, NULL);
+    if (tex->vk.mem)
+        vkFreeMemory(self->vk.device, tex->vk.mem, NULL);
 
-  tex->vk.view = VK_NULL_HANDLE;
-  tex->vk.handle = VK_NULL_HANDLE;
-  tex->vk.mem = VK_NULL_HANDLE;
+    tex->vk.view = VK_NULL_HANDLE;
+    tex->vk.handle = VK_NULL_HANDLE;
+    tex->vk.mem = VK_NULL_HANDLE;
 
-  return 0;
+    return 0;
 }
 
 /**
@@ -698,6 +670,8 @@ int l_VK_Renderer__flush(lua_State *L) {
         } break;
         case RENDER_COMMAND_DRAW_VERTEX: {
             vkCmdDraw(self->vk.command_buffer, rc->draw.count, 1, rc->draw.start, 0);
+        } break;
+        case RENDER_COMMAND_SET_TEXTURE: {
         } break;
         case RENDER_COMMAND_SET_VIEWPORT: {
             VkViewport view;
@@ -1033,6 +1007,9 @@ int l_VK_Renderer_create(lua_State *L) {
     ren->create_pipeline = l_VK_Renderer__create_pipeline;
     ren->destroy_pipeline = l_VK_Renderer__destroy_pipeline;
 
+    ren->create_texture2d = l_VK_Renderer__create_texture2d;
+    ren->destroy_texture = l_VK_Renderer__destroy_texture;
+
     ren->create_shader = l_VK_Renderer__create_shader;
     ren->destroy_shader = l_VK_Renderer__destroy_shader;
 
@@ -1297,6 +1274,111 @@ int vk_create_buffer(selene_Renderer *self, int size, int usage, int flags,
     return -1;
   }
   vkBindBufferMemory(self->vk.device, handle, buff_memory, 0);
+    if (out_buf) *out_buf = handle;
+    if (out_mem) *out_mem = buff_memory;
   return 0;
+}
+
+VkCommandBuffer begin_single_time_command(selene_Renderer* self) {
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = self->vk.command_pool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(self->vk.device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    return commandBuffer;
+}
+
+void end_single_time_command(selene_Renderer* self, VkCommandBuffer cb) {
+    vkEndCommandBuffer(cb);
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cb;
+
+    vkQueueSubmit(self->vk.graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(self->vk.graphics_queue);
+
+    vkFreeCommandBuffers(self->vk.device, self->vk.command_pool, 1, &cb);
+}
+
+int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+    VkCommandBuffer buf = begin_single_time_command(self);
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else {
+        fprintf(stderr, "unsupported layout transition!");
+        return -1;
+    }
+
+    vkCmdPipelineBarrier(
+        self->vk.command_buffer,
+        sourceStage, destinationStage,
+        0,
+        0, NULL,
+        0, NULL,
+        1, &barrier
+    );
+
+    end_single_time_command(self, buf);
+}
+
+void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+    VkCommandBuffer commandBuffer = begin_single_time_command(self);
+
+    VkBufferImageCopy region = {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = (VkOffset3D){0, 0, 0};
+    region.imageExtent = (VkExtent3D){
+        width,
+        height,
+        1
+    };
+
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    end_single_time_command(self, commandBuffer);
 }
 #endif
