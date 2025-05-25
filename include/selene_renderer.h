@@ -477,6 +477,7 @@ struct selene_RenderPipeline {
             VkPipeline handle;
             VkPipelineLayout layout;
             VkDescriptorSetLayout descriptor_layout;
+            VkDescriptorSet descriptor_set;
             VkShaderModule vs;
             VkShaderModule ps;
             // Cache
@@ -659,6 +660,7 @@ struct selene_Renderer {
 #endif
 #ifndef SELENE_NO_VULKAN
         struct {
+            int framebuffer_count;
             VkInstance instance;
             VkSurfaceKHR surface;
             VkPhysicalDevice phys_device;
@@ -668,6 +670,9 @@ struct selene_Renderer {
             VkCommandBuffer command_buffer;
             VkFramebuffer* framebuffers;
             int current_framebuffer;
+            VkDescriptorSetLayout descriptor_set_layout;
+            VkDescriptorPool descriptor_pool;
+            VkDescriptorSet* descriptor_sets;
             // Queues
             VkQueue graphics_queue;
             VkQueue present_queue;

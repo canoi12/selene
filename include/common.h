@@ -70,4 +70,12 @@
 #endif
 #endif
 
+#if _DEBUG
+    #define DEBUG_LOG(...) fprintf(stdout, __VA_ARGS__)
+    #define DEBUG_ERROR(...) fprintf(stderr, __VA_ARGS__)
+#else
+    #define DEBUG_LOG(...) 
+    #define DEBUG_ERROR(...) 
+#endif
+
 #endif /* COMMON_H_ */

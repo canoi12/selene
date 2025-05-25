@@ -19,7 +19,7 @@ const int gl_buffer_target_types_values[] = {GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_B
 const int gl_shader_types_values[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
 
 const int gl_front_face_values[] = {GL_CW, GL_CCW};
-const int gl_cull_face_values[] = {GL_NONE, GL_FRONT, GL_BACK};
+const int gl_cull_face_values[] = {GL_NONE, GL_FRONT, GL_BACK, GL_FRONT_AND_BACK};
 
 const int gl_type_values[] = {GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT, GL_UNSIGNED_INT, GL_FLOAT, GL_DOUBLE};
 
@@ -171,12 +171,8 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
         //fprintf(stdout, "set depth: %d\n", pipe->gl.depth_stencil_state.depth_enabled);
         lua_pop(L, 1);
         if (lua_getfield(L, -1, "func") == LUA_TSTRING) {
-            const char* depthfunc = luaL_optstring(L, -1, "less");
-            if (strcmp(depthfunc, "less") == 0) {
-                pipe->depth_stencil_state.depth_func = GL_LESS;
-            } else if (strcmp(depthfunc, "lequal") == 0) {
-                pipe->depth_stencil_state.depth_func = GL_LEQUAL;
-            }
+            int opt = luaL_checkoption(L, -1, NULL, comparison_func_options);
+            pipe->depth_stencil_state.depth_func = gl_comparison_funcs[opt];
         }
         lua_pop(L, 1);
     }

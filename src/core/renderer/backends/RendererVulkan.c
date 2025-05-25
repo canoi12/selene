@@ -4,6 +4,12 @@
 const int vk_pixel_formats_values[] = {VK_FORMAT_R8G8B8_UNORM,
                                        VK_FORMAT_R8G8B8A8_UNORM};
 
+
+const int vk_front_face_values[] = { VK_FRONT_FACE_CLOCKWISE, VK_FRONT_FACE_COUNTER_CLOCKWISE};
+const int vk_cull_face_values[] = { VK_CULL_MODE_NONE, VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_FRONT_AND_BACK };
+
+const int vk_comparison_funcs[] = { VK_COMPARE_OP_NEVER, VK_COMPARE_OP_LESS, VK_COMPARE_OP_EQUAL, VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_GREATER, VK_COMPARE_OP_NOT_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_COMPARE_OP_ALWAYS };
+
 struct QueueFamilyIndices {
     int graphics_family;
     int present_family;
@@ -17,19 +23,23 @@ struct SwapChainSupportDetails {
 };
 #endif
 
-void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
+#define MAX_FRAMES_ 2
+
+VkResult vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
                          VkSurfaceKHR surface,
                          struct QueueFamilyIndices indices, uint32_t width,
                          uint32_t height, struct VulkanSwapchain *outSwapchain);
 void vk_destroy_swapchain(VkPhysicalDevice physical_device, VkDevice device,
                           struct VulkanSwapchain outSwapchain);
-VkResult createTexture(VkDevice device, VkPhysicalDevice physicalDevice,
+VkResult vk_create_texture(VkDevice device, VkPhysicalDevice physicalDevice,
                        uint32_t width, uint32_t height, VkFormat format,
                        VkImageTiling tiling, VkImageUsageFlags usage,
                        VkMemoryPropertyFlags properties, Texture2D *outTexture);
-int vk_create_buffer(selene_Renderer *self, int size, int usage, int flags, VkBuffer *out_buf, VkDeviceMemory *out_mem);
+VkResult vk_create_buffer(selene_Renderer *self, int size, int usage, int flags, VkBuffer *out_buf, VkDeviceMemory *out_mem);
 int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+VkImageView vk_create_image_view(selene_Renderer* self, VkImage image, VkFormat format);
 
 static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev,
                                                      VkSurfaceKHR surface) {
@@ -53,7 +63,7 @@ static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev,
       if (indices.present_family != -1 && indices.graphics_family != -1)
         goto RETURN;
     }
-    fprintf(stderr, "No suitable queue family found\n");
+    DEBUG_ERROR("No suitable queue family found\n");
 
 RETURN:
     return indices;
@@ -77,13 +87,15 @@ static int find_memory_type(VkPhysicalDevice phys, int type_filter,
 
 int l_VK_Renderer__destroy(lua_State *L) {
     CHECK_META(selene_Renderer);
-    fprintf(stdout, "Destroying Vulkan renderer\n");
+    DEBUG_LOG("Destroying Vulkan renderer\n");
     VkDevice dev = self->vk.device;
     vkDeviceWaitIdle(dev);
+    if (self->vk.descriptor_pool) vkDestroyDescriptorPool(dev, self->vk.descriptor_pool, NULL);
     if (self->vk.image_semaphore) vkDestroySemaphore(dev, self->vk.image_semaphore, NULL);
     if (self->vk.render_semaphore) vkDestroySemaphore(dev, self->vk.render_semaphore, NULL);
     if (self->vk.fence) vkDestroyFence(dev, self->vk.fence, NULL);
     
+    self->vk.descriptor_pool = VK_NULL_HANDLE;
     self->vk.image_semaphore = NULL;
     self->vk.render_semaphore = NULL;
     self->vk.fence = NULL;
@@ -130,6 +142,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     lua_getfield(L, arg, "ps");
     selene_Shader *pixel = (selene_Shader *)luaL_checkudata(L, -1, "selene_Shader");
     lua_pop(L, 2);
+    VkResult result = -1;
 
     VkPipelineShaderStageCreateInfo shader_stages[2] = {
         {
@@ -175,7 +188,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         int opt = luaL_checkoption(L, -1, NULL, type_name_options);
         pipe->layout.attributes[i].type = opt;
         lua_pop(L, 1);
-        fprintf(stdout, "name: %s, offset: %d, size: %d, type: %d\n", name,
+        DEBUG_LOG("name: %s, offset: %d, size: %d, type: %d\n", name,
                 pipe->layout.attributes[i].offset, size,
                 pipe->layout.attributes[i].type);
         switch (opt) {
@@ -258,11 +271,32 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .depthBiasEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .cullMode = VK_CULL_MODE_NONE,
         .frontFace = VK_FRONT_FACE_CLOCKWISE,
         .depthBiasConstantFactor = VK_FALSE,
         .lineWidth = 1.f
     };
+
+    pipe->raster_state.cull_enabled = 0;
+    if (lua_getfield(L, arg, "cull") == LUA_TTABLE) {
+        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->raster_state.cull_enabled = lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, -1, "front_face") == LUA_TSTRING) {
+            int opt = luaL_checkoption(L, -1, "cw", front_face_options);
+            pipe->raster_state.cull_face = vk_front_face_values[opt];
+        }
+        lua_pop(L, 1);
+        if (lua_getfield(L, -1, "cull_face") == LUA_TSTRING) {
+            int opt = luaL_checkoption(L, -1, "back", cull_face_options);
+            pipe->raster_state.cull_face = vk_cull_face_values[opt];
+        }
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
+    if (pipe->raster_state.cull_enabled) {
+        raster_info.cullMode = pipe->raster_state.cull_face;
+        raster_info.frontFace = pipe->raster_state.front_face;
+    }
 
     VkPipelineDepthStencilStateCreateInfo depth_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
@@ -272,6 +306,23 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE,
     };
+    if (lua_getfield(L, arg, "depth") == LUA_TTABLE) {
+        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->depth_stencil_state.depth_enabled = lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, -1, "func") == LUA_TSTRING) {
+            int opt = luaL_checkoption(L, -1, NULL, comparison_func_options);
+            pipe->depth_stencil_state.depth_func = vk_comparison_funcs[opt];
+        }
+        lua_pop(L, 1);
+    }
+
+    if (pipe->depth_stencil_state.depth_enabled) {
+        depth_info.depthTestEnable = pipe->depth_stencil_state.depth_enabled;
+        depth_info.depthWriteEnable = pipe->depth_stencil_state.depth_enabled;
+        depth_info.depthBoundsTestEnable = VK_FALSE;
+        depth_info.stencilTestEnable = VK_FALSE;
+        depth_info.depthCompareOp = pipe->depth_stencil_state.depth_func;
+    }
 
     VkPipelineMultisampleStateCreateInfo multisampling_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -279,10 +330,31 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
     };
 
+    pipe->blend_state.enabled = 0;
+    if (lua_getfield(L, arg, "blend") == LUA_TTABLE) {
+        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->blend_state.enabled = lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, -1, "func") == LUA_TSTRING) {
+            const char* blendmode = luaL_optstring(L, -1, "alpha");
+            if (strcmp(blendmode, "alpha") == 0) {
+                pipe->blend_state.src = VK_BLEND_FACTOR_SRC_ALPHA;
+                pipe->blend_state.dst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                pipe->blend_state.equation = VK_BLEND_OP_ADD;
+            }
+        }
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
     VkPipelineColorBlendAttachmentState color_blend_attach = {
-        .blendEnable = VK_FALSE,
+        .blendEnable = pipe->blend_state.enabled,
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        .dstAlphaBlendFactor = pipe->blend_state.dst,
+        .srcAlphaBlendFactor = pipe->blend_state.src,
+        .dstColorBlendFactor = pipe->blend_state.dst,
+        .srcColorBlendFactor = pipe->blend_state.src,
+        .colorBlendOp = pipe->blend_state.equation,
+        .alphaBlendOp = pipe->blend_state.equation
     };
 
     VkPipelineColorBlendStateCreateInfo color_blend_info = {
@@ -297,11 +369,123 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .blendConstants[3] = 0.f,
     };
 
+    //VkDescriptorSetLayout descriptor_set_layouts[4] = { VK_NULL_HANDLE };
+    VkDescriptorSetLayoutBinding descriptor_bindings[16] = { 0 };
+    memset(descriptor_bindings, 0, sizeof(descriptor_bindings));
+    //memset(descriptor_set_layouts, VK_NULL_HANDLE, sizeof(descriptor_set_layouts));
+    uint32_t descriptor_set_layout_count = 0;
+    if (lua_getfield(L, arg, "descriptors") == LUA_TTABLE) {
+        int desc_count = lua_rawlen(L, -1);
+        descriptor_set_layout_count = desc_count;
+
+        for (int i = 0; i < desc_count; i++) {
+            lua_rawgeti(L, -1, i + 1);
+
+            VkDescriptorSetLayoutBinding* bindings = NULL;
+            VkDescriptorSetLayoutBinding* binding = descriptor_bindings + i;
+            int binding_count = 0;
+            binding->binding = i;
+
+            if (lua_istable(L, -1)) {
+                if (lua_getfield(L, -1, "type") == LUA_TSTRING) {
+                    const char* type = lua_tostring(L, -1);
+                    if (strcmp(type, "uniform_buffer") == 0) {
+                        binding->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                    }
+                    else if (strcmp(type, "combined_image_sampler") == 0) {
+                        binding->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    }
+                    // Add more types as needed
+                }
+                lua_pop(L, 1);
+
+                if (lua_getfield(L, -1, "count") == LUA_TNUMBER) {
+                    binding->descriptorCount = lua_tointeger(L, -1);
+                }
+                else {
+                    binding->descriptorCount = 1;
+                }
+                lua_pop(L, 1);
+
+                if (lua_getfield(L, -1, "stage") == LUA_TSTRING) {
+                    const char* stage = lua_tostring(L, -1);
+                    if (strcmp(stage, "vertex") == 0) {
+                        binding->stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+                    }
+                    else if (strcmp(stage, "fragment") == 0) {
+                        binding->stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+                    }
+                    // Add more stages as needed
+                }
+                lua_pop(L, 1);
+            }
+#if 0
+            VkDescriptorSetLayoutCreateInfo layout_info = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .bindingCount = binding_count,
+                .pBindings = bindings
+            };
+
+            if (vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_set_layouts[i]) != VK_SUCCESS) {
+                free(bindings);
+                return luaL_error(L, "failed to create descriptor set layout");
+            }
+
+            free(bindings);
+#endif
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+
+    VkDescriptorSetLayoutCreateInfo layout_info = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .bindingCount = descriptor_set_layout_count,
+                .pBindings = &descriptor_bindings
+    };
+
+    VkDescriptorSetLayout descriptor_layout = VK_NULL_HANDLE;
+    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+    if (descriptor_set_layout_count > 0) {
+        result = vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_layout);
+        if (result != VK_SUCCESS) {
+            //free(bindings);
+            return luaL_error(L, "failed to create descriptor set layout, error: 0x%8x", result);
+        }
+
+        VkDescriptorSetAllocateInfo allocInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = self->vk.descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &descriptor_layout // Your VkDescriptorSetLayout
+        };
+
+        descriptorSet = malloc(sizeof(VkDescriptorSet));
+        result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, &descriptorSet);
+        fprintf(stdout, "descriptor set: %p\n", descriptorSet);
+        if (result != VK_SUCCESS || descriptorSet == VK_NULL_HANDLE) {
+            //free(bindings);
+            return luaL_error(L, "failed to alloc descriptor set, error: 0x%d", result);
+        }
+    }
+
     VkPipelineLayoutCreateInfo pipeline_layout_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pushConstantRangeCount = 0,
+#if 0
+        .setLayoutCount = descriptor_set_layout_count > 0 ? 1 : 0,
+        .pSetLayouts = &descriptor_layout
+#else
         .setLayoutCount = 0,
-        .pushConstantRangeCount = 0
+        .pSetLayouts = NULL
+#endif
     };
+#if 1
+    if (descriptor_set_layout_count > 0) {
+        pipeline_layout_info.setLayoutCount = 1;
+        pipeline_layout_info.pSetLayouts = &descriptor_layout;
+    }
+#endif
 
     VkPipelineLayout pipeline_layout;
     if (vkCreatePipelineLayout(self->vk.device, &pipeline_layout_info, NULL, &pipeline_layout) != VK_FALSE) {
@@ -328,9 +512,10 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     };
 
     VkPipeline handle;
-    if (vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &handle) != VK_SUCCESS) {
+    result = vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &handle);
+    if (result != VK_SUCCESS) {
         vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
-        return luaL_error(L, "failed to create Vulkan pipeline");
+        return luaL_error(L, "failed to create Vulkan pipeline, error: 0x%8x", result);
     }
     if (handle == VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
@@ -340,6 +525,9 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     NEW_UDATA(selene_RenderPipeline, pipeline);
     pipeline->vk.handle = handle;
     pipeline->vk.layout = pipeline_layout;
+    pipeline->vk.descriptor_layout = descriptor_layout;
+    pipeline->vk.descriptor_set = descriptorSet;
+    //memcpy((pipeline->vk.descriptor_layout), descriptor_set_layouts, sizeof(descriptor_set_layouts));
     fprintf(stderr, "pipeline %p, handle: %p\n", pipeline, handle);
     return 1;
 }
@@ -348,10 +536,12 @@ static int l_VK_Renderer__destroy_pipeline(lua_State *L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_RenderPipeline, pipeline);
     vkDeviceWaitIdle(self->vk.device);
+    if (pipeline->vk.descriptor_layout) vkDestroyDescriptorSetLayout(self->vk.device, pipeline->vk.descriptor_layout, NULL);
     if (pipeline->vk.layout)
         vkDestroyPipelineLayout(self->vk.device, pipeline->vk.layout, NULL);
     if (pipeline->vk.handle)
         vkDestroyPipeline(self->vk.device, pipeline->vk.handle, NULL);
+    pipeline->vk.descriptor_layout = VK_NULL_HANDLE;
     pipeline->vk.layout = NULL;
     pipeline->vk.handle = NULL;
     return 0;
@@ -365,10 +555,12 @@ int l_VK_Renderer__create_buffer(lua_State *L) {
     CHECK_META(selene_Renderer);
     int opt = luaL_checkoption(L, arg++, "vertex", buffer_target_options);
     int size = (int)luaL_checkinteger(L, arg++);
-    VkBufferCreateInfo buf_info = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                    .size = size,
-                                    .usage = vk_buffer_target_types_values[opt],
-                                    .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
+    VkBufferCreateInfo buf_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = vk_buffer_target_types_values[opt],
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
     VkBuffer handle;
     if (vkCreateBuffer(self->vk.device, &buf_info, NULL, &handle) != VK_SUCCESS) {
         return luaL_error(L, "failed to create Vulkan buffer");
@@ -382,10 +574,9 @@ int l_VK_Renderer__create_buffer(lua_State *L) {
     VkMemoryAllocateInfo alloc_info = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = mem_reqs.size,
-        .memoryTypeIndex =
-            find_memory_type(self->vk.phys_device, mem_reqs.memoryTypeBits,
-                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)};
+        .memoryTypeIndex = find_memory_type(self->vk.phys_device, mem_reqs.memoryTypeBits,
+                                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+    };
 
     if (vkAllocateMemory(self->vk.device, &alloc_info, NULL, &buff_memory) !=
         VK_SUCCESS) {
@@ -454,7 +645,7 @@ int l_VK_Renderer__create_texture2d(lua_State *L) {
         .format = pixel_format,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .flags = 0};
@@ -513,11 +704,26 @@ int l_VK_Renderer__create_texture2d(lua_State *L) {
         transition_image_layout(self, handle, pixel_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
+    VkImageView image_view;
+    image_view = vk_create_image_view(self, handle, pixel_format);
+    if (image_view == NULL) return luaL_error(L, SDL_GetError());
+
+    VkSampler sampler;
+    VkResult result = vk_create_sampler(self, VK_FILTER_NEAREST, &sampler);
+    if (result != VK_SUCCESS) {
+        return luaL_error(L, SDL_GetError());
+    }
+
     NEW_UDATA(Texture2D, texture);
     texture->width = width;
     texture->height = height;
     texture->vk.handle = handle;
     texture->vk.mem = memory;
+    texture->vk.view = image_view;
+    texture->vk.sampler = sampler;
+#if _DEBUG
+    DEBUG_LOG("Created Vulkan image: %p %d %d %p\n", handle, width, height, image_view);
+#endif
     return 1;
 }
 
@@ -617,7 +823,8 @@ int l_VK_Renderer__flush(lua_State *L) {
                 .extent = self->vk.swapchain.extent,
             },
         .clearValueCount = 1,
-        .pClearValues = &(VkClearValue){.color = {0.5, 0.5, 0.5, 1}}};
+        .pClearValues = &(VkClearValue){.color = {0.5, 0.5, 0.5, 1}},
+    };
     vkCmdBeginRenderPass(self->vk.command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport view;
     view.x = 0;
@@ -657,6 +864,8 @@ int l_VK_Renderer__flush(lua_State *L) {
         } break;
         case RENDER_COMMAND_SET_PIPELINE: {
                 vkCmdBindPipeline(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.handle);
+                vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.layout, 0, 1, &(rc->pipeline->vk.descriptor_set), 0, NULL);
+                state.pipe = rc->pipeline;
         } break; 
         case RENDER_COMMAND_SET_VERTEX_BUFFER: {
             GpuBuffer* buf = rc->buffer.ptr;
@@ -672,6 +881,25 @@ int l_VK_Renderer__flush(lua_State *L) {
             vkCmdDraw(self->vk.command_buffer, rc->draw.count, 1, rc->draw.start, 0);
         } break;
         case RENDER_COMMAND_SET_TEXTURE: {
+            if (!state.pipe) break;
+            Texture2D* tex = rc->texture.ptr;
+            VkDescriptorImageInfo new_image_info = {
+                .imageView = tex->vk.view,  // Different texture
+                .sampler = tex->vk.sampler,
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            };
+
+            VkWriteDescriptorSet write = {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = state.pipe->vk.descriptor_set,
+                .dstBinding = 0,  // Texture binding slot
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &new_image_info,
+                .descriptorCount = 1,
+                .dstArrayElement = 0,
+            };
+
+            vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
         } break;
         case RENDER_COMMAND_SET_VIEWPORT: {
             VkViewport view;
@@ -855,8 +1083,9 @@ int l_VK_Renderer_create(lua_State *L) {
     vkGetDeviceQueue(device, indices.present_family, 0, &present_queue);
 
     struct VulkanSwapchain swapchain;
-    vk_create_swapchain(phys, device, surface, indices, width, height,
-                        &swapchain);
+    if (vk_create_swapchain(phys, device, surface, indices, width, height, &swapchain) < 0) {
+        return luaL_error(L, SDL_GetError());
+    }
 
     VkRenderPass render_pass;
 
@@ -901,8 +1130,8 @@ int l_VK_Renderer_create(lua_State *L) {
         .pDependencies = &dependency
     };
 
-    if (vkCreateRenderPass(device, &render_pass_info, NULL, &render_pass) !=
-        VK_SUCCESS) {
+    VkResult result = vkCreateRenderPass(device, &render_pass_info, NULL, &render_pass);
+    if (result != VK_SUCCESS) {
         return luaL_error(L, "failed to create Vulkan render pass");
     }
 
@@ -914,8 +1143,7 @@ int l_VK_Renderer_create(lua_State *L) {
         .queueFamilyIndex = indices.graphics_family,
     };
 
-    if (vkCreateCommandPool(device, &pool_info, NULL, &command_pool) !=
-        VK_SUCCESS) {
+    if (vkCreateCommandPool(device, &pool_info, NULL, &command_pool) != VK_SUCCESS) {
         return luaL_error(L, "failed to create Vulkan command pool");
     }
     VkCommandBuffer command_buffer;
@@ -949,6 +1177,22 @@ int l_VK_Renderer_create(lua_State *L) {
         }
     }
 
+    VkDescriptorPool descriptor_pool;
+    VkDescriptorPoolSize descriptor_pool_size[] = {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 }, // Enough for all pipelines
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+    };
+    VkDescriptorPoolCreateInfo descriptor_pool_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = 100,
+        .poolSizeCount = 2,
+        .pPoolSizes = descriptor_pool_size
+    };
+    result = vkCreateDescriptorPool(device, &descriptor_pool_info, NULL, &descriptor_pool);
+    if (result != VK_SUCCESS) {
+        return luaL_error(L, "failed to create descriptor pool, 0x%8x", result);
+    }
+
 
     VkSemaphore image_sem;
     VkSemaphore render_sem;
@@ -969,7 +1213,7 @@ int l_VK_Renderer_create(lua_State *L) {
         return luaL_error(L, "failed to create Vulkan semaphores");
     }
 
-    fprintf(stderr, "sem(%p %p) fence(%p)\n", image_sem, render_sem, fence);
+    DEBUG_LOG("sem(%p %p) fence(%p)\n", image_sem, render_sem, fence);
 
     NEW_UDATA(selene_Renderer, ren);
     memset(ren, 0, sizeof(*ren));
@@ -989,6 +1233,8 @@ int l_VK_Renderer_create(lua_State *L) {
     ren->vk.image_semaphore = image_sem;
     ren->vk.render_semaphore = render_sem;
     ren->vk.fence = fence;
+
+    ren->vk.descriptor_pool = descriptor_pool;
 
     ren->window_ptr = *win;
     lua_pushvalue(L, 1);
@@ -1017,13 +1263,12 @@ int l_VK_Renderer_create(lua_State *L) {
     ren->destroy_buffer = l_VK_Renderer__destroy_buffer;
     ren->send_buffer_data = l_VK_Renderer__send_buffer_data;
 
-    fprintf(stdout, "Created the Vulkan renderer: instance(%p) device(%p)\n",
-            instance, device);
+    DEBUG_LOG("Created the Vulkan renderer: instance(%p) device(%p)\n", instance, device);
 
     return 1;
 }
 
-void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
+VkResult vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
                          VkSurfaceKHR surface,
                          struct QueueFamilyIndices indices, uint32_t width,
                          uint32_t height,
@@ -1038,15 +1283,14 @@ void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
 
     VkSurfaceFormatKHR surfaceFormat = formats[0];
     for (uint32_t i = 0; i < format_count; i++) {
-        if (formats[i].format == VK_FORMAT_B8G8R8A8_UNORM &&
-            formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-        surfaceFormat = formats[i];
-        fprintf(stdout, "found surface format in %d\n", i);
-        break;
+        if (formats[i].format == VK_FORMAT_B8G8R8A8_UNORM && formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            surfaceFormat = formats[i];
+            DEBUG_LOG("found surface format in %d\n", i);
+            break;
         }
     }
     free(formats);
-    fprintf(stdout, "Vulkan surface format: %d %d\n", surfaceFormat.format, surfaceFormat.colorSpace);
+    DEBUG_LOG("Vulkan surface format: %d %d\n", surfaceFormat.format, surfaceFormat.colorSpace);
 #if 0
     uint32_t present_mode_count;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, NULL);
@@ -1097,21 +1341,22 @@ void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
 
     uint32_t queue_family_indices[] = {indices.graphics_family, indices.present_family};
     if (indices.graphics_family != indices.present_family) {
-        fprintf(stdout, "different indices for queue family: %d %d\n", indices.graphics_family, indices.present_family);
+        DEBUG_LOG("different indices for queue family: %d %d\n", indices.graphics_family, indices.present_family);
         create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         create_info.queueFamilyIndexCount = 2;
         create_info.pQueueFamilyIndices = queue_family_indices;
     } else {
-        fprintf(stdout, "same indices for queue family: %d %d\n", indices.graphics_family, indices.present_family);
+        DEBUG_LOG("same indices for queue family: %d %d\n", indices.graphics_family, indices.present_family);
         create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
     VkSwapchainKHR swapchain;
-    if (vkCreateSwapchainKHR(device, &create_info, NULL, &swapchain) != VK_SUCCESS) {
-        fprintf(stderr, "Failed to create swapchain!\n");
-        return;
+    VkResult res = vkCreateSwapchainKHR(device, &create_info, NULL, &swapchain);
+    if (res != VK_SUCCESS) {
+        SDL_SetError("failed to create Vulkan toolchain, error: 0x%8x", res);
+        return -1;
     }
-    fprintf(stdout, "created Vulkan swapchain\n");
+    DEBUG_LOG("created Vulkan swapchain\n");
 
     // uint32_t image_count;
     // vkGetSwapchainImagesKHR(device, swapchain, &image_count, NULL);
@@ -1122,10 +1367,10 @@ void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
     outSwapchain->handle = swapchain;
     outSwapchain->views = malloc(image_count * sizeof(VkImageView));
     if (!outSwapchain->views) {
-        fprintf(stderr, "failed to alloc memory for Vulkan image views\n");
-        exit(EXIT_FAILURE);
+        SDL_SetError("failed to alloc memory for Vulkan image views");
+        return -1;
     }
-    fprintf(stdout, "memory allocated for the Vulkan Swapchain image views: %p\n", outSwapchain->views);
+    DEBUG_LOG("memory allocated for the Vulkan Swapchain image views: %p\n", outSwapchain->views);
     for (uint32_t i = 0; i < image_count; i++) {
         VkImageViewCreateInfo viewInfo = {0};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1145,7 +1390,7 @@ void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
         VkResult result = vkCreateImageView(device, &viewInfo, NULL, &outSwapchain->views[i]);
         if (result != VK_SUCCESS) {
             // Cleanup on failure
-            fprintf(stderr, "failed to create Vulkan ImageView\n");
+            DEBUG_LOG("failed to create Vulkan ImageView, error: 0x%8x\n", result);
             for (uint32_t j = 0; j < i; j++) {
                 vkDestroyImageView(device, outSwapchain->views[j], NULL);
             }
@@ -1158,129 +1403,241 @@ void vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
     outSwapchain->format = surfaceFormat.format;
     outSwapchain->extent = extent;
     outSwapchain->image_count = image_count;
+    return 0;
 }
 
-void vk_destroy_swapchain(VkPhysicalDevice physical_device, VkDevice device,
-                          struct VulkanSwapchain swap) {
-  for (int i = 0; i < swap.image_count; i++) {
-    vkDestroyImageView(device, swap.views[i], NULL);
-  }
-  vkDestroySwapchainKHR(device, swap.handle, NULL);
-  free(swap.views);
-  free(swap.images);
+void vk_destroy_swapchain(VkPhysicalDevice physical_device, VkDevice device, struct VulkanSwapchain swap) {
+    for (int i = 0; i < swap.image_count; i++) {
+        vkDestroyImageView(device, swap.views[i], NULL);
+    }
+    vkDestroySwapchainKHR(device, swap.handle, NULL);
+    free(swap.views);
+    free(swap.images);
 }
 
-VkResult createTexture(VkDevice device, VkPhysicalDevice physicalDevice,
+VkResult vk_create_texture(VkDevice device, VkPhysicalDevice physicalDevice,
                        uint32_t width, uint32_t height, VkFormat format,
                        VkImageTiling tiling, VkImageUsageFlags usage,
                        VkMemoryPropertyFlags properties,
                        Texture2D *outTexture) {
-  // Create image
-  VkImageCreateInfo imageInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-  imageInfo.imageType = VK_IMAGE_TYPE_2D;
-  imageInfo.extent.width = width;
-  imageInfo.extent.height = height;
-  imageInfo.extent.depth = 1;
-  imageInfo.mipLevels = 1;
-  imageInfo.arrayLayers = 1;
-  imageInfo.format = format;
-  imageInfo.tiling = tiling;
-  imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imageInfo.usage = usage;
-  imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    // Create image
+    VkImageCreateInfo imageInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = usage;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
-  VkResult result =
-      vkCreateImage(device, &imageInfo, NULL, &outTexture->vk.handle);
-  if (result != VK_SUCCESS)
-    return result;
-
-  // Allocate memory
-  VkMemoryRequirements memRequirements;
-  vkGetImageMemoryRequirements(device, outTexture->vk.handle, &memRequirements);
-
-  VkMemoryAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-  allocInfo.allocationSize = memRequirements.size;
-
-  VkPhysicalDeviceMemoryProperties memProperties;
-  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-  uint32_t memoryTypeIndex;
-  for (memoryTypeIndex = 0; memoryTypeIndex < memProperties.memoryTypeCount;
-       memoryTypeIndex++) {
-    if ((memRequirements.memoryTypeBits & (1 << memoryTypeIndex)) &&
-        (memProperties.memoryTypes[memoryTypeIndex].propertyFlags &
-         properties) == properties) {
-      break;
+    VkResult result = vkCreateImage(device, &imageInfo, NULL, &outTexture->vk.handle);
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to create Vulkan image, error: 0x%8x", result);
+        return result;
     }
-  }
 
-  allocInfo.memoryTypeIndex = memoryTypeIndex;
-  result = vkAllocateMemory(device, &allocInfo, NULL, &outTexture->vk.mem);
-  if (result != VK_SUCCESS)
+    // Allocate memory
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(device, outTexture->vk.handle, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    allocInfo.allocationSize = memRequirements.size;
+
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+    uint32_t memoryTypeIndex;
+    for (memoryTypeIndex = 0; memoryTypeIndex < memProperties.memoryTypeCount; memoryTypeIndex++) {
+        if ((memRequirements.memoryTypeBits & (1 << memoryTypeIndex)) &&
+            (memProperties.memoryTypes[memoryTypeIndex].propertyFlags &
+                properties) == properties) {
+            break;
+        }
+    }
+
+    allocInfo.memoryTypeIndex = memoryTypeIndex;
+    result = vkAllocateMemory(device, &allocInfo, NULL, &outTexture->vk.mem);
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to allocate memory for Vulkan texture: 0x%8x", result);
+        return result;
+    }
+
+    vkBindImageMemory(device, outTexture->vk.handle, outTexture->vk.mem, 0);
+
+    // Create image view
+    VkImageViewCreateInfo viewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    viewInfo.image = outTexture->vk.handle;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    result = vkCreateImageView(device, &viewInfo, NULL, &outTexture->vk.view);
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to create Vulkan image view, error: 0x%8x", result);
+        return result;
+    }
+
+    outTexture->width = width;
+    outTexture->height = height;
+    outTexture->format = format;
+
     return result;
-
-  vkBindImageMemory(device, outTexture->vk.handle, outTexture->vk.mem, 0);
-
-  // Create image view
-  VkImageViewCreateInfo viewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-  viewInfo.image = outTexture->vk.handle;
-  viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  viewInfo.format = format;
-  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  viewInfo.subresourceRange.baseMipLevel = 0;
-  viewInfo.subresourceRange.levelCount = 1;
-  viewInfo.subresourceRange.baseArrayLayer = 0;
-  viewInfo.subresourceRange.layerCount = 1;
-
-  result = vkCreateImageView(device, &viewInfo, NULL, &outTexture->vk.view);
-
-  outTexture->width = width;
-  outTexture->height = height;
-  outTexture->format = format;
-
-  return result;
 }
 
-int vk_create_buffer(selene_Renderer *self, int size, int usage, int flags,
-                     VkBuffer *out_buf, VkDeviceMemory *out_mem) {
-  VkBufferCreateInfo buf_info = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                 .size = size,
-                                 .usage = usage,
-                                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
-  VkBuffer handle;
-  if (vkCreateBuffer(self->vk.device, &buf_info, NULL, &handle) != VK_SUCCESS) {
-    fprintf(stderr, "failed to create Vulkan buffer\n");
-    return -1;
-  }
-  VkDeviceMemory buff_memory;
-  VkMemoryRequirements mem_reqs;
-  vkGetBufferMemoryRequirements(self->vk.device, handle, &mem_reqs);
-  VkPhysicalDeviceMemoryProperties mem_properties;
-  vkGetPhysicalDeviceMemoryProperties(self->vk.phys_device, &mem_properties);
+VkResult vk_create_sampler(selene_Renderer* self, VkFilter filter, VkSampler *out) {
+    VkPhysicalDeviceProperties properties = {0};
+    vkGetPhysicalDeviceProperties(self->vk.phys_device, &properties);
 
-  VkMemoryAllocateInfo alloc_info = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .allocationSize = mem_reqs.size,
-      .memoryTypeIndex =
-          find_memory_type(self->vk.phys_device, mem_reqs.memoryTypeBits,
-                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)};
+    VkSamplerCreateInfo samplerInfo = {0};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = filter;
+    samplerInfo.minFilter = filter;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-  if (vkAllocateMemory(self->vk.device, &alloc_info, NULL, &buff_memory) !=
-      VK_SUCCESS) {
-    vkDestroyBuffer(self->vk.device, handle, NULL);
-    fprintf(stderr, "failed to alloc memory for Vulkan buffer\n");
-    return -1;
-  }
-  vkBindBufferMemory(self->vk.device, handle, buff_memory, 0);
+    VkSampler handle;
+    VkResult result = vkCreateSampler(self->vk.device, &samplerInfo, NULL, &handle);
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to create texture sampler, error: 0x%8x", result);
+        return -1;
+    }
+    *out = handle;
+    return VK_SUCCESS;
+}
+
+VkImageView vk_create_image_view(selene_Renderer* self, VkImage image, VkFormat format) {
+    VkImageViewCreateInfo viewInfo = {0};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView imageView;
+    VkResult result = vkCreateImageView(self->vk.device, &viewInfo, NULL, &imageView);
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to create texture image view, error: 0x%8x", result);
+        return NULL;
+    }
+    return imageView;
+}
+
+int vk_create_descriptor_pool(selene_Renderer* self) {
+    VkDescriptorPoolSize poolSize = {0};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = MAX_FRAMES_;
+
+    VkDescriptorPoolCreateInfo poolInfo = {0};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = MAX_FRAMES_;
+    VkResult result = vkCreateDescriptorPool(self->vk.device, &poolInfo, NULL, &(self->vk.descriptor_pool));
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to create descriptor pool, error: 0x%8x", result);
+        return -1;
+    }
+    return 0;
+}
+
+int vk_create_descriptor_sets(selene_Renderer* self, VkBuffer* uniforms, int uniform_size) {
+    VkDescriptorSetLayout* layouts = malloc(self->vk.framebuffer_count * sizeof(VkDescriptorSetLayout));
+    VkDescriptorSetAllocateInfo allocInfo = {0};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = self->vk.descriptor_pool;
+    allocInfo.descriptorSetCount = self->vk.framebuffer_count;
+    allocInfo.pSetLayouts = layouts;
+
+    self->vk.descriptor_sets = malloc(sizeof(self->vk.framebuffer_count));
+    VkResult result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, self->vk.descriptor_sets);
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to allocate descriptor sets, error: 0x%8x", result);
+        return -1;
+    }
+
+    for (size_t i = 0; i < self->vk.framebuffer_count; i++) {
+        VkDescriptorBufferInfo bufferInfo = {0};
+        bufferInfo.buffer = uniforms[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = uniform_size;
+
+        VkWriteDescriptorSet descriptorWrite = {0};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = self->vk.descriptor_sets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(self->vk.device, 1, &descriptorWrite, 0, NULL);
+    }
+}
+
+
+VkResult vk_create_buffer(selene_Renderer *self, int size, int usage, int flags, VkBuffer *out_buf, VkDeviceMemory *out_mem) {
+    VkBufferCreateInfo buf_info =
+    {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    VkBuffer handle;
+
+    VkResult result = vkCreateBuffer(self->vk.device, &buf_info, NULL, &handle);
+    if (result != VK_SUCCESS) {
+        SDL_SetError("failed to create Vulkan buffer, error: 0x%8x", result);
+        return -1;
+    }
+    VkDeviceMemory buff_memory;
+    VkMemoryRequirements mem_reqs;
+    vkGetBufferMemoryRequirements(self->vk.device, handle, &mem_reqs);
+    VkPhysicalDeviceMemoryProperties mem_properties;
+    vkGetPhysicalDeviceMemoryProperties(self->vk.phys_device, &mem_properties);
+
+    VkMemoryAllocateInfo alloc_info =
+    {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = mem_reqs.size,
+        .memoryTypeIndex = find_memory_type(self->vk.phys_device, mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+    };
+
+    result = vkAllocateMemory(self->vk.device, &alloc_info, NULL, &buff_memory);
+    if (result != VK_SUCCESS) {
+        vkDestroyBuffer(self->vk.device, handle, NULL);
+        SDL_SetError("failed to alloc memory for Vulkan buffer, error: 0x%8x", result);
+        return -1;
+    }
+    vkBindBufferMemory(self->vk.device, handle, buff_memory, 0);
     if (out_buf) *out_buf = handle;
     if (out_mem) *out_mem = buff_memory;
-  return 0;
+    return 0;
 }
 
 VkCommandBuffer begin_single_time_command(selene_Renderer* self) {
-    VkCommandBufferAllocateInfo allocInfo = {};
+    VkCommandBufferAllocateInfo allocInfo = {0};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandPool = self->vk.command_pool;
@@ -1289,7 +1646,7 @@ VkCommandBuffer begin_single_time_command(selene_Renderer* self) {
     VkCommandBuffer commandBuffer;
     vkAllocateCommandBuffers(self->vk.device, &allocInfo, &commandBuffer);
 
-    VkCommandBufferBeginInfo beginInfo = {};
+    VkCommandBufferBeginInfo beginInfo = {0};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
@@ -1301,7 +1658,7 @@ VkCommandBuffer begin_single_time_command(selene_Renderer* self) {
 void end_single_time_command(selene_Renderer* self, VkCommandBuffer cb) {
     vkEndCommandBuffer(cb);
 
-    VkSubmitInfo submitInfo = {};
+    VkSubmitInfo submitInfo = {0};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cb;
@@ -1314,7 +1671,7 @@ void end_single_time_command(selene_Renderer* self, VkCommandBuffer cb) {
 
 int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBuffer buf = begin_single_time_command(self);
-    VkImageMemoryBarrier barrier = {};
+    VkImageMemoryBarrier barrier = {0};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = oldLayout;
     barrier.newLayout = newLayout;
@@ -1343,12 +1700,12 @@ int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat forma
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     } else {
-        fprintf(stderr, "unsupported layout transition!");
+        SDL_SetError("unsupported layout transition!");
         return -1;
     }
 
     vkCmdPipelineBarrier(
-        self->vk.command_buffer,
+        buf,
         sourceStage, destinationStage,
         0,
         0, NULL,
@@ -1362,7 +1719,7 @@ int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat forma
 void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
     VkCommandBuffer commandBuffer = begin_single_time_command(self);
 
-    VkBufferImageCopy region = {};
+    VkBufferImageCopy region = {0};
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;

@@ -42,7 +42,7 @@ const int texture_targets_values[] = { GL_TEXTURE_2D, GL_TEXTURE_3D };
 
 const char* texture_target_options[] = {"tex2d", "tex3d", NULL};
 const char* front_face_options[] = {"cw", "ccw", NULL};
-const char* cull_face_options[] = {"none", "front", "back", NULL};
+const char* cull_face_options[] = {"none", "front", "back", "both", NULL};
 
 const char* draw_modes[] = {"points", "lines", "triangles", NULL};
 const int draw_modes_values[] = {GL_POINTS, GL_LINES, GL_TRIANGLES};
