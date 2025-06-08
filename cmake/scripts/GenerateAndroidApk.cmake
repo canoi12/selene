@@ -36,5 +36,15 @@ execute_process(
 )
 
 if(NOT gradle_result EQUAL 0)
-    message(FATAL_ERROR "Falha ao executar Gradle!")
+    message(FATAL_ERROR "Failed to execute gradle!")
+endif()
+
+execute_process(
+        COMMAND ${GRADLE_EXECUTABLE} assemble
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/build/android"
+        RESULT_VARIABLE gradle_result
+)
+
+if(NOT gradle_result EQUAL 0)
+    message(FATAL_ERROR "Failed to execute gradle!")
 endif()

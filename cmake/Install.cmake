@@ -69,7 +69,7 @@ if (WIN32)
 elseif (EMSCRIPTEN)
     message("-- Installing for Emscripten")
     install(
-        TARGETS ${PROJECT_NAME}Static ${LUA_SHARED_LIB}
+        TARGETS ${PROJECT_NAME}Static ${LUA_STATIC_LIB}
         LIBRARY DESTINATION "lib"
         ARCHIVE DESTINATION "lib"
         COMPONENT dev
