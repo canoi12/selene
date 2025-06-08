@@ -11,20 +11,34 @@ const int gl_clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, G
 
 const int gl_enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST, GL_SCISSOR_TEST, GL_CULL_FACE };
 
-const int gl_pixel_formats_values[] = { GL_RGB, GL_RGBA };
+const int gl_pixel_formats_values[] = { GL_RGB, GL_RGBA,
+#if defined(USE_GLES2)
+    GL_DEPTH_COMPONENT16
+#else
+    GL_DEPTH_COMPONENT32
+#endif
+};
 
 const int gl_texture_filters_values[] = { GL_NEAREST, GL_LINEAR };
 const int gl_texture_targets_values[] = { GL_TEXTURE_2D, GL_TEXTURE_3D };
 
 const int gl_draw_modes_values[] = {GL_POINTS, GL_LINES, GL_TRIANGLES};
 
+#if defined(USE_GLES2)
+const int gl_buffer_target_types_values[] = {GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER};
+#else
 const int gl_buffer_target_types_values[] = {GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER, GL_UNIFORM_BUFFER};
+#endif
 const int gl_shader_types_values[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
 
 const int gl_front_face_values[] = {GL_CW, GL_CCW};
 const int gl_cull_face_values[] = {GL_NONE, GL_FRONT, GL_BACK, GL_FRONT_AND_BACK};
 
-const int gl_type_values[] = {GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT, GL_UNSIGNED_INT, GL_FLOAT, GL_DOUBLE};
+const int gl_type_values[] = {GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT, GL_UNSIGNED_INT, GL_FLOAT
+#if !defined(USE_GLES2)
+    , GL_DOUBLE
+#endif
+};
 
 const int gl_comparison_funcs[] = {GL_NEVER, GL_LESS, GL_EQUAL, GL_LEQUAL, GL_GREATER, GL_NOTEQUAL, GL_GEQUAL, GL_ALWAYS};
 
@@ -415,7 +429,7 @@ int l_GL_Renderer__create_texture2d(lua_State* L) {
     int opt = luaL_checkoption(L, arg++, "rgba", pixel_formats);
     void* data = NULL;
     if (lua_isuserdata(L, arg)) data = lua_touserdata(L, arg++);
-    int pixel_format = pixel_formats_values[opt];
+    int pixel_format = gl_pixel_formats_values[opt];
     Uint32 handle;
     glGenTextures(1, &handle);
     glBindTexture(GL_TEXTURE_2D, handle);
@@ -625,7 +639,11 @@ int l_GL_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_CLEAR_DEPTH: {
+            #if defined(USE_GLES2)
+                glClearDepthf(rc->clear.depth);
+            #else
                 glClearDepth(rc->clear.depth);
+            #endif
                 glClear(GL_DEPTH_BUFFER_BIT);
             }
                 break;
@@ -652,7 +670,9 @@ int l_GL_Renderer__flush(lua_State* L) {
 
                 if (state.pipe->gl.program != rp->gl.program) {
                     glUseProgram(rp->gl.program);
+        #if !defined(USE_GLES2)
                     if (state.uniform) glUniformBlockBinding(rp->gl.program, 0, 0);
+        #endif
                 }
 
                 int diff_func0 = rp->blend_state.src != state.pipe->blend_state.src;
@@ -724,15 +744,33 @@ int l_GL_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
-#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
+#if defined(USE_GLES2)
+                if (state.pipe->gl.program) {
+                    GLuint program = state.pipe->gl.program;
+                    GLint count;
+                    glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+                    for (GLint i = 0; i < count; ++i) {
+                        char name[128];          // Buffer for uniform name
+                        GLsizei length;          // Actual length of name
+                        GLint size;              // Array size (usually 1 unless it's an array)
+                        GLenum type;             // Uniform type (GL_FLOAT, GL_FLOAT_VEC3, etc.)
+
+                        glGetActiveUniform(program, i, sizeof(name), &length, &size, &type, name);
+                        GLint location = glGetUniformLocation(program, name);
+
+                        printf("Uniform #%d: name = %s, type = 0x%X, size = %d, location = %d\n",
+                            i, name, type, size, location);
+                    }
+                }
+#else
                 glBindBuffer(GL_UNIFORM_BUFFER, b ? b->gl.handle : 0);
                 glBindBufferBase(GL_UNIFORM_BUFFER, 0, b->gl.handle);
                 if (b && state.pipe) {
                     int index = glGetUniformBlockIndex(state.pipe->gl.program, "Matrices");
                     glUniformBlockBinding(state.pipe->gl.program, index, 0);
                 }
-                state.uniform = b;
 #endif
+                state.uniform = b;
             }
                 break;
             case RENDER_COMMAND_SET_TEXTURE: {
@@ -752,12 +790,16 @@ int l_GL_Renderer__flush(lua_State* L) {
                     glBindFramebuffer(GL_FRAMEBUFFER, t ? t->gl.fbo : 0);
                     glViewport(0, 0, width, height);
                     if (state.uniform) {
+                    #if !defined(USE_GLES2)
                         glBindBuffer(GL_UNIFORM_BUFFER, state.uniform->gl.handle);
+                    #endif
                         mat4 matrix;
                         glm_mat4_identity(matrix);
                         glm_ortho(0, width, height, 0, -1000, 1000, matrix);
+                    #if !defined(USE_GLES2)
                         glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(matrix), matrix);
                         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+                    #endif
                     }
                 }
                 state.target = t;

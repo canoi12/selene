@@ -37,7 +37,9 @@ const char* enable_attribs[] = { "blend", "depth test", "scissor test", "cull fa
 const int enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST, GL_SCISSOR_TEST, GL_CULL_FACE };
 
 const char* pixel_formats[] = { "rgb", "rgba", "depth", NULL};
+#if !defined(USE_GLES2)
 const int pixel_formats_values[] = { GL_RGB, GL_RGBA, GL_DEPTH_COMPONENT32 };
+#endif
 
 const char* texture_filters[] = { "nearest", "linear", NULL };
 const int texture_filters_values[] = { GL_NEAREST, GL_LINEAR };

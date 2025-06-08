@@ -1,11 +1,5 @@
-#if defined(__cplusplus)
-extern "C" {
-#endif
 #include "selene.h"
 #include "lua_helper.h"
-#if defined(__cplusplus)
-}
-#endif
 
 #ifndef SELENE_RENDERER_H_
 #define SELENE_RENDERER_H_

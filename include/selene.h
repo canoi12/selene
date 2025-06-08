@@ -20,6 +20,10 @@
     #endif
 #endif
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #if SELENE_USE_JIT
 #define lua_rawlen lua_objlen
 extern void lua_rawsetp(lua_State* L, int idx, void* p);
@@ -134,10 +138,6 @@ struct _Window {
 
 // Mask for the initiated SDL modules
 extern int g_sdl_modules;
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 /**
  * Open selene lib
