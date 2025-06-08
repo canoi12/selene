@@ -11,9 +11,15 @@
 #include <unistd.h>
 #endif
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#if defined(__cplusplus)
+}
+#endif
 
 #define SELENE_MAX_UNICODE 0x10FFFF
 
