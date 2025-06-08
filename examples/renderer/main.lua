@@ -1,42 +1,72 @@
+local backend = 'vulkan'
+
+local opengl = false
+local vulkan = false
+
+if backend == 'opengl' then
+    opengl = true
+    vulkan = false
+elseif backend == 'vulkan' then
+    opengl = false
+    vulkan = true
+end
+
 selene()
-local win = selene.create_window('Renderer Example', 640, 380, {vulkan=true})
-local ren = selene.create_renderer(win, 'vulkan')
+local win = selene.create_window('Renderer Example', 640, 380, {opengl=opengl, vulkan=vulkan})
+local ren = selene.create_renderer(win, backend)
+print(win, ren)
 
 local buffer = ren:create_buffer('vertex', 1024*1024)
 print(buffer)
 
-local pixels, size = selene.filesystem.read('selene_icon.png', true)
-local image = image.from_memory(pixels, size)
-print(pixels, size)
+-- local pixels, size = selene.filesystem.read('selene_icon.png', true)
+-- local image = image.from_memory(pixels, size)
+-- print(pixels, size)
 
-local tex = ren:create_texture2d(image.width, image.height, 'rgba', image.data)
+-- local tex = ren:create_texture2d(image.width, image.height, 'rgba', image.data)
+local tex = ren:load_texture2d('selene_icon.png')
 print(tex)
 
 local batch = selene.renderer.VertexBatch(9*4, 1024)
 batch:set_color(1, 1, 1, 1)
 batch:set_z(0)
 
-batch:push_vertex2d(0, 0.5, 0.2, 1, 0, 1, 1, 0, 0)
-batch:push_vertex2d(0.5, -0.5, 0.2, 0, 1, 1, 1, 0, 0)
-batch:push_vertex2d(-0.5, -0.5, 0.2, 1, 1, 0, 1, 0, 0)
+batch:push_vertex2d(0, 0.5, 0, 1, 0, 1, 1, 0.5, 0)
+batch:push_vertex2d(0.5, -0.5, 0, 0, 1, 1, 1, 1.0, 1.0)
+batch:push_vertex2d(-0.5, -0.5, 0, 1, 1, 0, 1, 0, 1.0)
 
 ren:send_buffer_data(buffer, batch:get_offset()*batch:get_stride(), batch:get_data())
 
-local f = io.open(selene.__dir .. '/vert.spv')
-local size = f:seek('end')
-f:seek('set')
-local source = f:read('*a')
-f:close()
+-- local f = io.open(selene.__dir .. '/shaders/vert.hlsl')
+-- local size = f:seek('end')
+-- f:seek('set')
+-- local source = f:read('*a')
+-- f:close()
+-- print(source)
 
-local data, size = selene.filesystem.read(selene.__dir .. '/vert.spv', true)
-print(size, data)
-local vert = ren:create_shader('vertex', size, data)
+-- local data, size = selene.filesystem.read(selene.__dir .. '/shaders/shader.vert', true)
+-- print(size, data)
+-- local vert = ren:create_shader('vertex', size, data)
 
-data, size = selene.filesystem.read(selene.__dir .. '/frag.spv', true)
+local vert_file = selene.__dir .. '/shaders/vert.hlsl'
+if backend == 'opengl' then
+    vert_file = selene.__dir .. '/shaders/vert.glsl'
+elseif backend == 'vulkan' then
+    vert_file = selene.__dir .. '/shaders/vert.spv'
+end
+local vert = ren:load_shader('vertex', vert_file)
 
-print(size, data)
+-- data, size = selene.filesystem.read(selene.__dir .. '/shaders/shader.frag', true)
+-- print(size, data)
+-- local frag = ren:create_shader('pixel', size, data)
+local frag_file = selene.__dir .. '/shaders/frag.hlsl'
+if backend == 'opengl' then
+    frag_file = selene.__dir .. '/shaders/frag.glsl'
+elseif backend == 'vulkan' then
+    frag_file = selene.__dir .. '/shaders/frag.spv'
+end
+local frag = ren:load_shader('pixel', frag_file)
 
-local frag = ren:create_shader('pixel', size, data)
 
 print(vert, frag)
 
@@ -50,7 +80,10 @@ local pipeline = ren:create_pipeline{
         {name = 'a_texcoord', offset = 28, size = 2, type = 'float'},
     },
     blend = {enabled = true, func = 'alpha'},
-    scissor = {enabled = true}
+    scissor = {enabled = true},
+    descriptors = {
+        {type = 'combined_image_sampler', stage = 'fragment'}
+    }
 }
 print(pipeline)
 
@@ -59,9 +92,14 @@ selene.set_event(function(name)
 end)
 
 selene.set_step(function()
+    ren:set_render_target()
+    ren:set_viewport(0, 0, 640, 380)
+    ren:set_scissor(0, 0, 640, 380)
     ren:clear_color(0.3, 0.4, 0.4, 1.0)
+    ren:clear_depth(1)
     ren:set_pipeline(pipeline)
     ren:set_vertex_buffer(buffer)
+    ren:set_texture(tex)
     ren:draw('triangles', 0, 3)
     ren:present()
     selene.delay(16)
@@ -70,6 +108,7 @@ end)
 selene.set_quit(function()
     batch:destroy()
     if pipeline then ren:destroy_pipeline(pipeline) end
+    if tex then ren:destroy_texture(tex) end
     ren:destroy_shader(vert)
     ren:destroy_shader(frag)
     ren:destroy_buffer(buffer)
