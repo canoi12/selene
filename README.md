@@ -35,6 +35,8 @@ end)
 
 ### SDL2 example
 
+I will move this concept to [lgmtk](https://github.com/canoi12/lgmtk).
+
 ```lua
 -- main.lua
 if not sdl.init(sdl.INIT_VIDEO) then
