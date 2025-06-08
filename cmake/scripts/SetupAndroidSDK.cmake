@@ -73,7 +73,7 @@ function(android_install_package pkg)
         file(TO_NATIVE_PATH "${SDK_MANAGER}" NATIVE_SDK_MANAGER)
         # string(REPLACE "\\" "/" NATIVE_SDK_MANAGER "${NATIVE_SDK_MANAGER}")  # Uniformiza barras
         execute_process(
-            COMMAND cmd /c "echo y | ${NATIVE_SDK_MANAGER} --install ${pkg}"
+            COMMAND cmd /c "echo \"y\" | ${NATIVE_SDK_MANAGER} --install ${pkg}"
             WORKING_DIRECTORY "${ANDROID_SDK_DIR}"
             RESULT_VARIABLE result
         )
