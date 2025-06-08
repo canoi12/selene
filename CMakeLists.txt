@@ -15,6 +15,8 @@ if (ANDROID)
     set(ANDROID_HOME "$ENV{ANDROID_HOME}" CACHE STRING "Set Android SDK home path")
 endif ()
 
+
+configure_file("${CMAKE_SOURCE_DIR}/include/selene_config.h.in" "${CMAKE_SOURCE_DIR}/include/selene_config.h")
 # if (DEFINED MSVC AND DEFINED CMAKE_GENERATOR_PLATFORM)
 #     message("GENERATOR: ${CMAKE_GENERATOR_PLATFORM}")
 #     if ("${CMAKE_GENERATOR_PLATFORM}" STREQUAL "")
@@ -98,8 +100,7 @@ endif ()
 
 file(GLOB SELENE_SOURCES 
     src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c src/core/renderer/backends/*.cpp
-    src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c
-    src/modules/*.c third/glad/src/glad.c
+    src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c third/glad/src/glad.c
 )
 if (EMSCRIPTEN)
 list(POP_BACK SELENE_SOURCES)

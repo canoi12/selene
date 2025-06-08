@@ -1,0 +1,27 @@
+#ifndef SELENE_CONFIG_H_
+#define SELENE_CONFIG_H_
+
+#define SELENE_VERSION "0.5.0"
+
+/* Audio */
+#define selene_AudioSystem_METANAME "selene_AudioSystem"
+#define selene_AudioData_METANAME "selene_AudioData"
+#define selene_AudioDecoder_METANAME "selene_AudioDecoder"
+
+/* Filesystem */
+#define selene_File_METANAME "selene_File"
+
+/* Renderer */
+#define selene_Renderer_METANAME "selene_Renderer"
+
+#define selene_Font_METANAME "selene_Font"
+#define selene_GpuBuffer_METANAME "selene_GpuBuffer"
+#define selene_RenderPipeline_METANAME "selene_RenderPipeline"
+#define selene_RenderTarget_METANAME "selene_RenderTarget"
+#define selene_Shader_METANAME "selene_Shader"
+#define selene_Texture2D_METANAME "selene_Texture2D"
+
+/* Window*/
+#define selene_Window_METANAME "selene_Window"
+
+#endif
