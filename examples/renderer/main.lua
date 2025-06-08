@@ -1,4 +1,4 @@
-local backend = 'vulkan'
+local backend = 'opengl'
 
 local opengl = false
 local vulkan = false
@@ -12,7 +12,8 @@ elseif backend == 'vulkan' then
 end
 
 selene()
-local win = selene.create_window('Renderer Example', 640, 380, {opengl=opengl, vulkan=vulkan})
+local title = 'Renderer ' .. backend .. ' example'
+local win = selene.create_window(title, 640, 380, {opengl=opengl, vulkan=vulkan})
 local ren = selene.create_renderer(win, backend)
 print(win, ren)
 
@@ -31,9 +32,17 @@ local batch = selene.renderer.VertexBatch(9*4, 1024)
 batch:set_color(1, 1, 1, 1)
 batch:set_z(0)
 
-batch:push_vertex2d(0, 0.5, 0, 1, 0, 1, 1, 0.5, 0)
-batch:push_vertex2d(0.5, -0.5, 0, 0, 1, 1, 1, 1.0, 1.0)
-batch:push_vertex2d(-0.5, -0.5, 0, 1, 1, 0, 1, 0, 1.0)
+-- batch:push_vertex2d(0, 0.5, 0, 1, 0, 1, 1, 0.5, 0)
+-- batch:push_vertex2d(0.5, -0.5, 0, 0, 1, 1, 1, 1.0, 1.0)
+-- batch:push_vertex2d(-0.5, -0.5, 0, 1, 1, 0, 1, 0, 1.0)
+
+batch:push_vertex2d(-0.5, 0.5, 0, 1, 0, 1, 1, 0, 0)
+batch:push_vertex2d(0.5, 0.5, 0, 0, 1, 1, 1, 1, 0)
+batch:push_vertex2d(0.5, -0.5, 0, 1, 1, 0, 1, 1, 1)
+
+batch:push_vertex2d(-0.5, 0.5, 0, 1, 0, 1, 1, 0, 0)
+batch:push_vertex2d(0.5, -0.5, 0, 1, 1, 0, 1, 1, 1)
+batch:push_vertex2d(-0.5, -0.5, 0, 0, 1, 1, 1, 0, 1)
 
 ren:send_buffer_data(buffer, batch:get_offset()*batch:get_stride(), batch:get_data())
 
@@ -51,6 +60,9 @@ ren:send_buffer_data(buffer, batch:get_offset()*batch:get_stride(), batch:get_da
 local vert_file = selene.__dir .. '/shaders/vert.hlsl'
 if backend == 'opengl' then
     vert_file = selene.__dir .. '/shaders/vert.glsl'
+    if os.host() == 'emscripten' or os.host() == 'android' then
+        vert_file = selene.__dir .. '/shaders/vert.glsl100'
+    end
 elseif backend == 'vulkan' then
     vert_file = selene.__dir .. '/shaders/vert.spv'
 end
@@ -62,6 +74,9 @@ local vert = ren:load_shader('vertex', vert_file)
 local frag_file = selene.__dir .. '/shaders/frag.hlsl'
 if backend == 'opengl' then
     frag_file = selene.__dir .. '/shaders/frag.glsl'
+    if os.host() == 'emscripten' or os.host() == 'android' then
+        frag_file = selene.__dir .. '/shaders/frag.glsl100'
+    end
 elseif backend == 'vulkan' then
     frag_file = selene.__dir .. '/shaders/frag.spv'
 end
@@ -100,7 +115,7 @@ selene.set_step(function()
     ren:set_pipeline(pipeline)
     ren:set_vertex_buffer(buffer)
     ren:set_texture(tex)
-    ren:draw('triangles', 0, 3)
+    ren:draw('triangles', 0, 6)
     ren:present()
     selene.delay(16)
 end)
