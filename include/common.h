@@ -38,7 +38,7 @@
 #include <cglm/affine.h>
 #include <cglm/affine2d.h>
 
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
 #if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_APPLE)
 #include <glad/glad.h>
 #endif

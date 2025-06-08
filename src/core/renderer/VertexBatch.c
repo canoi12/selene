@@ -473,7 +473,7 @@ int l_VertexBatch__push_fill_circle(lua_State* L) {
 
 int l_VertexBatch__push_sprite(lua_State* L) {
     CHECK_META(VertexBatch);
-    CHECK_UDATA(Texture2D, tex);
+    CHECK_UDATA(selene_Texture2D, tex);
     SDL_FRect src;
     if (lua_istable(L, arg)) {
         lua_rawgeti(L, arg, 1);
@@ -854,8 +854,8 @@ int l_VertexBatch__push_fill_sphere(lua_State* L) {
 
 static int l_VertexBatch__push_text(lua_State* L) {
     CHECK_META(VertexBatch);
-    CHECK_UDATA(Texture2D, tex);
-    CHECK_UDATA(FontGlyph, glyphs);
+    CHECK_UDATA(selene_Texture2D, tex);
+    CHECK_UDATA(selene_FontGlyph, glyphs);
     CHECK_STRING(text);
     OPT_NUMBER(float, x, 0.f);
     OPT_NUMBER(float, y, 0.f);

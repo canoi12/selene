@@ -34,7 +34,7 @@ void vk_destroy_swapchain(VkPhysicalDevice physical_device, VkDevice device,
 VkResult vk_create_texture(VkDevice device, VkPhysicalDevice physicalDevice,
                        uint32_t width, uint32_t height, VkFormat format,
                        VkImageTiling tiling, VkImageUsageFlags usage,
-                       VkMemoryPropertyFlags properties, Texture2D *outTexture);
+                       VkMemoryPropertyFlags properties, selene_Texture2D *outTexture);
 VkResult vk_create_buffer(selene_Renderer *self, int size, int usage, int flags, VkBuffer *out_buf, VkDeviceMemory *out_mem);
 int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
@@ -394,6 +394,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
                     }
                     else if (strcmp(type, "combined_image_sampler") == 0) {
                         binding->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                        fprintf(stderr, "descriptor image sampler\n");
                     }
                     // Add more types as needed
                 }
@@ -439,9 +440,9 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     lua_pop(L, 1);
 
     VkDescriptorSetLayoutCreateInfo layout_info = {
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .bindingCount = descriptor_set_layout_count,
-                .pBindings = &descriptor_bindings
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = descriptor_set_layout_count,
+        .pBindings = &descriptor_bindings
     };
 
     VkDescriptorSetLayout descriptor_layout = VK_NULL_HANDLE;
@@ -457,7 +458,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self->vk.descriptor_pool,
             .descriptorSetCount = 1,
-            .pSetLayouts = &descriptor_layout // Your VkDescriptorSetLayout
+            .pSetLayouts = descriptor_layout ? &descriptor_layout : NULL
         };
 
         descriptorSet = malloc(sizeof(VkDescriptorSet));
@@ -473,8 +474,8 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pushConstantRangeCount = 0,
 #if 0
-        .setLayoutCount = descriptor_set_layout_count > 0 ? 1 : 0,
-        .pSetLayouts = &descriptor_layout
+        .setLayoutCount = descriptor_set_layout_count > 0 ? descriptor_set_layout_count : 0,
+        .pSetLayouts = descriptor_layout ? &descriptor_layout : NULL
 #else
         .setLayoutCount = 0,
         .pSetLayouts = NULL
@@ -482,7 +483,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     };
 #if 1
     if (descriptor_set_layout_count > 0) {
-        pipeline_layout_info.setLayoutCount = 1;
+        pipeline_layout_info.setLayoutCount = descriptor_set_layout_count;
         pipeline_layout_info.pSetLayouts = &descriptor_layout;
     }
 #endif
@@ -501,7 +502,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .pRasterizationState = &raster_info,
         .pViewportState = &viewport_info,
         .pMultisampleState = &multisampling_info,
-        // .pDepthStencilState = &depth_info,
+        .pDepthStencilState = &depth_info,
         .pColorBlendState = &color_blend_info,
         .pDynamicState = &dyn_state_info,
         .layout = pipeline_layout,
@@ -585,7 +586,7 @@ int l_VK_Renderer__create_buffer(lua_State *L) {
     }
     vkBindBufferMemory(self->vk.device, handle, buff_memory, 0);
 
-    NEW_UDATA(GpuBuffer, buffer);
+    NEW_UDATA(selene_GpuBuffer, buffer);
     buffer->type = opt;
     buffer->size = size;
     buffer->vk.handle = handle;
@@ -595,7 +596,7 @@ int l_VK_Renderer__create_buffer(lua_State *L) {
 
 int l_VK_Renderer__destroy_buffer(lua_State *L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     vkDeviceWaitIdle(self->vk.device);
     if (buffer->vk.handle)
         vkDestroyBuffer(self->vk.device, buffer->vk.handle, NULL);
@@ -608,7 +609,7 @@ int l_VK_Renderer__destroy_buffer(lua_State *L) {
 
 int l_VK_Renderer__send_buffer_data(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     CHECK_INTEGER(size);
     if (!lua_isuserdata(L, arg)) return luaL_argerror(L, arg, "userdata or lightuserdata expected");
     void* data = lua_touserdata(L, arg++);
@@ -714,7 +715,7 @@ int l_VK_Renderer__create_texture2d(lua_State *L) {
         return luaL_error(L, SDL_GetError());
     }
 
-    NEW_UDATA(Texture2D, texture);
+    NEW_UDATA(selene_Texture2D, texture);
     texture->width = width;
     texture->height = height;
     texture->vk.handle = handle;
@@ -729,7 +730,9 @@ int l_VK_Renderer__create_texture2d(lua_State *L) {
 
 int l_VK_Renderer__destroy_texture(lua_State *L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(Texture2D, tex);
+    CHECK_UDATA(selene_Texture2D, tex);
+    if (tex->vk.sampler)
+        vkDestroySampler(self->vk.device, tex->vk.sampler, NULL);
     if (tex->vk.view)
         vkDestroyImageView(self->vk.device, tex->vk.view, NULL);
     if (tex->vk.handle)
@@ -740,6 +743,7 @@ int l_VK_Renderer__destroy_texture(lua_State *L) {
     tex->vk.view = VK_NULL_HANDLE;
     tex->vk.handle = VK_NULL_HANDLE;
     tex->vk.mem = VK_NULL_HANDLE;
+    tex->vk.sampler = VK_NULL_HANDLE;
 
     return 0;
 }
@@ -757,8 +761,7 @@ int l_VK_Renderer__create_shader(lua_State *L) {
         size = luaL_checkinteger(L, arg++);
         data = lua_touserdata(L, arg++);
     } else if(lua_isstring(L, arg)) {
-        data = (void*)luaL_checkstring(L, arg++);
-        size = strlen((const char*)data);
+        data = (void*)luaL_checklstring(L, arg++, &size);
     }
     VkShaderModule handle = NULL;
     VkShaderModuleCreateInfo shader_info = {
@@ -795,10 +798,10 @@ int l_VK_Renderer__flush(lua_State *L) {
     CHECK_META(selene_Renderer);
     struct {
         selene_RenderPipeline *pipe;
-        GpuBuffer *vertex;
-        GpuBuffer *index;
-        GpuBuffer *uniform;
-        Texture2D *texture;
+        selene_GpuBuffer *vertex;
+        selene_GpuBuffer *index;
+        selene_GpuBuffer *uniform;
+        selene_Texture2D *texture;
         selene_RenderTarget *target;
         int stride;
     } state;
@@ -868,13 +871,13 @@ int l_VK_Renderer__flush(lua_State *L) {
                 state.pipe = rc->pipeline;
         } break; 
         case RENDER_COMMAND_SET_VERTEX_BUFFER: {
-            GpuBuffer* buf = rc->buffer.ptr;
+            selene_GpuBuffer* buf = rc->buffer.ptr;
             VkBuffer buffers[] = {buf->vk.handle};
             VkDeviceSize offsets[1] = {0};
             vkCmdBindVertexBuffers(self->vk.command_buffer, 0, 1, buffers, offsets);
         } break;
         case RENDER_COMMAND_SET_INDEX_BUFFER: {
-            GpuBuffer* buf = rc->buffer.ptr;
+            selene_GpuBuffer* buf = rc->buffer.ptr;
             vkCmdBindIndexBuffer(self->vk.command_buffer, buf->vk.handle, 0, VK_INDEX_TYPE_UINT32);
         } break;
         case RENDER_COMMAND_DRAW_VERTEX: {
@@ -882,7 +885,7 @@ int l_VK_Renderer__flush(lua_State *L) {
         } break;
         case RENDER_COMMAND_SET_TEXTURE: {
             if (!state.pipe) break;
-            Texture2D* tex = rc->texture.ptr;
+            selene_Texture2D* tex = rc->texture.ptr;
             VkDescriptorImageInfo new_image_info = {
                 .imageView = tex->vk.view,  // Different texture
                 .sampler = tex->vk.sampler,
@@ -907,6 +910,8 @@ int l_VK_Renderer__flush(lua_State *L) {
             view.y = rc->viewport.y;
             view.width = rc->viewport.width;
             view.height = rc->viewport.height;
+            view.maxDepth = 1;
+            view.minDepth = 0;
             vkCmdSetViewport(self->vk.command_buffer, 0, 1, &view);
         } break;
         case RENDER_COMMAND_SET_SCISSOR: {
@@ -985,9 +990,9 @@ int l_VK_Renderer__present(lua_State *L) {
 
 int l_VK_Renderer_create(lua_State *L) {
     INIT_ARG();
-    SDL_Window **win = (SDL_Window **)luaL_checkudata(L, arg++, "sdlWindow");
+    selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
     int width, height;
-    SDL_GetWindowSize(*win, &width, &height);
+    SDL_GetWindowSize(win->handle, &width, &height);
 
     VkInstance instance;
     VkApplicationInfo app_info = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -999,12 +1004,12 @@ int l_VK_Renderer_create(lua_State *L) {
                                 };
 
     unsigned int ext_count;
-    if (SDL_Vulkan_GetInstanceExtensions(*win, &ext_count, NULL) != VK_TRUE) {
+    if (SDL_Vulkan_GetInstanceExtensions(win->handle, &ext_count, NULL) != VK_TRUE) {
         return luaL_error(L, "failed to get Vulkan extensions count: %s", SDL_GetError());
     }
 
     const char **exts = malloc(sizeof(const char *) * ext_count);
-    SDL_Vulkan_GetInstanceExtensions(*win, &ext_count, exts);
+    SDL_Vulkan_GetInstanceExtensions(win->handle, &ext_count, exts);
     const char *validation_layers[] = {"VK_LAYER_KHRONOS_validation"};
     VkInstanceCreateInfo create_info =
     {
@@ -1023,7 +1028,7 @@ int l_VK_Renderer_create(lua_State *L) {
     free(exts);
     fprintf(stdout, "created Vulkan instance\n");
     VkSurfaceKHR surface;
-    if (SDL_Vulkan_CreateSurface(*win, instance, &surface) != SDL_TRUE) {
+    if (SDL_Vulkan_CreateSurface(win->handle, instance, &surface) != SDL_TRUE) {
         vkDestroyInstance(instance, NULL);
         return luaL_error(L, "failed to create Vulkan surface: %s", SDL_GetError());
     }
@@ -1236,7 +1241,7 @@ int l_VK_Renderer_create(lua_State *L) {
 
     ren->vk.descriptor_pool = descriptor_pool;
 
-    ren->window_ptr = *win;
+    ren->window_ptr = win;
     lua_pushvalue(L, 1);
     ren->l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
@@ -1419,7 +1424,7 @@ VkResult vk_create_texture(VkDevice device, VkPhysicalDevice physicalDevice,
                        uint32_t width, uint32_t height, VkFormat format,
                        VkImageTiling tiling, VkImageUsageFlags usage,
                        VkMemoryPropertyFlags properties,
-                       Texture2D *outTexture) {
+                       selene_Texture2D *outTexture) {
     // Create image
     VkImageCreateInfo imageInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     imageInfo.imageType = VK_IMAGE_TYPE_2D;

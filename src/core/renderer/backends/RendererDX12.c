@@ -6,11 +6,11 @@ const int dx11_buffer_target_types_values[] = {DX11_VERTEX_BUFFER, DX11_INDEX_BU
 
 int l_DX11_Renderer_create(lua_State* L) {
     INIT_ARG();
-    SDL_Window** win = (SDL_Window**)luaL_checkudata(L, arg++, "SDL2.Window");
+    selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
 
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
-    if (!SDL_GetWindowWMInfo(*win, &wmInfo)) {
+    if (!SDL_GetWindowWMInfo(win->handle, &wmInfo)) {
         return luaL_error(L, "Cannot get WM Info from SDL_Window: %s", SDL_GetError());
     }
     HWND hwnd = wmInfo.info.win.window;

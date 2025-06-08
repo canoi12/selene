@@ -92,7 +92,7 @@ int l_Renderer__destroy_buffer(lua_State* L) {
 
 int l_Renderer__set_vertex_buffer(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_VERTEX_BUFFER;
     cmd.buffer.ptr = buffer;
@@ -102,7 +102,7 @@ int l_Renderer__set_vertex_buffer(lua_State* L) {
 
 int l_Renderer__set_index_buffer(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_INDEX_BUFFER;
     cmd.buffer.ptr = buffer;
@@ -112,7 +112,7 @@ int l_Renderer__set_index_buffer(lua_State* L) {
 
 int l_Renderer__set_uniform_buffer(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_UNIFORM_BUFFER;
     cmd.buffer.ptr = buffer;
@@ -127,7 +127,7 @@ int l_Renderer__send_buffer_data(lua_State* L) {
 
 int l_Renderer__send_buffer_ortho(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     CHECK_INTEGER(offset);
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
@@ -156,6 +156,39 @@ int l_Renderer__create_texture2d(lua_State* L) {
     return self->create_texture2d(L);
 }
 
+#include "stb_image.h"
+int l_Renderer__load_texture2d(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_STRING(filename);
+#if defined(SELENE_USE_SDL3)
+    SDL_IOStream *rw = SDL_IOFromFile(filename, "rb");
+    size_t size = SDL_GetIOSize(rw);
+    void* data = malloc(size);
+    SDL_ReadIO(rw, data, size);
+    SDL_CloseIO(rw);
+#else
+    SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
+    size_t size = SDL_RWsize(rw);
+    void* data = malloc(size);
+    SDL_RWread(rw, data, 1, size);
+    SDL_RWclose(rw);
+#endif
+    int w, h, comp;
+    int req_comp = STBI_rgb_alpha;
+    stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)data, size, &w, &h, &comp, req_comp);
+    free(data);
+    
+    lua_pushcfunction(L, self->create_texture2d);
+    lua_pushvalue(L, 1);
+    lua_pushinteger(L, w);
+    lua_pushinteger(L, h);
+    lua_pushstring(L, "rgba");
+    lua_pushlightuserdata(L, pixels);
+    lua_call(L, 5, 1);
+    stbi_image_free(pixels);
+    return 1;
+}
+
 int l_Renderer__create_depth_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
     return self->create_depth_texture(L);
@@ -168,7 +201,7 @@ int l_Renderer__destroy_texture(lua_State* L) {
 
 static int l_Renderer__set_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
-    TEST_UDATA(Texture2D, tex);
+    TEST_UDATA(selene_Texture2D, tex);
     OPT_INTEGER(slot, 0);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_TEXTURE;
@@ -200,6 +233,9 @@ static int l_Renderer__set_render_target(lua_State* L) {
     cmd.target.depth = 0;
     cmd.type = RENDER_COMMAND_SET_RENDER_TARGET;
     if (lua_type(L, arg) == LUA_TBOOLEAN) cmd.target.depth = lua_toboolean(L, arg++);
+    if (!target) {
+        cmd.target.depth = self->default_target.depth != NULL;
+    }
     cmd.target.ptr = target;
     PUSH_COMMAND(self, &cmd);
     return 0;
@@ -212,6 +248,34 @@ static int l_Renderer__set_render_target(lua_State* L) {
 int l_Renderer__create_shader(lua_State* L) {
     CHECK_META(selene_Renderer);
     return self->create_shader(L);
+}
+
+int l_Renderer__load_shader(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    const char* filename = luaL_checkstring(L, 3);
+#if defined(SELENE_USE_SDL3)
+    SDL_IOStream *rw = SDL_IOFromFile(filename, "rb");
+    size_t size = SDL_GetIOSize(rw);
+    char* data = malloc(size+1);
+    SDL_ReadIO(rw, data, size);
+    SDL_CloseIO(rw);
+#else
+    SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
+    size_t size = SDL_RWsize(rw);
+    char* data = malloc(size+1);
+    SDL_RWread(rw, data, 1, size);
+    SDL_RWclose(rw);
+#endif
+    data[size] = '\0';
+    
+    lua_pushcfunction(L, self->create_shader);
+    lua_pushvalue(L, 1);
+    lua_pushvalue(L, 2);
+    lua_pushlstring(L, data, size);
+    lua_call(L, 3, 1);
+    free(data);
+
+    return 1;
 }
 
 int l_Renderer__destroy_shader(lua_State* L) {
@@ -245,7 +309,7 @@ int l_Renderer__set_scissor(lua_State* L) {
     cmd.scissor.height = (int)luaL_checkinteger(L, arg++);
     if (self->backend == SELENE_RENDERER_OPENGL) {
         int width, height;
-        SDL_GetWindowSize(self->window_ptr, &width, &height);
+        SDL_GetWindowSize(self->window_ptr->handle, &width, &height);
         cmd.scissor.y = height - cmd.scissor.y - cmd.scissor.height;
 
     }
@@ -291,7 +355,7 @@ int l_Renderer__present(lua_State* L) {
 }
 
 int l_Renderer_meta(lua_State* L) {
-    luaL_newmetatable(L, "selene_Renderer");
+    luaL_newmetatable(L, selene_Renderer_METANAME);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     const luaL_Reg _reg[] = {
@@ -320,6 +384,7 @@ int l_Renderer_meta(lua_State* L) {
         REG_META_FIELD(Renderer, send_buffer_ortho),
         // Texture2D
         REG_META_FIELD(Renderer, create_texture2d),
+        REG_META_FIELD(Renderer, load_texture2d),
         REG_META_FIELD(Renderer, create_depth_texture),
         REG_META_FIELD(Renderer, destroy_texture),
         REG_META_FIELD(Renderer, set_texture),
@@ -329,6 +394,7 @@ int l_Renderer_meta(lua_State* L) {
         REG_META_FIELD(Renderer, set_render_target),
         // Shader
         REG_META_FIELD(Renderer, create_shader),
+        REG_META_FIELD(Renderer, load_shader),
         REG_META_FIELD(Renderer, destroy_shader),
         {NULL, NULL}
     };

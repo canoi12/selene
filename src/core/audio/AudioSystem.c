@@ -1,8 +1,6 @@
 #include "selene_audio.h"
 
-typedef struct AudioSystem AudioSystem;
-
-struct AudioBuffer {
+struct _AudioBuffer {
     int type;
     int volume;
     int loop;
@@ -10,16 +8,16 @@ struct AudioBuffer {
     int offset;
     SDL_AudioStream* stream;
     union {
-        AudioDecoder* decoder;
-        AudioData* audio_data;
+        selene_AudioDecoder* decoder;
+        selene_AudioData* audio_data;
     };
 };
 
-struct AudioSystem {
+struct _AudioSystem {
     int paused;
     SDL_AudioSpec spec;
     SDL_AudioDeviceID device;
-    struct AudioBuffer* buffer_pool;
+    struct _AudioBuffer* buffer_pool;
     int pool_count;
     void* aux_data;
 #if defined(SELENE_USE_SDL3)
@@ -31,13 +29,13 @@ struct AudioSystem {
 };
 
 struct Music {
-    AudioDecoder* decoder;
-    AudioSystem* system;
+    selene_AudioDecoder* decoder;
+    selene_AudioSystem* system;
     SDL_AudioStream* stream;
 };
 
 struct Sound {
-    AudioSystem* system;
+    selene_AudioSystem* system;
     SDL_AudioStream* stream;
     void* data;
     int size;
@@ -51,11 +49,11 @@ static void s_sdl_audio_callback(void* userdata, Uint8* stream, int len) {
 #endif
     // fprintf(stderr, "AudioCallback\n");
     SDL_memset(stream, 0, len);
-    AudioSystem* system = (AudioSystem*)userdata;
+    selene_AudioSystem* system = (selene_AudioSystem*)userdata;
     //SDL_LockMutex(system->audio_mutex);
     int i = 0;
     while (i < system->pool_count) {
-        struct AudioBuffer* buffer = &system->buffer_pool[i];
+        struct _AudioBuffer* buffer = &system->buffer_pool[i];
         if (buffer->stream && buffer->playing) {
 #if defined(SELENE_USE_SDL3)
             int result = SDL_GetAudioStreamData(buffer->stream, temp, len);
@@ -105,7 +103,7 @@ MODULE_FUNCTION(AudioSystem, create) {
         samples = (int)luaL_optinteger(L, -1, samples);
         lua_pop(L, 1);
     }
-    NEW_UDATA(AudioSystem, system);
+    NEW_UDATA(selene_AudioSystem, system);
     SDL_AudioSpec spec;
     spec.freq = freq;
     spec.format = format;
@@ -139,8 +137,8 @@ MODULE_FUNCTION(AudioSystem, create) {
     memcpy(&(system->spec), &obtained, sizeof(SDL_AudioSpec));
     system->device = dev;
     system->pool_count = 256;
-    system->buffer_pool = (struct AudioBuffer*)malloc(system->pool_count * sizeof(struct AudioBuffer));
-    memset(system->buffer_pool, 0, system->pool_count * sizeof(struct AudioBuffer));
+    system->buffer_pool = (struct _AudioBuffer*)malloc(system->pool_count * sizeof(struct _AudioBuffer));
+    memset(system->buffer_pool, 0, system->pool_count * sizeof(struct _AudioBuffer));
     system->paused = 1;
     system->aux_data = malloc(size);
 
@@ -148,10 +146,10 @@ MODULE_FUNCTION(AudioSystem, create) {
 }
 
 static MODULE_FUNCTION(AudioSystem, play) {
-    CHECK_META(AudioSystem);
-    TEST_UDATA(AudioDecoder, dec);
+    CHECK_META(selene_AudioSystem);
+    TEST_UDATA(selene_AudioDecoder, dec);
     arg--;
-    TEST_UDATA(AudioData, adata);
+    TEST_UDATA(selene_AudioData, adata);
     if (!dec && !adata)
         return luaL_error(L, "invalid audio data type");
     AudioInfo* info = NULL;
@@ -174,7 +172,7 @@ static MODULE_FUNCTION(AudioSystem, play) {
 
     int i = 0;
     while (i < self->pool_count) {
-        struct AudioBuffer* buffer = &(self->buffer_pool[i]);
+        struct _AudioBuffer* buffer = &(self->buffer_pool[i]);
         if (!buffer->stream) {
             buffer->playing = 1;
             buffer->loop = loop;
@@ -234,14 +232,14 @@ static MODULE_FUNCTION(AudioSystem, play) {
 }
 
 static MODULE_FUNCTION(AudioSystem, pause) {
-    CHECK_META(AudioSystem);
+    CHECK_META(selene_AudioSystem);
     CHECK_INTEGER(inst);
     self->buffer_pool[inst].playing = !lua_toboolean(L, arg);
     return 0;
 }
 
 static MODULE_FUNCTION(AudioSystem, update) {
-    CHECK_META(AudioSystem);
+    CHECK_META(selene_AudioSystem);
 #if defined(SELENE_USE_SDL3)
     int samples = 4096 * SDL_AUDIO_FRAMESIZE(self->spec);
 #endif
@@ -250,7 +248,7 @@ static MODULE_FUNCTION(AudioSystem, update) {
     int i = 0;
     short* aux = (short*)self->aux_data;
     while (i < self->pool_count) {
-        struct AudioBuffer* buffer = &(self->buffer_pool[i]);
+        struct _AudioBuffer* buffer = &(self->buffer_pool[i]);
         if (buffer->decoder && buffer->type == 0) {
 #if defined(SELENE_USE_SDL3)
             int read = s_AudioDecoder_read_s16(buffer->decoder, samples, aux);
@@ -326,7 +324,7 @@ static MODULE_FUNCTION(AudioSystem, update) {
 }
 
 static MODULE_FUNCTION(AudioSystem, resume_device) {
-    CHECK_META(AudioSystem);
+    CHECK_META(selene_AudioSystem);
 #if defined(SELENE_USE_SDL3)
     SDL_ResumeAudioDevice(self->device);
 #else
@@ -337,7 +335,7 @@ static MODULE_FUNCTION(AudioSystem, resume_device) {
 }
 
 static MODULE_FUNCTION(AudioSystem, pause_device) {
-    CHECK_META(AudioSystem);
+    CHECK_META(selene_AudioSystem);
 #if defined(SELENE_USE_SDL3)
     SDL_PauseAudioDevice(self->device);
 #else
@@ -348,12 +346,12 @@ static MODULE_FUNCTION(AudioSystem, pause_device) {
 }
 
 static MODULE_FUNCTION(AudioSystem, set_volume) {
-    CHECK_META(AudioSystem);
+    CHECK_META(selene_AudioSystem);
     CHECK_INTEGER(sound);
     if (sound < 0 || sound >= self->pool_count)
         return luaL_error(L, "invalid sound instance");
     CHECK_NUMBER(float, volume);
-    struct AudioBuffer* buf = &(self->buffer_pool[sound]);
+    struct _AudioBuffer* buf = &(self->buffer_pool[sound]);
 #if defined(SELENE_USE_SDL3)
     buf->volume = volume;
 #else
@@ -364,18 +362,18 @@ static MODULE_FUNCTION(AudioSystem, set_volume) {
 }
 
 static MODULE_FUNCTION(AudioSystem, set_loop) {
-    CHECK_META(AudioSystem);
+    CHECK_META(selene_AudioSystem);
     CHECK_INTEGER(sound);
     if (sound < 0 || sound >= self->pool_count)
         return luaL_error(L, "invalid sound instance");
     GET_BOOLEAN(loop);
-    struct AudioBuffer* buf = &(self->buffer_pool[sound]);
+    struct _AudioBuffer* buf = &(self->buffer_pool[sound]);
     buf->loop = loop;
     return 0;
 }
 
 static MODULE_FUNCTION(AudioSystem, close) {
-    CHECK_META(AudioSystem);
+    CHECK_META(selene_AudioSystem);
     if (self->aux_data)
         free(self->aux_data);
     self->aux_data = NULL;

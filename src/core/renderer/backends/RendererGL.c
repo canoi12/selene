@@ -4,6 +4,9 @@ extern char font8x8_basic[128][8];
 extern char font8x8_control[32][8];
 extern char font8x8_ext_latin[96][8];
 
+static int aux_source_size = 0;
+static char* aux_source = NULL;
+
 const int gl_clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_STENCIL_BUFFER_BIT };
 
 const int gl_enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST, GL_SCISSOR_TEST, GL_CULL_FACE };
@@ -53,6 +56,7 @@ static inline void gl_enable_layout(selene_Renderer* r, struct selene_InputLayou
 int l_GL_Renderer__destroy(lua_State* L) {
     CHECK_META(selene_Renderer);
     luaL_unref(L, LUA_REGISTRYINDEX, self->l_window_ref);
+    if (aux_source) free(aux_source);
     free(self->command_pool);
     SDL_GL_DeleteContext(self->gl);
     return 0;
@@ -223,7 +227,7 @@ int l_GL_Renderer__create_buffer(lua_State* L) {
     glBindBuffer(target, handle);
     glBufferData(target, size, NULL, GL_DYNAMIC_DRAW);
     glBindBuffer(target, 0);
-    NEW_UDATA(GpuBuffer, buf);
+    NEW_UDATA(selene_GpuBuffer, buf);
     buf->type = opt;
     buf->size = size;
     buf->gl.handle = handle;
@@ -233,7 +237,7 @@ int l_GL_Renderer__create_buffer(lua_State* L) {
 
 int l_GL_Renderer__destroy_buffer(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     glDeleteBuffers(1, &(buffer->gl.handle));
     return 0;
 }
@@ -241,7 +245,7 @@ int l_GL_Renderer__destroy_buffer(lua_State* L) {
 int l_GL_Renderer__send_buffer_data(lua_State* L) {
     INIT_ARG();
     selene_Renderer* self = (selene_Renderer*)lua_touserdata(L, arg++);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     CHECK_INTEGER(size);
     if (!lua_isuserdata(L, arg)) return luaL_argerror(L, arg, "userdata or lightuserdata expected");
     void* data = lua_touserdata(L, arg++);
@@ -258,7 +262,7 @@ int l_GL_Renderer__send_buffer_data(lua_State* L) {
 
 int l_GL_Renderer__send_buffer_ortho(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     CHECK_INTEGER(offset);
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
@@ -284,7 +288,7 @@ int l_GL_Renderer__send_buffer_ortho(lua_State* L) {
 
 int l_GL_Renderer__send_triangle(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     const float vertices[] = {
             0.0f, 0.5f, 0.f, 1.f, 0.f, 1.f, 1.f,
             0.5f, -0.5f, 0.f, 1.f, 1.f, 0.f, 1.f,
@@ -298,7 +302,7 @@ int l_GL_Renderer__send_triangle(lua_State* L) {
 
 int l_GL_Renderer__send_rectangle(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     const float vertices[] = {
             -0.5f, 0.5f, 0.f, 1.f, 0.f, 1.f, 1.f,
             0.5f, 0.5f, 0.f, 1.f, 1.f, 0.f, 1.f,
@@ -375,7 +379,7 @@ int l_GL_Renderer__create_font(lua_State* L) {
             }
         }
     }
-    NEW_UDATA(Font, font);
+    NEW_UDATA(selene_Font, font);
     font->texture.width = w;
     font->texture.height = h;
     size_t size = w * h * 4;
@@ -391,7 +395,7 @@ int l_GL_Renderer__create_font(lua_State* L) {
     free(bitmap);
 #endif
 
-    FontGlyph* glyphs = font->glyphs;
+    selene_FontGlyph* glyphs = font->glyphs;
     for (int i = 0; i < 256; i++) {
         glyphs[i].ax = 8 / w;
         glyphs[i].ay = 0;
@@ -421,7 +425,7 @@ int l_GL_Renderer__create_texture2d(lua_State* L) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
-    NEW_UDATA(Texture2D, tex);
+    NEW_UDATA(selene_Texture2D, tex);
     tex->gl.handle = handle;
     tex->width = width;
     tex->height = height;
@@ -442,7 +446,7 @@ int l_GL_Renderer__create_depth_texture(lua_State* L) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
 #endif
     glBindTexture(GL_TEXTURE_2D, 0);
-    NEW_UDATA(Texture2D, tex);
+    NEW_UDATA(selene_Texture2D, tex);
     tex->gl.handle = handle;
     tex->width = width;
     tex->height = height;
@@ -452,7 +456,7 @@ int l_GL_Renderer__create_depth_texture(lua_State* L) {
 
 int l_GL_Renderer__destroy_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(Texture2D, tex);
+    CHECK_UDATA(selene_Texture2D, tex);
     glDeleteTextures(1, &(tex->gl.handle));
     return 0;
 }
@@ -462,8 +466,8 @@ int l_GL_Renderer__destroy_texture(lua_State* L) {
  */
 int l_GL_Renderer__create_render_target(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(Texture2D, color);
-    TEST_UDATA(Texture2D, depth);
+    CHECK_UDATA(selene_Texture2D, color);
+    TEST_UDATA(selene_Texture2D, depth);
 
     GLuint handle;
     GLuint tex_color, tex_depth;
@@ -513,10 +517,29 @@ int l_GL_Renderer__destroy_render_target(lua_State* L) {
 /**
  * Shaders
  */
+
 int l_GL_Renderer__create_shader(lua_State* L) {
     CHECK_META(selene_Renderer);
     int opt = luaL_checkoption(L, arg++, "vertex", shader_type_options);
-    const char* source = luaL_checkstring(L, arg++);
+    const char* source = NULL;
+    if (lua_type(L, arg) == LUA_TSTRING) {
+        fprintf(stdout, "Testing\n");
+        source = luaL_checkstring(L, arg++);
+    }
+    else if (lua_isinteger(L, arg)) {
+        int size = lua_tointeger(L, arg++);
+        if (size > aux_source_size) {
+            aux_source = realloc(aux_source, size + 1);
+            aux_source_size = size + 1;
+            fprintf(stdout, "alloc memory for aux_source: %d\n", size + 1);
+            if (!aux_source)
+                return luaL_error(L, "failed to alloc memory for shader compiler auxiliar source");
+        }
+        void* data = lua_touserdata(L, arg++);
+        memcpy(aux_source, data, size);
+        aux_source[size] = '\0';
+        source = aux_source;
+    }
     Uint32 handle = glCreateShader(gl_shader_types_values[opt]);
     glShaderSource(handle, 1, &source, NULL);
     int success;
@@ -557,7 +580,7 @@ int l_GL_Renderer__create_texture(lua_State* L) {
     glBindTexture(GL_TEXTURE_2D, handle);
     glTexImage2D(GL_TEXTURE_2D, 0, gl_pixel_formats_values[opt], width, height, 0, gl_pixel_formats_values[opt], GL_UNSIGNED_BYTE, data);
     glBindTexture(GL_TEXTURE_2D, 0);
-    NEW_UDATA(Texture2D, tex);
+    NEW_UDATA(selene_Texture2D, tex);
     tex->width = width;
     tex->height = height;
     tex->gl.handle = handle;
@@ -585,10 +608,10 @@ int l_GL_Renderer__flush(lua_State* L) {
     CHECK_META(selene_Renderer);
     struct {
         selene_RenderPipeline* pipe;
-        GpuBuffer* vertex;
-        GpuBuffer* index;
-        GpuBuffer* uniform;
-        Texture2D* texture;
+        selene_GpuBuffer* vertex;
+        selene_GpuBuffer* index;
+        selene_GpuBuffer* uniform;
+        selene_Texture2D* texture;
         selene_RenderTarget* target;
     } state;
     memset(&state, 0, sizeof(state));
@@ -684,7 +707,7 @@ int l_GL_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_VERTEX_BUFFER: {
-                GpuBuffer* b = rc->buffer.ptr;
+                selene_GpuBuffer* b = rc->buffer.ptr;
                 glBindBuffer(GL_ARRAY_BUFFER, b ? b->gl.handle : 0);
                 selene_RenderPipeline* rp = state.pipe;
                 if (b && rp) {
@@ -694,13 +717,13 @@ int l_GL_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_INDEX_BUFFER: {
-                GpuBuffer* b = rc->buffer.ptr;
+                selene_GpuBuffer* b = rc->buffer.ptr;
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, b ? b->gl.handle : 0);
                 state.index = b;
             }
                 break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
-                GpuBuffer* b = rc->buffer.ptr;
+                selene_GpuBuffer* b = rc->buffer.ptr;
 #if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
                 glBindBuffer(GL_UNIFORM_BUFFER, b ? b->gl.handle : 0);
                 glBindBufferBase(GL_UNIFORM_BUFFER, 0, b->gl.handle);
@@ -713,7 +736,7 @@ int l_GL_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_TEXTURE: {
-                Texture2D* t = (Texture2D*)rc->texture.ptr;
+                selene_Texture2D* t = (selene_Texture2D*)rc->texture.ptr;
                 glActiveTexture(GL_TEXTURE0+rc->texture.slot);
                 glBindTexture(rc->texture.target, t ? t->gl.handle : 0);
             }
@@ -797,23 +820,23 @@ int l_GL_Renderer__flush(lua_State* L) {
 int l_GL_Renderer__present(lua_State* L) {
     CHECK_META(selene_Renderer);
     l_GL_Renderer__flush(L);
-    SDL_GL_SwapWindow(self->window_ptr);
+    SDL_GL_SwapWindow(self->window_ptr->handle);
     return 0;
 }
 
 int l_GL_Renderer_create(lua_State* L) {
     INIT_ARG();
-    SDL_Window** win = (SDL_Window**)luaL_checkudata(L, arg++, "sdlWindow");
-    SDL_GLContext ctx = SDL_GL_CreateContext(*win);
+    selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
+    SDL_GLContext ctx = SDL_GL_CreateContext(win->handle);
     if (!ctx) {
         return luaL_error(L, "failed to create SDL OpenGL context: %s", SDL_GetError());
     }
     NEW_UDATA(selene_Renderer, r);
-    r->window_ptr = *win;
+    r->window_ptr = win;
     int width, height;
-    SDL_GetWindowSize(*win, &width, &height);
+    SDL_GetWindowSize(win->handle, &width, &height);
     r->gl = ctx;
-    SDL_GL_MakeCurrent(*win, ctx);
+    SDL_GL_MakeCurrent(win->handle, ctx);
 #if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     if (gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress) == 0)
         return luaL_error(L, "Failed to init glad");

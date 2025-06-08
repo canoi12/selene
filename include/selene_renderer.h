@@ -112,7 +112,7 @@ enum {
     SELENE_GPU_BUFFER_UNIFORM
 };
 
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
 struct GLBuffer {
     int type;
     GLuint handle;
@@ -137,11 +137,12 @@ struct DX11Buffer {
 #endif
 #endif
 
+#if 0
 typedef struct {
     Uint32 type;
     Uint32 stride, size;
     union {
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
         struct GLBuffer gl;
 #endif
 #ifndef SELENE_NO_VULKAN
@@ -157,16 +158,18 @@ typedef struct {
 #endif
     };
 } GpuBuffer;
+#endif
 
-typedef struct {
+typedef struct _GpuBuffer selene_GpuBuffer;
+struct _GpuBuffer {
     int type, usage;
-    int stride, size;
+    Uint32 stride, size;
     union {
-#ifndef SELENE_NO_GL
-        struct { GLuint handle; } gl;
+#ifndef SELENE_NO_OPENGL
+        struct { int type; GLuint handle; } gl;
 #endif
 #ifndef SELENE_NO_VULKAN
-        struct { VkBuffer handle; } vk;
+        struct { VkBuffer handle; VkDeviceMemory mem; } vk;
 #endif
 #if defined(OS_WIN)
 #ifndef SELENE_NO_DX11
@@ -174,13 +177,13 @@ typedef struct {
 #endif
 #endif
     };
-} selene_GpuBuffer;
+};
 
 /**
  * Texture Types
  */
 
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
 struct GLTexture {
     GLuint handle;
 };
@@ -199,9 +202,10 @@ struct DX11Texture {
 #endif
 #endif
 
-typedef struct {
+typedef struct _Texture2D selene_Texture2D;
+struct _Texture2D {
     union {
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
         struct GLTexture gl;
 #endif
 #ifndef SELENE_NO_VULKAN
@@ -220,16 +224,17 @@ typedef struct {
     };
     int width, height;
     int format;
-} Texture2D;
+};
 
-typedef struct {
+typedef struct _Texture selene_Texture;
+struct _Texture {
     int type;
     int width, height;
     int depth;
     int mip_level;
     int pixel_format;
     union {
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
         struct { GLuint handle; } gl;
 #endif
 #ifndef SELENE_NO_VULKAN
@@ -250,20 +255,22 @@ typedef struct {
 #endif
 #endif
     };
-} selene_Texture;
+};
 
-typedef struct {
-    Texture2D texture;
-    FontGlyph glyphs[256];
-} Font;
+typedef struct _Font selene_Font;
+struct _Font {
+    selene_Texture2D texture;
+    selene_FontGlyph glyphs[256];
+};
 
 /**
  * Render Target
  */
 
-typedef struct {
+typedef struct _RenderTarget selene_RenderTarget;
+struct _RenderTarget {
     union {
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
         struct {
             GLuint fbo;
         } gl;
@@ -278,17 +285,17 @@ typedef struct {
 #endif
 #endif
     };
-    Texture2D* color;
-    Texture2D* depth;
+    selene_Texture2D* color;
+    selene_Texture2D* depth;
     int width, height;
-} selene_RenderTarget;
+};
 
 
 /**
  * Shader
  */
 
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
 struct GLShader {
     Uint32 handle;
 };
@@ -317,11 +324,11 @@ struct DX12Shader {
 #endif
 #endif
 
-typedef struct selene_Shader selene_Shader;
-struct selene_Shader {
+typedef struct _Shader selene_Shader;
+struct _Shader {
     Uint32 type;
     union {
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
         struct { GLuint handle; } gl;
 #endif
 #ifndef SELENE_NO_VULKAN
@@ -388,7 +395,7 @@ struct selene_InputLayout {
     } attributes[8];
 };
 
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
 struct GLBlendState {
     GLboolean enabled;
     GLenum func0, func1;
@@ -438,21 +445,21 @@ struct DX12Pipeline {
 #endif
 #endif
 
-struct selene_BlendState {
+struct _BlendState {
     int enabled;
     int src, dst;
     int equation;
     void* handle;
 };
 
-struct selene_DepthStencilState {
+struct _DepthStencilState {
     int depth_enabled, stencil_enabled;
     int depth_func, stencil_func;
     int depth_write_mask;
     void* handle;
 };
 
-struct selene_RasterState {
+struct _RasterState {
     int fill_mode;
     int scissor_enabled;
     int cull_enabled;
@@ -460,16 +467,16 @@ struct selene_RasterState {
     void* handle;
 };
 
-typedef struct selene_RenderPipeline selene_RenderPipeline;
-struct selene_RenderPipeline {
+typedef struct _RenderPipeline selene_RenderPipeline;
+struct _RenderPipeline {
     struct selene_InputLayout layout;
     selene_Shader* vs;
     selene_Shader* ps;
-    struct selene_BlendState blend_state;
-    struct selene_DepthStencilState depth_stencil_state;
-    struct selene_RasterState raster_state;
+    struct _BlendState blend_state;
+    struct _DepthStencilState depth_stencil_state;
+    struct _RasterState raster_state;
     union {
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
         struct GLPipeline gl;
 #endif
 #ifndef SELENE_NO_VULKAN
@@ -566,7 +573,7 @@ struct RenderCommand {
 
         struct { int width, height; } size;
 
-        struct { Uint32 target; Uint32 handle; GpuBuffer* ptr; } buffer;
+        struct { Uint32 target; Uint32 handle; selene_GpuBuffer* ptr; } buffer;
         struct { Uint32 handle; } program;
         struct { Uint32 slot; Uint32 target; Uint32 handle; void* ptr; } texture;
         struct { int depth; Uint32 target; Uint32 handle; selene_RenderTarget* ptr; } target;
@@ -602,9 +609,7 @@ struct VertexBatch {
     float color[4];
 };
 
-typedef struct selene_Renderer selene_Renderer;
-
-enum SeleneRendererBackend {
+enum _RendererBackend {
     SELENE_RENDERER_OPENGL = 0,
     SELENE_RENDERER_VULKAN,
     SELENE_RENDERER_DIRECTX11,
@@ -635,10 +640,10 @@ struct VulkanSwapchain {
 };
 #endif
 
-struct selene_Renderer {
-    enum SeleneRendererBackend backend;
+struct _Renderer {
+    enum _RendererBackend backend;
     LuaReference l_window_ref;
-    SDL_Window* window_ptr;
+    selene_Window* window_ptr;
 
     union {
 #if defined(OS_WIN)
@@ -655,7 +660,7 @@ struct selene_Renderer {
         } dx12;
 #endif
 #endif
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
         SDL_GLContext gl;
 #endif
 #ifndef SELENE_NO_VULKAN

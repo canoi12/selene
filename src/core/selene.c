@@ -5,7 +5,6 @@
 
 int g_sdl_modules = 0;
 
-extern int l_renderer_create(lua_State* L);
 extern int g_init_renderer(lua_State* L, selene_Renderer* r, SDL_Window* win);
 
 int s_default_event_callback(lua_State *L);
@@ -216,6 +215,7 @@ void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf, int g
 
 extern void l_setup_extended_libs(lua_State *L);
 
+#if 0
 // Global Modules
 extern int luaopen_fs(lua_State *L);
 extern int luaopen_gl(lua_State *L);
@@ -233,10 +233,11 @@ extern int luaopen_font(lua_State *L);
 extern int luaopen_sdl(lua_State *L);
 #endif
 extern int luaopen_ctypes(lua_State *L);
-
+#endif
 static const luaL_Reg _global_modules_reg[] = {
+#if 0
     // {"fs", luaopen_fs},
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
     {"gl", luaopen_gl},
 #endif
     {"linmath", luaopen_linmath},
@@ -253,18 +254,21 @@ static const luaL_Reg _global_modules_reg[] = {
     {"sdl", luaopen_sdl},
 #endif
     {"ctypes", luaopen_ctypes},
+#endif
     {NULL, NULL}
 };
 
 // Selene Modules
 extern int luaopen_audio(lua_State *L);
-extern int luaopen_renderer(lua_State *L);
 extern int luaopen_filesystem(lua_State* L);
+extern int luaopen_renderer(lua_State *L);
+extern int luaopen_window(lua_State* L);
 
 static const luaL_Reg _selene_modules_reg[] = {
     {"audio", luaopen_audio},
     {"filesystem", luaopen_filesystem},
     {"renderer", luaopen_renderer},
+    {"window", luaopen_window},
     {NULL, NULL}
 };
 
@@ -410,67 +414,12 @@ static int l_selene_get_ticks(lua_State* L) {
  * Window
  */
 
+extern int l_create_window(lua_State* L);
 static int l_selene_create_window(lua_State* L) {
-    INIT_ARG();
-    CHECK_STRING(title);
-    CHECK_INTEGER(width);
-    CHECK_INTEGER(height);
-    int x = SDL_WINDOWPOS_CENTERED;
-    int y = SDL_WINDOWPOS_CENTERED;
-    int flags = SDL_WINDOW_SHOWN;
-    if (lua_istable(L, arg)) {
-        lua_getfield(L, arg, "x");
-        x = (int)luaL_optinteger(L, -1, x);
-        lua_pop(L, 1);
-
-        lua_getfield(L, arg, "y");
-        y = (int)luaL_optinteger(L, -1, y);
-        lua_pop(L, 1);
-
-        if (lua_getfield(L, arg, "resizable") == LUA_TBOOLEAN) flags |= SDL_WINDOW_RESIZABLE * lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, arg, "always_on_top") == LUA_TBOOLEAN) flags |= SDL_WINDOW_ALWAYS_ON_TOP * lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, arg, "borderless") == LUA_TBOOLEAN) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, arg, "opengl") == LUA_TBOOLEAN) flags |= SDL_WINDOW_OPENGL * lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, arg, "vulkan") == LUA_TBOOLEAN) flags |= SDL_WINDOW_VULKAN * lua_toboolean(L, -1);
-        lua_pop(L, 2);
-    }
-    if (flags & SDL_WINDOW_OPENGL) {
-#if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-#else
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-#endif
-    }
-#ifndef SELENE_NO_VULKAN
-    if (flags & SDL_WINDOW_VULKAN) {
-        if (SDL_Vulkan_LoadLibrary(NULL) != 0) {
-            return luaL_error(L, "failed to load Vulkan library: %s", SDL_GetError());
-        }
-    }
-#endif
-    SDL_Window *win = SDL_CreateWindow(
-        title,
-#if !defined(SELENE_USE_SDL3)
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-#endif
-        width, height, flags
-    );
-    if (win == NULL)
-        return luaL_error(L, "failed to create window: %s", SDL_GetError());
-    SDL_Window **win_ptr = (SDL_Window **)lua_newuserdata(L, sizeof(SDL_Window *));
-    luaL_setmetatable(L, "sdlWindow");
-    *win_ptr = win;
-    return 1;
+    return l_create_window(L);
 }
 
+extern int l_renderer_create(lua_State* L);
 static int l_selene_create_renderer(lua_State* L) {
     return l_renderer_create(L);
 }

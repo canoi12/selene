@@ -8,7 +8,7 @@ static MODULE_FUNCTION(audio, load_data) {
     INIT_ARG();
     size_t len;
     CHECK_LSTRING(path, &len);
-    AudioDecoder dec;
+    selene_AudioDecoder dec;
     int res = s_AudioDecoder_init(L, path, (int)len, &dec);
     if (res <= 0) {
         return luaL_error(L, "failed to load audio data: %s", path);
@@ -76,7 +76,7 @@ static MODULE_FUNCTION(audio, load_data) {
 #else
     size_t size = SDL_AudioStreamAvailable(stream);
 #endif
-    NEW_UDATA(AudioData, data);
+    NEW_UDATA(selene_AudioData, data);
     data->size = (int)size;
     data->data = malloc(size);
     data->info.sample_rate = spec.freq;
@@ -106,13 +106,13 @@ static MODULE_FUNCTION(audio, load_decoder) {
     size_t len;
     CHECK_LSTRING(path, &len);
 
-    AudioDecoder out;
+    selene_AudioDecoder out;
     int res = s_AudioDecoder_init(L, path, (int)len, &out);
     if (res <= 0) {
         return res;
     }
-    NEW_UDATA(AudioDecoder, dec);
-    memcpy(dec, &out, sizeof(AudioDecoder));
+    NEW_UDATA(selene_AudioDecoder, dec);
+    memcpy(dec, &out, sizeof(selene_AudioDecoder));
 
     return 1;
 }
@@ -127,7 +127,7 @@ int luaopen_audio(lua_State* L) {
         REG_FIELD(audio, load_decoder),
     END_REG()
     luaL_newlib(L, reg);
-    luaL_newmetatable(L, "AudioData");
+    luaL_newmetatable(L, selene_AudioData_METANAME);
     lua_setfield(L, -2, "AudioData");
     l_AudioDecoder_meta(L);
     lua_setfield(L, -2, "AudioDecoder");

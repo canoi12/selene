@@ -11,16 +11,18 @@
 #include "dr_mp3.h"
 #include "dr_flac.h"
 
-typedef struct AudioData AudioData;
-typedef struct AudioDecoder AudioDecoder;
+typedef struct _AudioSystem selene_AudioSystem;
 
-struct AudioData {
+typedef struct _AudioData selene_AudioData;
+typedef struct _AudioDecoder selene_AudioDecoder;
+
+struct _AudioData {
     AudioInfo info;
     int size;
     char* data;
 };
 
-struct AudioDecoder {
+struct _AudioDecoder {
     AudioInfo info;
     char format;
     union {
@@ -39,15 +41,15 @@ struct AudioDecoder {
 extern "C" {
 #endif
 
-SELENE_API int s_AudioDecoder_init(lua_State *L, const char *path, int len, AudioDecoder *out);
+SELENE_API int s_AudioDecoder_init(lua_State *L, const char *path, int len, selene_AudioDecoder *out);
 
-SELENE_API int s_AudioDecoder_read_s16(AudioDecoder *self, int len, short *data);
+SELENE_API int s_AudioDecoder_read_s16(selene_AudioDecoder *self, int len, short *data);
 
-SELENE_API int s_AudioDecoder_read_f32(AudioDecoder *self, int len, float *data);
-// int s_AudioDecoder_get_chunk(AudioDecoder* self, int len, short* data);
-SELENE_API int s_AudioDecoder_seek(AudioDecoder *self, int index);
+SELENE_API int s_AudioDecoder_read_f32(selene_AudioDecoder *self, int len, float *data);
+// int s_AudioDecoder_get_chunk(selene_AudioDecoder* self, int len, short* data);
+SELENE_API int s_AudioDecoder_seek(selene_AudioDecoder *self, int index);
 
-SELENE_API int s_AudioDecoder_close(AudioDecoder *self);
+SELENE_API int s_AudioDecoder_close(selene_AudioDecoder *self);
 
 #if defined(__cplusplus)
 }

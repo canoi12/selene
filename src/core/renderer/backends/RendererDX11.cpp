@@ -251,7 +251,7 @@ int l_DX11_Renderer__create_buffer(lua_State* L) {
     fprintf(stdout, "dx11 binding: %d %d\n", opt, dx11_buffer_target_types_values[opt]);
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     desc.MiscFlags = 0;
-    NEW_UDATA(GpuBuffer, buf);
+    NEW_UDATA(selene_GpuBuffer, buf);
     buf->type = opt;
     ID3D11Buffer* handle;
     HRESULT hr = self->dx11.device->CreateBuffer(&desc, NULL, &handle);
@@ -271,14 +271,14 @@ int l_DX11_Renderer__create_buffer(lua_State* L) {
 
 int l_DX11_Renderer__destroy_buffer(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     buffer->dx11.handle->Release();
     return 1;
 }
 
 int l_DX11_Renderer__send_buffer_data(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     CHECK_INTEGER(size);
     if (!lua_isuserdata(L, arg)) return luaL_argerror(L, arg, "userdata or lightuserdata expected");
     void* data = lua_touserdata(L, arg++);
@@ -319,7 +319,7 @@ int l_DX11_Renderer__send_buffer_data(lua_State* L) {
 
 int l_DX11_Renderer__send_buffer_ortho(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(GpuBuffer, buffer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
     CHECK_INTEGER(offset);
     CHECK_NUMBER(float, left);
     CHECK_NUMBER(float, right);
@@ -405,7 +405,7 @@ int l_DX11_Renderer__create_font(lua_State* L) {
             }
         }
     }
-    NEW_UDATA(Font, font);
+    NEW_UDATA(selene_Font, font);
     font->texture.width = w;
     font->texture.height = h;
     size_t size = w * h * 4;
@@ -466,7 +466,7 @@ int l_DX11_Renderer__create_font(lua_State* L) {
     font->texture.dx11.srv = srv;
     font->texture.dx11.sampler = sampler_state;
 
-    FontGlyph* glyphs = font->glyphs;
+    selene_FontGlyph* glyphs = font->glyphs;
     for (int i = 0; i < 256; i++) {
         glyphs[i].ax = 8 / w;
         glyphs[i].ay = 0;
@@ -543,7 +543,7 @@ int l_DX11_Renderer__create_texture2d(lua_State* L) {
         return luaL_error(L, "Failed to create shader resource view: 0x%08X", hr);
     }
 
-    NEW_UDATA(Texture2D, tex);
+    NEW_UDATA(selene_Texture2D, tex);
     tex->dx11.tex2d = handle;
     tex->dx11.srv = srv;
     tex->dx11.sampler = sampler_state;
@@ -592,7 +592,7 @@ int l_DX11_Renderer__create_depth_texture(lua_State* L) {
         lua_error(L);
         return 0;
     }
-    NEW_UDATA(Texture2D, tex);
+    NEW_UDATA(selene_Texture2D, tex);
     tex->dx11.tex2d = handle;
     tex->dx11.srv = NULL;
     tex->dx11.sampler = NULL;
@@ -604,7 +604,7 @@ int l_DX11_Renderer__create_depth_texture(lua_State* L) {
 
 int l_DX11_Renderer__destroy_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(Texture2D, tex);
+    CHECK_UDATA(selene_Texture2D, tex);
     if (tex->dx11.srv) tex->dx11.srv->Release();
     if (tex->dx11.sampler) tex->dx11.sampler->Release();
     if (tex->dx11.tex2d) tex->dx11.tex2d->Release();
@@ -617,8 +617,8 @@ int l_DX11_Renderer__destroy_texture(lua_State* L) {
 
 int l_DX11_Renderer__create_render_target(lua_State* L) {
     CHECK_META(selene_Renderer);
-    CHECK_UDATA(Texture2D, color);
-    TEST_UDATA(Texture2D, depth);
+    CHECK_UDATA(selene_Texture2D, color);
+    TEST_UDATA(selene_Texture2D, depth);
 
 #if 0
     D3D11_TEXTURE2D_DESC rtDesc = {};
@@ -717,7 +717,7 @@ int l_DX11_Renderer__create_shader(lua_State* L) {
         case 0: // vertex
             target = "vs_5_0";
             break;
-        case 1: // fragment (pixel in DX)
+        case 1: // fragment (pixel in DirectX)
             target = "ps_5_0";
             break;
             // Add other shader types as needed
@@ -812,10 +812,10 @@ int l_DX11_Renderer__flush(lua_State* L) {
     CHECK_META(selene_Renderer);
     struct {
         selene_RenderPipeline* pipe;
-        GpuBuffer* vertex;
-        GpuBuffer* index;
-        GpuBuffer* uniform;
-        Texture2D* texture;
+        selene_GpuBuffer* vertex;
+        selene_GpuBuffer* index;
+        selene_GpuBuffer* uniform;
+        selene_Texture2D* texture;
         selene_RenderTarget* target;
         UINT stride;
     } state;
@@ -910,7 +910,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_VERTEX_BUFFER: {
-                GpuBuffer* b = rc->buffer.ptr;
+                selene_GpuBuffer* b = rc->buffer.ptr;
                 selene_RenderPipeline* rp = state.pipe;
                 UINT offset = 0;
                 UINT stride = state.stride;
@@ -926,19 +926,19 @@ int l_DX11_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_INDEX_BUFFER: {
-                GpuBuffer* b = rc->buffer.ptr;
+                selene_GpuBuffer* b = rc->buffer.ptr;
                 self->dx11.context->IASetIndexBuffer(b ? b->dx11.handle : NULL, DXGI_FORMAT_R32_UINT, 0);
                 state.index = b;
             }
                 break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
-                GpuBuffer* b = rc->buffer.ptr;
+                selene_GpuBuffer* b = rc->buffer.ptr;
                 self->dx11.context->VSSetConstantBuffers(0, 1, b ? &(b->dx11.handle) : NULL);
                 state.uniform = b;
             }
                 break;
             case RENDER_COMMAND_SET_TEXTURE: {
-                Texture2D* t = (Texture2D*)rc->texture.ptr;
+                selene_Texture2D* t = (selene_Texture2D*)rc->texture.ptr;
                 if (t) {
                     self->dx11.context->PSSetShaderResources(0, 1, &t->dx11.srv);
                     ID3D11SamplerState* sampler = t->dx11.sampler;
@@ -1026,13 +1026,13 @@ int l_DX11_Renderer__present(lua_State* L) {
 
 extern "C" int l_DX11_Renderer_create(lua_State * L) {
     INIT_ARG();
-    SDL_Window** win = (SDL_Window**)luaL_checkudata(L, arg++, "sdlWindow");
+    selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
     int width, height;
-    SDL_GetWindowSize(*win, &width, &height);
+    SDL_GetWindowSize(win->handle, &width, &height);
 
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
-    if (!SDL_GetWindowWMInfo(*win, &wmInfo)) {
+    if (!SDL_GetWindowWMInfo(win->handle, &wmInfo)) {
         return luaL_error(L, "Cannot get WM Info from SDL_Window: %s", SDL_GetError());
     }
     HWND hwnd = wmInfo.info.win.window;
@@ -1248,7 +1248,7 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
 
     self->default_target.dx11.rtv = rtv;
     self->default_target.dx11.dsv = dsv;
-    self->default_target.depth = (Texture2D*)malloc(sizeof(Texture2D));
+    self->default_target.depth = (selene_Texture2D*)malloc(sizeof(selene_Texture2D));
     self->default_target.depth->dx11.tex2d = depthStencilBuffer;
 
     self->command_offset = 0;

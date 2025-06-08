@@ -1,5 +1,10 @@
 ﻿#include "selene_renderer.h"
 
+#include "font8x8/font8x8_latin.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #ifndef SELENE_NO_OPENGL
 extern int l_GL_Renderer_create(lua_State* L);
 static int l_gl_renderer_functions_ref = LUA_NOREF;
@@ -62,13 +67,13 @@ const char* renderer_backend_options[] = { "opengl", "vulkan", "dx11", "dx12", N
 
 int l_renderer_create(lua_State* L) {
     const char* api_name = luaL_checkstring(L, 2);
-#ifndef SELENE_NO_GL
+#ifndef SELENE_NO_OPENGL
     if (strcmp(api_name, "opengl") == 0) {
         return l_GL_Renderer_create(L);
     }
 #endif
 #if defined(OS_WIN)
-    else if (strcmp(api_name, "dx11") == 0) {
+    else if (strcmp(api_name, "d3d11") == 0) {
         return l_DX11_Renderer_create(L);
     }
 #endif
@@ -89,25 +94,26 @@ int luaopen_renderer(lua_State* L) {
     lua_newtable(L);
     // Renderer meta
     l_Renderer_meta(L);
-    lua_setfield(L, -2, RENDERER_CLASS);
+    lua_setfield(L, -2, "Renderer");
 
-    luaL_newmetatable(L, "selene_Shader");
-    lua_setfield(L, -2, "selene_Shader");
+    luaL_newmetatable(L, selene_Font_METANAME);
+    lua_setfield(L, -2, "Font");
 
-    luaL_newmetatable(L, "selene_RenderPipeline");
-    lua_setfield(L, -2, "selene_RenderPipeline");
-
-    luaL_newmetatable(L, "GpuBuffer");
+    luaL_newmetatable(L, selene_GpuBuffer_METANAME);
     lua_setfield(L, -2, "GpuBuffer");
 
-    luaL_newmetatable(L, "selene_RenderTarget");
-    lua_setfield(L, -2, "selene_RenderTarget");
+    luaL_newmetatable(L, selene_RenderPipeline_METANAME);
+    lua_setfield(L, -2, "RenderPipeline");
 
-    luaL_newmetatable(L, "Texture2D");
+    luaL_newmetatable(L, selene_RenderTarget_METANAME);
+    lua_setfield(L, -2, "RenderTarget");
+
+    luaL_newmetatable(L, selene_Shader_METANAME);
+    lua_setfield(L, -2, "Shader");
+
+    luaL_newmetatable(L, selene_Texture2D_METANAME);
     lua_setfield(L, -2, "Texture2D");
 
-    luaL_newmetatable(L, "Font");
-    lua_setfield(L, -2, "Font");
 
     l_VertexBatch_meta(L);
     luaL_ref(L, LUA_REGISTRYINDEX);

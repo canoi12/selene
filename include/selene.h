@@ -1,7 +1,7 @@
 #ifndef SELENE_H_
 #define SELENE_H_
 
-#define SELENE_VERSION "0.5.0"
+#include "selene_config.h"
 
 #include <platforms.h>
 #include <common.h>
@@ -77,10 +77,10 @@ enum {
     SELENE_FLAC_FORMAT,
 };
 
-typedef struct AudioDecoder AudioDecoder;
+typedef struct _AudioDecoder selene_AudioDecoder;
 
-typedef struct AudioInfo AudioInfo;
-struct AudioInfo {
+typedef struct _AudioInfo AudioInfo;
+struct _AudioInfo {
     int sample_rate;
     int channels;
     int format;
@@ -91,12 +91,13 @@ struct AudioInfo {
 #endif/* SELENE_NO_AUDIO */
 
 #ifndef SELENE_NO_FONT
-typedef struct {
+typedef struct _FontGlyph selene_FontGlyph;
+struct _FontGlyph {
     int ax, ay;
     int bl, bt;
     int bw, bh;
     int tx;
-} FontGlyph;
+};
 #endif /* SELENE_NO_FONT */
 
 typedef struct {
@@ -108,6 +109,28 @@ typedef struct {
 } SeleneContext;
 
 extern SeleneContext g_selene_context;
+
+typedef struct selene_File selene_File;
+struct selene_File {
+#if defined(SELENE_USE_SDL3)
+    SDL_IOStream* handle;
+#else
+    SDL_RWops* handle;
+#endif
+};
+
+typedef struct _Renderer selene_Renderer;
+typedef struct _Window selene_Window;
+
+struct _Window {
+#if defined(SELENE_USE_GLFW)
+    void* handle;
+#else
+    SDL_Window* handle;
+#endif
+    char title[128];
+    int width, height;
+};
 
 // Mask for the initiated SDL modules
 extern int g_sdl_modules;

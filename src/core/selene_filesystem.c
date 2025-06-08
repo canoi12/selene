@@ -6,17 +6,8 @@
 #endif
 #include <sys/stat.h>
 
-typedef struct File File;
-struct File {
-#if defined(SELENE_USE_SDL3)
-    SDL_IOStream* handle;
-#else
-    SDL_RWops* handle;
-#endif
-};
-
-static int l_File__read(lua_State* L) {
-    CHECK_META(File);
+static int l_selene_File__read(lua_State* L) {
+    CHECK_META(selene_File);
 #if defined(SELENE_USE_SDL3)
     size_t size = SDL_GetIOSize(self->handle);
 #else
@@ -38,8 +29,8 @@ static int l_File__read(lua_State* L) {
     return 1;
 }
 
-static int l_File__write(lua_State* L) {
-    CHECK_META(File);
+static int l_selene_File__write(lua_State* L) {
+    CHECK_META(selene_File);
     void* data = NULL;
     size_t size = 0;
     if (lua_isstring(L, arg))
@@ -57,8 +48,8 @@ static int l_File__write(lua_State* L) {
     return 1;
 }
 
-static int l_File__data(lua_State* L) {
-    CHECK_META(File);
+static int l_selene_File__data(lua_State* L) {
+    CHECK_META(selene_File);
 #if defined(SELENE_USE_SDL3)
     size_t size = SDL_GetIOSize(self->handle);
 #else
@@ -73,8 +64,8 @@ static int l_File__data(lua_State* L) {
     return 1;
 }
 
-static int l_File__size(lua_State* L) {
-    CHECK_META(File);
+static int l_selene_File__size(lua_State* L) {
+    CHECK_META(selene_File);
 #if defined(SELENE_USE_SDL3)
     size_t size = SDL_GetIOSize(self->handle);
 #else
@@ -86,12 +77,12 @@ static int l_File__size(lua_State* L) {
 
 const char* str_whence[] = {"set", "curr", "end", NULL};
 
-static int l_File__seek(lua_State* L) {
-    CHECK_META(File);
+static int l_selene_File__seek(lua_State* L) {
+    CHECK_META(selene_File);
     CHECK_INTEGER(offset);
     int opt = luaL_checkoption(L, arg++, "set", str_whence);
 #if defined(SELENE_USE_SDL3)
-    Sint64 off = SDL_SeekIO(self->Handle, offset, opt);
+    Sint64 off = SDL_SeekIO(self->handle, offset, opt);
 #else
     Sint64 off = SDL_RWseek(self->handle, offset, opt);
 #endif
@@ -99,8 +90,8 @@ static int l_File__seek(lua_State* L) {
     return 1;
 }
 
-static int l_File__tell(lua_State* L) {
-    CHECK_META(File);
+static int l_selene_File__tell(lua_State* L) {
+    CHECK_META(selene_File);
 #if defined(SELENE_USE_SDL3)
     Sint64 tell = SDL_TellIO(self->handle);
 #else
@@ -110,8 +101,8 @@ static int l_File__tell(lua_State* L) {
     return 1;
 }
 
-static int l_File__close(lua_State* L) {
-    CHECK_META(File);
+static int l_selene_File__close(lua_State* L) {
+    CHECK_META(selene_File);
 #if defined(SELENE_USE_SDL3)
     SDL_CloseIO(self->handle);
 #else
@@ -120,18 +111,18 @@ static int l_File__close(lua_State* L) {
     return 0;
 }
 
-static int l_File_meta(lua_State* L) {
+static int l_selene_File_meta(lua_State* L) {
     const luaL_Reg reg[] = {
-        REG_META_FIELD(File, read),
-        REG_META_FIELD(File, write),
-        REG_META_FIELD(File, data),
-        REG_META_FIELD(File, size),
-        REG_META_FIELD(File, seek),
-        REG_META_FIELD(File, tell),
-        REG_META_FIELD(File, close),
+        REG_META_FIELD(selene_File, read),
+        REG_META_FIELD(selene_File, write),
+        REG_META_FIELD(selene_File, data),
+        REG_META_FIELD(selene_File, size),
+        REG_META_FIELD(selene_File, seek),
+        REG_META_FIELD(selene_File, tell),
+        REG_META_FIELD(selene_File, close),
         {NULL, NULL}
     };
-    luaL_newmetatable(L, "File");
+    luaL_newmetatable(L, selene_File_METANAME);
     luaL_setfuncs(L, reg, 0);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
@@ -146,8 +137,8 @@ static MODULE_FUNCTION(filesystem, open) {
 #else
     SDL_RWops *rw = SDL_RWFromFile(filename, mode);
 #endif
-    struct File* file = (struct File*)lua_newuserdata(L, sizeof(File));
-    luaL_setmetatable(L, "File");
+    selene_File* file = (selene_File*)lua_newuserdata(L, sizeof(*file));
+    luaL_setmetatable(L, selene_File_METANAME);
     file->handle = rw;
     return 1;
 }
@@ -196,7 +187,7 @@ static MODULE_FUNCTION(filesystem, read) {
     SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
 #endif
     if (!rw)
-        return luaL_error(L, "Failed to read file: %s\n", filename);
+        return luaL_error(L, "failed to read file %s: %s\n", filename, SDL_GetError());
 #if defined(SELENE_USE_SDL3)
     size_t size = SDL_GetIOSize(rw);
 #else
@@ -290,7 +281,7 @@ int luaopen_filesystem(lua_State* L) {
         REG_FIELD(filesystem, rmdir),
     END_REG()
     luaL_newlib(L, reg);
-    l_File_meta(L);
+    l_selene_File_meta(L);
     lua_setfield(L, -2, "File");
     return 1;
 }

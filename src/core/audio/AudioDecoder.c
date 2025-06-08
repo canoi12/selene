@@ -1,6 +1,6 @@
 #include "selene_audio.h"
 
-int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* out) {
+int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDecoder* out) {
     char* p = (char*)path + len;
     while (*p != '.')
         p--;
@@ -93,13 +93,13 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, AudioDecoder* o
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDecoder, close) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, close) {
+    CHECK_META(selene_AudioDecoder);
     s_AudioDecoder_close(self);
     return 0;
 }
 
-int s_AudioDecoder_close(AudioDecoder* self) {
+int s_AudioDecoder_close(selene_AudioDecoder* self) {
     switch (self->format) {
         case SELENE_WAV_FORMAT:
             drwav_uninit(&(self->wav));
@@ -118,18 +118,18 @@ int s_AudioDecoder_close(AudioDecoder* self) {
     return 0;
 }
 
-static MODULE_FUNCTION(AudioDecoder, clone) {
+static MODULE_FUNCTION(selene_AudioDecoder, clone) {
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDecoder, seek) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, seek) {
+    CHECK_META(selene_AudioDecoder);
     CHECK_INTEGER(index);
     s_AudioDecoder_seek(self, index);
     return 0;
 }
 
-int s_AudioDecoder_seek(AudioDecoder* self, int index) {
+int s_AudioDecoder_seek(selene_AudioDecoder* self, int index) {
     switch (self->format) {
         case SELENE_WAV_FORMAT:
             drwav_seek_to_pcm_frame(&(self->wav), index);
@@ -148,14 +148,14 @@ int s_AudioDecoder_seek(AudioDecoder* self, int index) {
     return 0;
 }
 
-static MODULE_FUNCTION(AudioDecoder, decode_data) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, decode_data) {
+    CHECK_META(selene_AudioDecoder);
     CHECK_UDATA(Data, data);
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDecoder, read_s16) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, read_s16) {
+    CHECK_META(selene_AudioDecoder);
     CHECK_UDATA(Data, data);
     OPT_INTEGER(len, data[0]);
     int frame_count;
@@ -164,7 +164,7 @@ static MODULE_FUNCTION(AudioDecoder, read_s16) {
     return 1;
 }
 
-int s_AudioDecoder_read_s16(AudioDecoder* self, int len, short* data) {
+int s_AudioDecoder_read_s16(selene_AudioDecoder* self, int len, short* data) {
     switch (self->format) {
         case SELENE_WAV_FORMAT:
             return (int)drwav_read_pcm_frames_s16(&(self->wav), len, data);
@@ -179,8 +179,8 @@ int s_AudioDecoder_read_s16(AudioDecoder* self, int len, short* data) {
     }
 }
 
-static MODULE_FUNCTION(AudioDecoder, read_f32) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, read_f32) {
+    CHECK_META(selene_AudioDecoder);
     CHECK_UDATA(Data, data);
     OPT_INTEGER(len, data[0]);
     int frame_count;
@@ -189,7 +189,7 @@ static MODULE_FUNCTION(AudioDecoder, read_f32) {
     return 1;
 }
 
-int s_AudioDecoder_read_f32(AudioDecoder* self, int len, float* data) {
+int s_AudioDecoder_read_f32(selene_AudioDecoder* self, int len, float* data) {
     switch (self->format) {
         case SELENE_WAV_FORMAT:
             return (int)drwav_read_pcm_frames_f32(&(self->wav), len, data);
@@ -204,8 +204,8 @@ int s_AudioDecoder_read_f32(AudioDecoder* self, int len, float* data) {
     }
 }
 
-static MODULE_FUNCTION(AudioDecoder, get_chunk) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, get_chunk) {
+    CHECK_META(selene_AudioDecoder);
     CHECK_UDATA(Data, data);
     OPT_INTEGER(len, data[0]);
     size_t frame_count;
@@ -233,41 +233,41 @@ static MODULE_FUNCTION(AudioDecoder, get_chunk) {
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDecoder, get_sample_rate) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, get_sample_rate) {
+    CHECK_META(selene_AudioDecoder);
     PUSH_INTEGER(self->info.sample_rate);
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDecoder, get_channels) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, get_channels) {
+    CHECK_META(selene_AudioDecoder);
     PUSH_INTEGER(self->info.channels);
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDecoder, get_bit_depth) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, get_bit_depth) {
+    CHECK_META(selene_AudioDecoder);
     PUSH_INTEGER(self->info.bit_depth);
     return 1;
 }
 
-static MODULE_FUNCTION(AudioDecoder, getFrameCount) {
-    CHECK_META(AudioDecoder);
+static MODULE_FUNCTION(selene_AudioDecoder, getFrameCount) {
+    CHECK_META(selene_AudioDecoder);
     PUSH_INTEGER(self->info.frame_count);
     return 1;
 }
 
 int l_AudioDecoder_meta(lua_State* LUA_STATE_NAME) {
     BEGIN_REG(reg)
-                    REG_FIELD(AudioDecoder, close),
-                    REG_FIELD(AudioDecoder, seek),
-                    REG_FIELD(AudioDecoder, decode_data),
-                    REG_FIELD(AudioDecoder, get_chunk),
-                    REG_FIELD(AudioDecoder, get_sample_rate),
-                    REG_FIELD(AudioDecoder, get_channels),
-                    REG_FIELD(AudioDecoder, get_bit_depth),
+        REG_FIELD(selene_AudioDecoder, close),
+        REG_FIELD(selene_AudioDecoder, seek),
+        REG_FIELD(selene_AudioDecoder, decode_data),
+        REG_FIELD(selene_AudioDecoder, get_chunk),
+        REG_FIELD(selene_AudioDecoder, get_sample_rate),
+        REG_FIELD(selene_AudioDecoder, get_channels),
+        REG_FIELD(selene_AudioDecoder, get_bit_depth),
     END_REG()
-    luaL_newmetatable(L, "AudioDecoder");
+    luaL_newmetatable(L, selene_AudioDecoder_METANAME);
     luaL_setfuncs(L, reg, 0);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
