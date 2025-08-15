@@ -12,7 +12,7 @@
 #define selene_File_METANAME "selene_File"
 
 /* Renderer */
-#define selene_Renderer_METANAME "selene_Renderer"
+#define selene_Renderer_METANAME "selene.Renderer"
 
 #define selene_Font_METANAME "selene_Font"
 #define selene_GpuBuffer_METANAME "selene_GpuBuffer"
