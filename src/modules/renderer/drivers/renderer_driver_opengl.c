@@ -538,10 +538,8 @@ int l_GL_Renderer__create_shader(lua_State* L) {
     int opt = luaL_checkoption(L, arg++, "vertex", shader_type_options);
     const char* source = NULL;
     if (lua_type(L, arg) == LUA_TSTRING) {
-        fprintf(stdout, "Testing\n");
         source = luaL_checkstring(L, arg++);
-    }
-    else if (lua_isinteger(L, arg)) {
+    } else if (lua_isinteger(L, arg)) {
         int size = lua_tointeger(L, arg++);
         if (size > aux_source_size) {
             aux_source = realloc(aux_source, size + 1);
