@@ -2,6 +2,12 @@
 #include "modules/filesystem.h"
 #ifndef SELENE_NO_FILESYSTEM
 
+#if !defined(OS_WIN)
+#include <dirent.h>
+#include <unistd.h>
+#endif
+#include <sys/stat.h>
+
 //typedef struct _File selene_File;
 struct _File {
     int virtual;
@@ -355,6 +361,19 @@ static int l_filesystem_set_path(lua_State* L) {
     return 0;
 }
 
+static int l_filesystem_exists(lua_State* L) {
+    const char* path = luaL_checkstring(L, 1);
+    int exists = 1;
+    struct stat info;
+    int virt = get_virt_path(L, path);
+    if (virt > 0) path = lua_tostring(L, -1);
+    lua_pop(L, 1);
+    if (stat(path, &info) == -1)
+        exists = 0;
+    lua_pushboolean(L, exists);
+    return 1;
+}
+
 int luaopen_filesystem(lua_State* L) {
     const luaL_Reg _reg[] = {
         {"read", l_filesystem_read},
@@ -364,6 +383,7 @@ int luaopen_filesystem(lua_State* L) {
         {"load", l_filesystem_load},
         {"resolve", l_filesystem_resolve},
         {"set_path", l_filesystem_set_path},
+        {"exists", l_filesystem_exists},
         {NULL, NULL}
     };
     luaL_newlib(L, _reg);
