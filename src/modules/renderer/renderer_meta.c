@@ -172,7 +172,7 @@ int l_Renderer__load_texture2d(lua_State* L) {
     if (!rw) {
         lua_pushnil(L);
         lua_pushfstring(L, "failed to open file %s\n", filename);
-        return 1;
+        return 2;
     }
     size_t size = SDL_RWsize(rw);
     void* data = malloc(size);
