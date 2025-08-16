@@ -139,9 +139,9 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     if (!lua_istable(L, arg))
         return luaL_argerror(L, arg, "must be a table");
     lua_getfield(L, arg, "vs");
-    selene_Shader *vertex = (selene_Shader *)luaL_checkudata(L, -1, "selene_Shader");
+    selene_Shader *vertex = (selene_Shader *)luaL_checkudata(L, -1, selene_Shader_METANAME);
     lua_getfield(L, arg, "ps");
-    selene_Shader *pixel = (selene_Shader *)luaL_checkudata(L, -1, "selene_Shader");
+    selene_Shader *pixel = (selene_Shader *)luaL_checkudata(L, -1, selene_Shader_METANAME);
     lua_pop(L, 2);
     VkResult result = -1;
 
