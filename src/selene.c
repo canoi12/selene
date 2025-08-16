@@ -471,7 +471,7 @@ int luaopen_selene(lua_State *L) {
         {NULL, NULL}
     };
     luaL_newlib(L, reg);
-    selene_open_enums(L);
+    // selene_open_enums(L);
 #ifndef NDEBUG
     fprintf(stdout, "[selene] opened enums\n");
 #endif
