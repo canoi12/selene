@@ -35,15 +35,11 @@ int get_virt_path(lua_State* L, const char* path) {
     int virt_path = -1;
     if (start) {
         virt_path = r_exec_path;
-        goto CHECK_VIRT;
-    }
-    start = strstr(path, "root://");
-    if (start) {
+    } else if ((start = strstr(path, "root://"))) {
         virt_path = r_root_path;
-        goto CHECK_VIRT;
+    } else if ((start = strstr(path, "user://"))) {
+        virt_path = r_user_path;
     }
-    start = strstr(path, "user://");
-    if (start) virt_path = r_user_path;
 CHECK_VIRT:
     if (virt_path != -1) {
         start += 6;
@@ -61,8 +57,8 @@ CHECK_VIRT:
     }
     return virt_path;
 }
-
-static int lua_selene_require(lua_State* L) {
+#if defined(OS_ANDROID)
+int lua_android_require(lua_State* L) {
     const char* module_name = luaL_checkstring(L, 1);
     size_t len = strlen(module_name);
     char filename[256];
@@ -72,7 +68,6 @@ static int lua_selene_require(lua_State* L) {
     }
     strcat(filename, ".lua");
 
-#if defined(OS_ANDROID)
     if (!g_asset_manager) {
         lua_pushstring(L, "AssetManager not initialized\n");
         return 1;
@@ -109,7 +104,8 @@ static int lua_selene_require(lua_State* L) {
         buffer[size] = '\0';
         fclose(fp);
     }
-#else
+
+#if 0
     int virts[3] = {r_exec_path, r_root_path, r_user_path};
     char* buffer = NULL;
     size_t size;
@@ -136,6 +132,7 @@ static int lua_selene_require(lua_State* L) {
     }
     goto EXIT_ERR;
 #endif
+
 EXIT:
     if (luaL_loadbuffer(L, buffer, size, filename) != LUA_OK) {
         fprintf(stderr, "[ERROR] failed to load Lua buffer %s\n", filename);
@@ -145,6 +142,7 @@ EXIT:
 EXIT_ERR:
     return 1;
 }
+#endif /* OS_ANDROID */
 
 static int l_filesystem_open(lua_State* L) {
     //NEW_META(selene_File, file);
