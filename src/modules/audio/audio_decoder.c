@@ -1,5 +1,5 @@
-#include "selene_audio.h"
-
+#include "modules/audio.h"
+#ifndef SELENE_NO_AUDIO
 int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDecoder* out) {
     char* p = (char*)path + len;
     while (*p != '.')
@@ -273,3 +273,4 @@ int l_AudioDecoder_meta(lua_State* LUA_STATE_NAME) {
     lua_setfield(L, -2, "__index");
     return 1;
 }
+#endif

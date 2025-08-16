@@ -1,3 +1,4 @@
+#if 0
 #include "selene.h"
 #include "lua_helper.h"
 #if !defined(OS_WIN)
@@ -285,3 +286,4 @@ int luaopen_filesystem(lua_State* L) {
     lua_setfield(L, -2, "File");
     return 1;
 }
+#endif

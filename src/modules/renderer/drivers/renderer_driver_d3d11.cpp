@@ -1,5 +1,6 @@
-﻿#include "selene_renderer.h"
-#if defined(OS_WIN)
+﻿#include "modules/renderer.h"
+#include "modules/window.h"
+#if defined(OS_WIN) && !defined(SELENE_NO_D3D11)
 #include <SDL_syswm.h>
 
 extern "C" char font8x8_basic[128][8];

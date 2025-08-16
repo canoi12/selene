@@ -1,5 +1,5 @@
 #include "selene.h"
-#include "selene_renderer.h"
+#include "modules/renderer.h"
 
 #if defined(SELENE_USE_SDL3)
 int g_selene_process_events(lua_State* L, SDL_Event* event) {

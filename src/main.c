@@ -10,17 +10,6 @@ static int main_symbol_test(int a) { return -1; }
 
 #if 1 // !defined(SELENE_USE_SDL3) || defined(OS_ANDROID)
 
-/*int selene_main(int argc, char** argv) {
-    void* L = NULL;
-    selene_init(&L, argc, argv);
-    // Run main loop
-    if (luaL_dostring(L, "selene.run()") != LUA_OK) {
-        const char* err = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to run selene: %s\n", err);
-    }
-    lua_close(L);
-    return 0;
-}*/
 SELENE_API int selene_main(int argc, char** argv);
 
 #if !defined(OS_ANDROID)

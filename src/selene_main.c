@@ -1,7 +1,7 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-#include "selene_renderer.h"
+#include "modules/renderer.h"
 
 static const SeleneContext* selctx = &g_selene_context;
 static int selene_exit_state = SELENE_APP_SUCCESS;
@@ -21,17 +21,24 @@ static const char* s_boot_script =
 
 int selene_init(void** userdata, int argc, char** argv) {
     lua_State* L = (lua_State*)*userdata;
+    fprintf(stdout, "Initializing selene\n");
     luaL_openlibs(L);
 #if SELENE_USE_JIT
     luaopen_ffi(L);
 #endif
     luaL_requiref(L, "selene", luaopen_selene, 1);
+#if 1
+    fprintf(stdout, "[selene] lib opened\n");
+#endif
     lua_newtable(L);
     for (int i = 1; i < argc; i++) {
         lua_pushstring(L, argv[i]);
         lua_rawseti(L, -2, i);
     }
     lua_setfield(L, -2, "args");
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] initialized args\n");
+#endif
 #if !defined(OS_WIN) && !defined(OS_EMSCRIPTEN)
     const char* setup_path =
         "local path = selene.__exec\n"
@@ -43,6 +50,9 @@ int selene_init(void** userdata, int argc, char** argv) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to setup package.path: %s\n", msg);
         return SELENE_APP_FAILURE;
     }
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] set up the package.path paths\n");
+#endif
 #endif
 
     const char* handle_args =
@@ -60,9 +70,12 @@ int selene_init(void** userdata, int argc, char** argv) {
 
     if (luaL_dostring(L, handle_args) != LUA_OK) {
         const char* msg = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed handle arguments: %s\n", msg);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to handle arguments: %s\n", msg);
         return SELENE_APP_FAILURE;
     }
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] set up the exec params\n");
+#endif
 
     lua_getglobal(L, "package");
     lua_getfield(L, -1, "preload");
@@ -73,7 +86,9 @@ int selene_init(void** userdata, int argc, char** argv) {
         lua_setfield(L, -2, "boot");
     } else lua_pop(L, 1);
     lua_pop(L, 2);
-
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] set up boot package\n");
+#endif
     if (luaL_dostring(L, "require('boot')") != LUA_OK) {
         const char* error = lua_tostring(L, -1);
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] Failed to load boot.lua: %s\n", error);

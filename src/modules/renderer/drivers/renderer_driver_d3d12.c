@@ -1,5 +1,6 @@
-﻿#include "selene_renderer.h"
-#if 0 && defined(OS_WIN)
+﻿#include "modules/renderer.h"
+#include "modules/window.h"
+#if 0 && defined(OS_WIN) && !defined(SELENE_NO_D3D12)
 #include <SDL_video.h>
 
 const int dx11_buffer_target_types_values[] = {DX11_VERTEX_BUFFER, DX11_INDEX_BUFFER, DX11_CONSTANT_BUFFER, DX11_STAGING_BUFFER};

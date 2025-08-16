@@ -1,4 +1,5 @@
-#include "selene_renderer.h"
+#include "modules/renderer.h"
+#include "modules/window.h"
 
 static inline void s_push_commands(selene_Renderer* r, int count, struct RenderCommand* cmd) {
     if (r->command_offset + count > r->command_count) {
@@ -168,6 +169,11 @@ int l_Renderer__load_texture2d(lua_State* L) {
     SDL_CloseIO(rw);
 #else
     SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
+    if (!rw) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "failed to open file %s\n", filename);
+        return 1;
+    }
     size_t size = SDL_RWsize(rw);
     void* data = malloc(size);
     SDL_RWread(rw, data, 1, size);

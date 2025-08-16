@@ -1,5 +1,5 @@
-#include "selene_audio.h"
-
+#include "modules/audio.h"
+#ifndef SELENE_NO_AUDIO
 struct _AudioBuffer {
     int type;
     int volume;
@@ -400,3 +400,4 @@ MODULE_FUNCTION(AudioSystem, meta) {
     lua_setfield(L, -2, "__index");
     return 1;
 }
+#endif

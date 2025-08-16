@@ -20,13 +20,13 @@
     #endif
 #endif
 
-#define NEW_META(type, name)\
-type* name = (type*)lua_newuserdata(L, sizeof(*name));\
-luaL_setmetatable(L, type##_METANAME)
+// #define NEW_META(type, name)\
+// type* name = (type*)lua_newuserdata(L, sizeof(*name));\
+// luaL_setmetatable(L, type##_METANAME)
 
-#define META_SELF(type)\
-int arg = 1;\
-type* self = (type*)luaL_checkudata(L, arg++, type##_METANAME)
+// #define META_SELF(type)\
+// int arg = 1;\
+// type* self = (type*)luaL_checkudata(L, arg++, type##_METANAME)
 
 
 
@@ -47,6 +47,9 @@ extern void luaL_requiref (lua_State *L, const char *modname,
 #define SELENE_APP_FAILURE  2
 
 typedef unsigned int Data;
+#ifndef Data_METANAME
+#define Data_METANAME "Data"
+#endif
 
 #ifndef SELENE_NO_IMAGE
 enum {
@@ -112,6 +115,9 @@ struct _FontGlyph {
     int bw, bh;
     int tx;
 };
+#ifndef selene_FontGlyph_METANAME
+#define selene_FontGlyph_METANAME "FontGlyph"
+#endif
 #endif /* SELENE_NO_FONT */
 
 typedef struct {

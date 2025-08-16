@@ -1,5 +1,6 @@
 #ifndef SELENE_NO_VULKAN
-#include "selene_renderer.h"
+#include "modules/renderer.h"
+#include "modules/window.h"
 
 const int vk_pixel_formats_values[] = {VK_FORMAT_R8G8B8_UNORM,
                                        VK_FORMAT_R8G8B8A8_UNORM};

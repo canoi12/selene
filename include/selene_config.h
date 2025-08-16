@@ -4,24 +4,24 @@
 #define SELENE_VERSION "0.5.0"
 
 /* Audio */
-#define selene_AudioSystem_METANAME "selene_AudioSystem"
-#define selene_AudioData_METANAME "selene_AudioData"
-#define selene_AudioDecoder_METANAME "selene_AudioDecoder"
+#define selene_AudioSystem_METANAME "selene.AudioSystem"
+#define selene_AudioData_METANAME "selene.AudioData"
+#define selene_AudioDecoder_METANAME "selene.AudioDecoder"
 
 /* Filesystem */
-#define selene_File_METANAME "selene_File"
+#define selene_File_METANAME "selene.File"
 
 /* Renderer */
 #define selene_Renderer_METANAME "selene.Renderer"
 
-#define selene_Font_METANAME "selene_Font"
-#define selene_GpuBuffer_METANAME "selene_GpuBuffer"
-#define selene_RenderPipeline_METANAME "selene_RenderPipeline"
-#define selene_RenderTarget_METANAME "selene_RenderTarget"
-#define selene_Shader_METANAME "selene_Shader"
-#define selene_Texture2D_METANAME "selene_Texture2D"
+#define selene_Font_METANAME "selene.Font"
+#define selene_GpuBuffer_METANAME "selene.GpuBuffer"
+#define selene_RenderPipeline_METANAME "selene.RenderPipeline"
+#define selene_RenderTarget_METANAME "selene.RenderTarget"
+#define selene_Shader_METANAME "selene.Shader"
+#define selene_Texture2D_METANAME "selene.Texture2D"
 
 /* Window*/
-#define selene_Window_METANAME "selene_Window"
+#define selene_Window_METANAME "selene.Window"
 
 #endif

@@ -1,5 +1,5 @@
-#include "selene_renderer.h"
 #if 0
+#include "selene_renderer.h"
 extern int l_Effect2D_create(lua_State* L);
 extern int l_VertexBatch2D_create(lua_State* L);
 extern int l_VertexBatch2D__destroy(lua_State* L);

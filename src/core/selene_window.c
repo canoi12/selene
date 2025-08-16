@@ -1,6 +1,6 @@
 #include "selene.h"
 #include "lua_helper.h"
-
+#if 0
 #if defined(SELENE_USE_GLFW)
 static int l_create_GLFW_window(lua_State* L) {
     return 1;
@@ -121,3 +121,4 @@ int luaopen_window(lua_State* L) {
     luaL_setfuncs(L, _reg, 0);
     return 1;
 }
+#endif

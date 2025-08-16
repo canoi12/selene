@@ -2,56 +2,38 @@
 #define SELENE_AUDIO_H_
 
 #include "selene.h"
+#include "lua_helper.h"
 
-#if 1 || defined(SELENE_USE_SDL2)
 #define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.h"
 
 #include "dr_wav.h"
 #include "dr_mp3.h"
 #include "dr_flac.h"
-#elif defined(SELENE_USE_MINIAUDIO)
-#else
-#endif
 
-typedef struct _AudioDevice selene_AudioDevice;
+typedef struct _AudioSystem selene_AudioSystem;
 
-typedef struct _AudioStream selene_AudioStream;
-typedef struct _AudioStatic selene_AudioStatic; 
+typedef struct _AudioData selene_AudioData;
+typedef struct _AudioDecoder selene_AudioDecoder;
 
-enum AudioFileFormat {
-    SELENE_AUDIO_UNKNOWN = 0,
-    SELENE_WAV,
-    SELENE_OGG,
-    SELENE_MP3,
-    SELENE_FLAC
-};
-
-struct _AudioStatic {
+struct _AudioData {
     AudioInfo info;
     int size;
     char* data;
 };
 
-struct _AudioStream {
+struct _AudioDecoder {
     AudioInfo info;
-    enum AudioFileFormat format;
-#if !defined(SELENE_USE_MINIAUDIO)
+    char format;
     union {
         drwav wav;
         drmp3 mp3;
         drflac* flac;
         stb_vorbis* ogg;
     };
-#endif
+    
 #if defined(OS_ANDROID)
     void* audio_data;
-#endif
-};
-
-struct _AudioDevice {
-#if 1 || defined(SELENE_USE_SDL2)
-    SDL_AudioDeviceID handle;
 #endif
 };
 
@@ -59,7 +41,15 @@ struct _AudioDevice {
 extern "C" {
 #endif
 
-SELENE_API int luaopen_audio(lua_State* L);
+SELENE_API int s_AudioDecoder_init(lua_State *L, const char *path, int len, selene_AudioDecoder *out);
+
+SELENE_API int s_AudioDecoder_read_s16(selene_AudioDecoder *self, int len, short *data);
+
+SELENE_API int s_AudioDecoder_read_f32(selene_AudioDecoder *self, int len, float *data);
+// int s_AudioDecoder_get_chunk(selene_AudioDecoder* self, int len, short* data);
+SELENE_API int s_AudioDecoder_seek(selene_AudioDecoder *self, int index);
+
+SELENE_API int s_AudioDecoder_close(selene_AudioDecoder *self);
 
 #if defined(__cplusplus)
 }

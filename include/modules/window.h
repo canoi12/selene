@@ -6,10 +6,10 @@
 typedef struct _Window selene_Window;
 
 struct _WindowConfig {
-    _Bool resizable;
-    _Bool borderless;
-    _Bool fullscreen;
-    _Bool opengl;
+    char resizable;
+    char borderless;
+    char fullscreen;
+    char opengl;
 };
 
 struct _Window {
@@ -23,8 +23,10 @@ struct _Window {
 #else
     void* handle;
 #endif
-    _Bool resizable;
-    _Bool borderless;
+    char resizable;
+    char borderless;
+    char opengl;
+    char fullscreen;
 };
 
 #ifndef selene_Window_METANAME

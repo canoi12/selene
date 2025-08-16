@@ -1,4 +1,4 @@
-﻿#include "selene_renderer.h"
+﻿#include "modules/renderer.h"
 #include "helper.h"
 
 static inline int s_check_buf_size(VertexBatch* buf, int size) {
@@ -394,7 +394,7 @@ int l_VertexBatch__push_line_circle(lua_State* L) {
     float radius = (float)luaL_checknumber(L, arg++);
     int segments = (int)luaL_optinteger(L, arg++, 16);
     s_check_buf_size(self, 2 * segments);
-    Vertex2D* v = (char*)self->data + (self->offset * self->stride);
+    Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset * self->stride));
     float inc = M_PI2 / (float)segments;
     for (int i = 0; i < segments; i++) {
         //memcpy(v, &self->aux_vertex, sizeof(Vertex2D));

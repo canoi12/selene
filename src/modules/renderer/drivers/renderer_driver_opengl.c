@@ -1,4 +1,5 @@
-﻿#include "selene_renderer.h"
+﻿#include "modules/renderer.h"
+#include "modules/window.h"
 #ifndef SELENE_NO_OPENGL
 extern char font8x8_basic[128][8];
 extern char font8x8_control[32][8];
@@ -86,9 +87,9 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
     int top = arg;
 
     lua_getfield(L, arg, "vs");
-    selene_Shader* vertex = (selene_Shader*)luaL_checkudata(L, -1, "selene_Shader");
+    selene_Shader* vertex = (selene_Shader*)luaL_checkudata(L, -1, selene_Shader_METANAME);
     lua_getfield(L, arg, "ps");
-    selene_Shader* pixel = (selene_Shader*)luaL_checkudata(L, -1, "selene_Shader");
+    selene_Shader* pixel = (selene_Shader*)luaL_checkudata(L, -1, selene_Shader_METANAME);
     lua_pop(L, 2);
 
     GLuint vao = 0;
@@ -867,12 +868,22 @@ int l_GL_Renderer__present(lua_State* L) {
 }
 
 int l_GL_Renderer_create(lua_State* L) {
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] creating GL Renderer\n");
+#endif
     INIT_ARG();
     selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] window: %p\n", win);
+    fprintf(stdout, "[selene] creating GL Context\n");
+#endif
     SDL_GLContext ctx = SDL_GL_CreateContext(win->handle);
     if (!ctx) {
         return luaL_error(L, "failed to create SDL OpenGL context: %s", SDL_GetError());
     }
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] GL Context created\n");
+#endif
     NEW_UDATA(selene_Renderer, r);
     r->window_ptr = win;
     int width, height;
@@ -882,6 +893,9 @@ int l_GL_Renderer_create(lua_State* L) {
 #if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     if (gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress) == 0)
         return luaL_error(L, "Failed to init glad");
+#endif
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] modern OpenGL loaded\n");
 #endif
     const char* version = glGetString(GL_VERSION);
     fprintf(stdout, "OpenGL Version: %s\n", version);

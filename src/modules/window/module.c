@@ -1,173 +1,129 @@
 #include "modules/window.h"
-
-int init_window(selene_Window* self, const char* title, int width, int height, struct _WindowConfig* conf) {
-#if 1 || defined(SELENE_USE_SDL2)
-    int flags = SDL_WINDOW_SHOWN;
-    if (conf->resizable) flags |= SDL_WINDOW_RESIZABLE;
-    if (conf->borderless) flags |= SDL_WINDOW_BORDERLESS;
-    self->handle = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
-#endif
-    return 0;
-}
-
-int quit_window(selene_Window* self) {
-#if 1 || defined(SELENE_USE_SDL2)
-    if (self->handle) SDL_DestroyWindow(self->handle);
-    self->handle = NULL;
-#endif
-    return 0;
-}
-
-
-static int l_window_create(lua_State* L) {
-    NEW_META(selene_Window, win);
-    lua_newtable(L);
-    const char* title = luaL_checkstring(L, 1);
-    int width = luaL_checkinteger(L, 2);
-    int height = luaL_checkinteger(L, 3);
-    int x = 0;
-    int y = 0;
-    int flags = SDL_WINDOW_SHOWN;
-#if 1 || defined(SELENE_USE_SDL2)
-    x = SDL_WINDOWPOS_CENTERED;
-    y = SDL_WINDOWPOS_CENTERED;
-#endif
-    if (lua_istable(L, 4)) {
-        if (lua_getfield(L, 4, "x") == LUA_TNUMBER) {
-            x = lua_tointeger(L, -1);
-        }
-        lua_pop(L, 1);
-        if (lua_getfield(L, 4, "y") == LUA_TNUMBER) {
-            y = lua_tointeger(L, -1);
-        }
-        lua_pop(L, 1);
-
-        if (lua_getfield(L, 4, "resizable") == LUA_TBOOLEAN) flags |= (lua_toboolean(L, -1) * SDL_WINDOW_RESIZABLE);
-        lua_pop(L, 1);
-
-        if (lua_getfield(L, 4, "borderless") == LUA_TBOOLEAN) flags |= (lua_toboolean(L, -1) * SDL_WINDOW_BORDERLESS);
-        lua_pop(L, 1);
-
-        if (lua_getfield(L, 4, "opengl") == LUA_TBOOLEAN) flags |= (lua_toboolean(L, -1) * SDL_WINDOW_OPENGL);
-        lua_pop(L, 1);
-    }
-#if 1 || defined(SELENE_USE_SDL2)
-    win->handle = SDL_CreateWindow(title, x, y, width, height, flags);
-    strcpy(win->title, title);
-    win->width = width;
-    win->height = height;
-    win->resizable = (flags & SDL_WINDOW_RESIZABLE) != 0;
-    // title
-    lua_pushvalue(L, 1);
-    lua_setfield(L, -2, "title");
-
-    // width
-    lua_pushvalue(L, 2);
-    lua_setfield(L, -2, "width");
-
-    // height
-    lua_pushvalue(L, 3);
-    lua_setfield(L, -2, "height");
-
-    // resizable
-    lua_pushboolean(L, (flags & SDL_WINDOW_RESIZABLE) != 0);
-    lua_setfield(L, -2, "resizable");
-
-    // borderless
-    lua_pushboolean(L, (flags & SDL_WINDOW_BORDERLESS) != 0);
-    lua_setfield(L, -2, "borderless");
-    win->r_table_info = luaL_ref(L, LUA_REGISTRYINDEX);
-#endif
+#include "lua_helper.h"
+#if 1
+#if defined(SELENE_USE_GLFW)
+static int l_create_GLFW_window(lua_State* L) {
     return 1;
 }
+#else
+static int l_create_SDL_window(lua_State* L) {
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] creating SDL window\n");
+#endif
+    INIT_ARG();
+    CHECK_STRING(title);
+    CHECK_INTEGER(width);
+    CHECK_INTEGER(height);
+    int x = SDL_WINDOWPOS_CENTERED;
+    int y = SDL_WINDOWPOS_CENTERED;
+    int flags = SDL_WINDOW_SHOWN;
+    if (lua_istable(L, arg)) {
+        lua_getfield(L, arg, "x");
+        x = (int)luaL_optinteger(L, -1, x);
+        lua_pop(L, 1);
 
-static int l_window__destroy(lua_State* L) {
-    META_SELF(selene_Window);
-    if (self->handle) {
-        SDL_DestroyWindow(self->handle);
+        lua_getfield(L, arg, "y");
+        y = (int)luaL_optinteger(L, -1, y);
+        lua_pop(L, 1);
+
+        if (lua_getfield(L, arg, "resizable") == LUA_TBOOLEAN) flags |= SDL_WINDOW_RESIZABLE * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "always_on_top") == LUA_TBOOLEAN) flags |= SDL_WINDOW_ALWAYS_ON_TOP * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "borderless") == LUA_TBOOLEAN) flags |= SDL_WINDOW_BORDERLESS * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "opengl") == LUA_TBOOLEAN) flags |= SDL_WINDOW_OPENGL * lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "vulkan") == LUA_TBOOLEAN) flags |= SDL_WINDOW_VULKAN * lua_toboolean(L, -1);
+        lua_pop(L, 2);
     }
-    self->handle = NULL;
+    if (flags & SDL_WINDOW_OPENGL) {
+#if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#else
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
+    }
+#ifndef SELENE_NO_VULKAN
+    if (flags & SDL_WINDOW_VULKAN) {
+        if (SDL_Vulkan_LoadLibrary(NULL) != 0) {
+            return luaL_error(L, "failed to load Vulkan library: %s", SDL_GetError());
+        }
+    }
+#endif
+    SDL_Window *win = SDL_CreateWindow(
+        title,
+#if !defined(SELENE_USE_SDL3)
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+#endif
+        width, height, flags
+    );
+    if (win == NULL)
+        return luaL_error(L, "failed to create window: %s", SDL_GetError());
+    selene_Window *win_ptr = (selene_Window*)lua_newuserdata(L, sizeof(SDL_Window *));
+    luaL_setmetatable(L, selene_Window_METANAME);
+    win_ptr->handle = win;
+    win_ptr->width = width;
+    win_ptr->height = height;
+    return 1;
+}
+#endif
+
+int l_create_window(lua_State* L) {
+#if defined(SELENE_USE_GLFW)
+    return l_create_GLFW_window(L);
+#else
+    return l_create_SDL_window(L);
+#endif
+}
+
+static int l_selene_Window__destroy(lua_State* L) {
+    CHECK_META(selene_Window);
+#if defined(SELENE_USE_GLFW)
+#else
+    SDL_DestroyWindow(self->handle);
+#endif
     return 0;
 }
 
-static int l_window__get_info(lua_State* L) {
-    META_SELF(selene_Window);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, self->r_table_info);
-    return 1;
-}
-
-static int l_window__get_size(lua_State* L) {
-    META_SELF(selene_Window);
-    lua_pushinteger(L, self->width);
-    lua_pushinteger(L, self->height);
+static int l_selene_Window__get_size(lua_State* L) {
+    CHECK_META(selene_Window);
+    int width, height;
+#if defined(SELENE_USE_GLFW)
+#else
+    SDL_GetWindowSize(self->handle, &width, &height);
+#endif
+    lua_pushinteger(L, width);
+    lua_pushinteger(L, height);
     return 2;
 }
 
-static int l_window__set_size(lua_State* L) {
-    int width, height;
-    selene_Window* win = (selene_Window*)luaL_checkudata(L, 1, "selene.Window");
-    width = luaL_checkinteger(L, 2);
-    height = luaL_checkinteger(L, 3);
-    SDL_SetWindowSize(win->handle, width, height);
-    win->width = width;
-    win->height = height;
+static int l_selene_Window__set_size(lua_State* L) {
+    CHECK_META(selene_Window);
+    CHECK_INTEGER(width);
+    CHECK_INTEGER(height);
+#if defined(SELENE_USE_GLFW)
+#else
+    SDL_SetWindowSize(self->handle, width, height);
+#endif
     return 0;
-}
-
-static int l_window__set_title(lua_State* L) {
-    META_SELF(selene_Window);
-    const char* title = luaL_checkstring(L, arg++);
-    SDL_SetWindowTitle(self->handle, title);
-    strcpy(self->title, title);
-    return 0;
-}
-
-static int l_window__get_title(lua_State* L) {
-    META_SELF(selene_Window);
-    lua_pushstring(L, self->title);
-    return 1;
-}
-
-static int l_window__set_resizable(lua_State* L) {
-    META_SELF(selene_Window);
-    int value = self->resizable;
-    if (lua_isboolean(L, arg)) value = lua_toboolean(L, arg++);
-    SDL_SetWindowResizable(self->handle, value);
-    return 0;
-}
-
-static int l_window__get_resizable(lua_State* L) {
-    META_SELF(selene_Window);
-    lua_pushboolean(L, self->resizable);
-    return 1;
 }
 
 int luaopen_window(lua_State* L) {
-    const luaL_Reg _reg[] = {
-        {"create", l_window_create},
-        {NULL, NULL}
-    };
-    // create window lib
-    luaL_newlib(L, _reg);
-
-    // Create meta
-    luaL_newmetatable(L, "selene.Window");
+    luaL_newmetatable(L, selene_Window_METANAME);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
-    const luaL_Reg _meta[] = {
-        {"destroy", l_window__destroy},
-        {"get_info", l_window__get_info},
-        {"get_size", l_window__get_size},
-        {"set_size", l_window__set_size},
-        {"set_title", l_window__set_title},
-        {"get_title", l_window__get_title},
-        {"set_resizable", l_window__set_resizable},
-        {"get_resizable", l_window__get_resizable},
+    const luaL_Reg _reg[] = {
+        REG_META_FIELD(selene_Window, destroy),
+        REG_META_FIELD(selene_Window, get_size),
+        REG_META_FIELD(selene_Window, set_size),
         {NULL, NULL}
     };
-    luaL_setfuncs(L, _meta, 0);
-    // Register meta
-    lua_setfield(L, -2, "Window");
-
+    luaL_setfuncs(L, _reg, 0);
     return 1;
 }
+#endif

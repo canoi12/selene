@@ -1,7 +1,7 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-#include "selene_renderer.h"
+#include "modules/renderer.h"
 
 int g_sdl_modules = 0;
 
@@ -261,12 +261,14 @@ static const luaL_Reg _global_modules_reg[] = {
 // Selene Modules
 extern int luaopen_audio(lua_State *L);
 extern int luaopen_filesystem(lua_State* L);
+extern int luaopen_json(lua_State* L);
 extern int luaopen_renderer(lua_State *L);
 extern int luaopen_window(lua_State* L);
 
 static const luaL_Reg _selene_modules_reg[] = {
     {"audio", luaopen_audio},
     {"filesystem", luaopen_filesystem},
+    {"json", luaopen_json},
     {"renderer", luaopen_renderer},
     {"window", luaopen_window},
     {NULL, NULL}
@@ -448,6 +450,9 @@ static int l_selene_get_context(lua_State* L) {
  * @return Selene library
  */
 int luaopen_selene(lua_State *L) {
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] luaopen_selene\n");
+#endif
     const luaL_Reg reg[] = {
         REG_FIELD(selene, alloc),
         REG_FIELD(selene, delay),
@@ -467,12 +472,18 @@ int luaopen_selene(lua_State *L) {
     };
     luaL_newlib(L, reg);
     selene_open_enums(L);
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] opened enums\n");
+#endif
     lua_pushstring(L, SELENE_VERSION);
     lua_setfield(L, -2, "__version");
 
     /* Load selene internal modules */
     int i;
     for (i = 0; _selene_modules_reg[i].name != NULL; i++) {
+#ifndef NDEBUG
+        fprintf(stdout, "[selene] loading %s lib\n", _selene_modules_reg[i].name);
+#endif
         _selene_modules_reg[i].func(L);
         lua_setfield(L, -2, _selene_modules_reg[i].name);
     }

@@ -10,6 +10,10 @@ include(CheckIncludeFile)
 include(CheckPlatform)
 include(CheckTriple)
 
+if (MSVC)
+    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+endif ()
+
 set (SELENE_USE_SDL3 OFF CACHE BOOL "Use SDL3 instead of SDL2")
 if (ANDROID)
     set(ANDROID_HOME "$ENV{ANDROID_HOME}" CACHE STRING "Set Android SDK home path")
@@ -98,10 +102,17 @@ if (${LUA_VERSION} STREQUAL "jit")
     add_definitions(-DSELENE_USE_JIT)
 endif ()
 
-file(GLOB SELENE_SOURCES 
-    src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c src/core/renderer/backends/*.cpp
-    src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c third/glad/src/glad.c
-)
+file(GLOB AUDIO_SOURCES src/modules/audio/*.c)
+file(GLOB FS_SOURCES src/modules/filesystem/*.c)
+file(GLOB RENDERER_SOURCES src/modules/renderer/**.c src/modules/renderer/drivers/*.c src/modules/renderer/drivers/*.cpp)
+file(GLOB WINDOW_SOURCES src/modules/window/*.c)
+
+file(GLOB SELENE_SOURCES src/Data.c src/selene_main.c src/selene.c src/extended_libs.c src/modules/ljson.c src/core/*.c third/glad/src/glad.c)
+
+# file(GLOB SELENE_SOURCES 
+#     src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c src/core/renderer/backends/*.cpp
+#     src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c third/glad/src/glad.c
+# )
 if (EMSCRIPTEN)
 list(POP_BACK SELENE_SOURCES)
 endif()
@@ -184,7 +195,7 @@ endif ()
 
 if (NOT MSVC)
     ## Static Library
-    add_library(${PROJECT_NAME}Static STATIC ${SELENE_SOURCES})
+    add_library(${PROJECT_NAME}Static STATIC ${SELENE_SOURCES} ${AUDIO_SOURCES} ${FS_SOURCES} ${RENDERER_SOURCES} ${WINDOW_SOURCES})
     set_target_properties(${PROJECT_NAME}Static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
     if (NOT DEFINED MSVC)
         target_link_libraries(${PROJECT_NAME}Static m)
@@ -197,7 +208,7 @@ endif ()
 
 ## Shared Library
 if (NOT DEFINED EMSCRIPTEN)
-    add_library(${PROJECT_NAME}Shared SHARED ${SELENE_SOURCES})
+    add_library(${PROJECT_NAME}Shared SHARED ${SELENE_SOURCES} ${AUDIO_SOURCES} ${FS_SOURCES} ${RENDERER_SOURCES} ${WINDOW_SOURCES})
     # target_link_directories(${PROJECT_NAME}Shared PRIVATE "${CMAKE_LIBRARY_PATH}")
     target_link_libraries(${PROJECT_NAME}Shared ${LIBRARIES})
     if (MSVC)
@@ -213,6 +224,12 @@ if (NOT DEFINED EMSCRIPTEN)
         target_link_libraries(${PROJECT_NAME}Shared android log)
     endif ()
     set_target_properties(${PROJECT_NAME}Shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
+if (MSVC)
+    source_group("Source Files\\audio" FILES ${AUDIO_SOURCES})
+    source_group("Source Files\\filesystem" FILES ${FS_SOURCES})
+    source_group("Source Files\\renderer" FILES ${RENDERER_SOURCES})
+    source_group("Source Files\\window" FILES ${WINDOW_SOURCES})
+endif ()
 endif ()
 
 if (TARGET ${PROJECT_NAME}Shared)
@@ -220,6 +237,8 @@ if (TARGET ${PROJECT_NAME}Shared)
 else ()
     add_library(${PROJECT_NAME}Lib ALIAS ${PROJECT_NAME}Static)
 endif ()
+
+
 
 ## Executable
 if (NOT DEFINED ANDROID)
