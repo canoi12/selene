@@ -8,8 +8,10 @@ extern "C" {
 #endif
 
 extern int r_exec_path;
-extern int r_dir_path;
+extern int r_root_path;
 extern int r_user_path;
+
+extern int get_virt_path(lua_State* L, const char* path);
 
 SELENE_API int luaopen_filesystem(lua_State* L);
 
