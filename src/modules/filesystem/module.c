@@ -153,7 +153,7 @@ static int l_filesystem_open(lua_State* L) {
 }
 
 static int l_filesystem_read(lua_State* L) {
-    int arg = 0;
+    int arg = 1;
     const char* filename = luaL_checkstring(L, arg++);
     size_t size;
     char* buffer = NULL;
@@ -222,7 +222,7 @@ static int l_filesystem_read(lua_State* L) {
 }
 
 static int l_filesystem_write(lua_State* L) {
-    int arg = 0;
+    int arg = 1;
     size_t size;
     char* buffer;
     const char* filename = luaL_checkstring(L, arg++);
@@ -237,9 +237,7 @@ static int l_filesystem_write(lua_State* L) {
     }
 #endif
 #if defined(OS_PS4) || defined(OS_PS5)
-    if (virt == r_user_path) {
-        // mount
-    } 
+    if (virt == r_user_path) {} 
 #endif
     FILE* fp = fopen(filename, "wb");
     if (!fp) {
@@ -250,15 +248,13 @@ static int l_filesystem_write(lua_State* L) {
     fwrite(buffer, 1, size, fp);
     fclose(fp);
 #if defined(OS_PS4) || defined(OS_PS5)
-    if (virt == r_user_path) {
-        // unmount
-    }
+    if (virt == r_user_path) {}
 #endif
     return 0;
 }
 
 static int l_filesystem_mkdir(lua_State* L) {
-    int arg = 0;
+    int arg = 1;
     const char* path = luaL_checkstring(L, arg++);
     int virt = get_virt_path(L, path);
     if (virt > 0) path = lua_tostring(L, -1);
@@ -269,9 +265,7 @@ static int l_filesystem_mkdir(lua_State* L) {
     }
 #endif
 #if defined(OS_PS4) || defined(OS_PS5)
-    if (virt == r_user_path) {
-        // mount
-    } 
+    if (virt == r_user_path) {} 
 #endif
 
     int res =
@@ -281,16 +275,14 @@ static int l_filesystem_mkdir(lua_State* L) {
     mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 #endif
 #if defined(OS_PS4) || defined(OS_PS5)
-    if (virt == r_user_path) {
-        // unmount
-    }
+    if (virt == r_user_path) {}
 #endif
     lua_pushinteger(L, res);
     return 1;
 }
 
 static int l_filesystem_rmdir(lua_State* L) {
-    int arg = 0;
+    int arg = 1;
     const char* path = luaL_checkstring(L, arg++);
     int virt = get_virt_path(L, path);
     if (virt > 0) path = lua_tostring(L, -1);
@@ -301,15 +293,11 @@ static int l_filesystem_rmdir(lua_State* L) {
     }
 #endif
 #if defined(OS_PS4) || defined(OS_PS5)
-    if (virt == r_user_path) {
-        // mount
-    } 
+    if (virt == r_user_path) {} 
 #endif
     int res = rmdir(path);
 #if defined(OS_PS4) || defined(OS_PS5)
-    if (virt == r_user_path) {
-        // unmount
-    }
+    if (virt == r_user_path) {}
 #endif
     return 0;
 }
@@ -371,6 +359,8 @@ static int l_filesystem_set_path(lua_State* L) {
 
 int luaopen_filesystem(lua_State* L) {
     const luaL_Reg _reg[] = {
+        {"read", l_filesystem_read},
+        {"write", l_filesystem_write},
         {"mkdir", l_filesystem_mkdir},
         {"rmdir", l_filesystem_rmdir},
         {"load", l_filesystem_load},
