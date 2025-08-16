@@ -48,16 +48,16 @@ CHECK_VIRT:
     if (virt_path != -1) {
         start += 6;
 #if defined(OS_WIN)
-        *start = '\\';
+        //*start = '\\';
 #endif
         lua_rawgeti(L, LUA_REGISTRYINDEX, virt_path);
-        fprintf(stdout, "path: %s\n", lua_tostring(L, -1));
-        fprintf(stdout, "virt: %s\n", start);
+        //fprintf(stdout, "path: %s\n", lua_tostring(L, -1));
+        //fprintf(stdout, "virt: %s\n", start);
         lua_pushstring(L, start);
         lua_concat(L, 2);
     }
     else {
-        lua_pushnil(L);
+        lua_pushstring(L, path);
     }
     return virt_path;
 }
@@ -352,11 +352,30 @@ static int l_filesystem_load(lua_State* L) {
     return 1;
 }
 
+static int l_filesystem_resolve(lua_State* L) {
+    const char* filename = luaL_checkstring(L, 1);
+    get_virt_path(L, filename);
+    return 1;
+}
+
+static int l_filesystem_set_path(lua_State* L) {
+    const char* virt = luaL_checkstring(L, 1);
+    const char* path = luaL_checkstring(L, 2);
+    lua_pushvalue(L, 2);
+    if (strstr(virt, "exec://")) lua_rawseti(L, LUA_REGISTRYINDEX, r_exec_path);
+    else if (strstr(virt, "root://")) lua_rawseti(L, LUA_REGISTRYINDEX, r_root_path);
+    else if (strstr(virt, "user://")) lua_rawseti(L, LUA_REGISTRYINDEX, r_user_path);
+    else return luaL_error(L, "Invalid virtual path");
+    return 0;
+}
+
 int luaopen_filesystem(lua_State* L) {
     const luaL_Reg _reg[] = {
         {"mkdir", l_filesystem_mkdir},
         {"rmdir", l_filesystem_rmdir},
         {"load", l_filesystem_load},
+        {"resolve", l_filesystem_resolve},
+        {"set_path", l_filesystem_set_path},
         {NULL, NULL}
     };
     luaL_newlib(L, _reg);

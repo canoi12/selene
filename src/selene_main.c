@@ -1,7 +1,8 @@
 #include "selene.h"
 #include "lua_helper.h"
 
-#include "modules/renderer.h"
+// #include "modules/renderer.h"
+#include "modules/filesystem.h"
 
 static const SeleneContext* selctx = &g_selene_context;
 static int selene_exit_state = SELENE_APP_SUCCESS;
@@ -41,7 +42,8 @@ int selene_init(void** userdata, int argc, char** argv) {
 #endif
 #if !defined(OS_WIN) && !defined(OS_EMSCRIPTEN)
     const char* setup_path =
-        "local path = selene.__exec\n"
+        "local path = filesystem.resolve('exec://')\n"
+        "--print(filesystem.resolve('exec://text.txt')\n"
         "if path and path ~= './' then\n"
         "   package.path = package.path .. ';' .. path .. '/?.lua;' .. path .. '?/init.lua'\n"
         "end";
@@ -57,11 +59,15 @@ int selene_init(void** userdata, int argc, char** argv) {
 
     const char* handle_args =
     "local args = selene.args\n"
+    "--print('exec://', filesystem.resolve('exec://'))\n"
+    "--print('root://', filesystem.resolve('root://'))\n"
+    "--print('user://', filesystem.resolve('user://'))\n"
     "for i=1,#args do\n"
     "   if args[i] == '-d' then\n"
     "       i = i + 1\n"
-    "       selene.__dir = args[i]\n"
-    "       package.path = selene.__dir .. '/?.lua;' .. selene.__dir .. '/?/init.lua;' .. package.path\n"
+    "       local path = args[i]\n"
+    "       filesystem.set_path('root://', path)\n"
+    "       package.path = path .. '/?.lua;' .. path .. '/?/init.lua;' .. package.path\n"
     "   elseif args[i] == '-f' then\n"
     "       i = i + 1\n"
     "       package.preload['boot'] = loadfile(args[i])\n"
@@ -73,6 +79,7 @@ int selene_init(void** userdata, int argc, char** argv) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to handle arguments: %s\n", msg);
         return SELENE_APP_FAILURE;
     }
+    lua_pop(L, 1);
 #ifndef NDEBUG
     fprintf(stdout, "[selene] set up the exec params\n");
 #endif

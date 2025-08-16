@@ -2,6 +2,7 @@
 #include "lua_helper.h"
 
 #include "modules/renderer.h"
+#include "modules/filesystem.h"
 
 int g_sdl_modules = 0;
 
@@ -480,22 +481,42 @@ int luaopen_selene(lua_State *L) {
 
     /* Load selene internal modules */
     int i;
+    const luaL_Reg* _reg = _selene_modules_reg;
     for (i = 0; _selene_modules_reg[i].name != NULL; i++) {
+        _reg = _selene_modules_reg + i;
 #ifndef NDEBUG
-        fprintf(stdout, "[selene] loading %s lib\n", _selene_modules_reg[i].name);
+        fprintf(stdout, "[selene] loading %s lib\n", _reg->name);
 #endif
-        _selene_modules_reg[i].func(L);
-        lua_setfield(L, -2, _selene_modules_reg[i].name);
+#if 1
+        luaL_requiref(L, _reg->name, _reg->func, 1);
+        lua_pop(L, 1);
+#else
+        _reg->func(L);
+        lua_setfield(L, -2, _reg->name);
+#endif
+        
     }
 
+    char* path = NULL;
+    int len;
 #ifndef OS_EMSCRIPTEN
-    lua_pushstring(L, SDL_GetBasePath());
+    path = SDL_GetBasePath();
+    len = strlen(path);
+    if (path[len-1] == '/' || path[len-1] == '\\')
+        path[len-1] = '\0';
+    lua_pushstring(L, path);
 #else
-    lua_pushstring(L, "./");
+    lua_pushstring(L, ".");
 #endif
-    lua_setfield(L, -2, "__exec");
-    lua_pushstring(L, "./");
-    lua_setfield(L, -2, "__dir");
+    r_exec_path = luaL_ref(L, LUA_REGISTRYINDEX);
+    lua_pushstring(L, ".");
+    r_root_path = luaL_ref(L, LUA_REGISTRYINDEX);
+    path = SDL_GetPrefPath("selene", "app");
+    len = strlen(path);
+    if (path[len-1] == '/' || path[len-1] == '\\')
+        path[len-1] = '\0';
+    lua_pushstring(L, path);
+    r_user_path = luaL_ref(L, LUA_REGISTRYINDEX);
 
     /* Setup SDL_RWops loader */
     lua_getglobal(L, "package");
@@ -510,11 +531,13 @@ int luaopen_selene(lua_State *L) {
 
     /* Setup extended libs */
     l_setup_extended_libs(L);
+#if 0
     /* Setup global modules */
     for (i = 0; _global_modules_reg[i].name != NULL; i++) {
         luaL_requiref(L, _global_modules_reg[i].name, _global_modules_reg[i].func, 1);
         lua_pop(L, 1);
     }
+#endif
 
 #if 1
     /* Setup call function */
