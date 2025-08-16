@@ -59,8 +59,12 @@ int l_create_SDL_window(lua_State* L) {
         width, height, flags
     );
     if (win == NULL)
-        return luaL_error(L, "failed to create window: %s", SDL_GetError());
-    selene_Window* win_ptr = (selene_Window*)lua_newuserdata(L, sizeof(SDL_Window*));
+        return luaL_error(L, "failed to create SDL window: %s", SDL_GetError());
+#ifndef NDEBUG
+    fprintf(stdout, "[selene] created SDL window\n");
+#endif
+    selene_Window* win_ptr = (selene_Window*)lua_newuserdata(L, sizeof(selene_Window));
+    memset(win_ptr, 0, sizeof(*win_ptr));
     luaL_setmetatable(L, selene_Window_METANAME);
     win_ptr->handle = win;
     win_ptr->width = width;
