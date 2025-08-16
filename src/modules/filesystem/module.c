@@ -303,7 +303,7 @@ static int l_filesystem_rmdir(lua_State* L) {
 }
 
 static int l_filesystem_load(lua_State* L) {
-    int arg = 0;
+    int arg = 1;
     const char* path = luaL_checkstring(L, arg++);
     int virt = get_virt_path(L, path);
     if (virt > 0) path = lua_tostring(L, -1);
