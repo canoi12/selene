@@ -445,6 +445,10 @@ static int l_selene_get_context(lua_State* L) {
 }
 #endif
 
+#if defined(OS_ANDROID)
+extern int lua_android_require(lua_State* L);
+#endif
+
 /**
  * Open and setup the selene module
  * @param L Lua context
@@ -481,9 +485,8 @@ int luaopen_selene(lua_State *L) {
 
     /* Load selene internal modules */
     int i;
-    const luaL_Reg* _reg = _selene_modules_reg;
     for (i = 0; _selene_modules_reg[i].name != NULL; i++) {
-        _reg = _selene_modules_reg + i;
+        const luaL_Reg* _reg = _selene_modules_reg + i;
 #ifndef NDEBUG
         fprintf(stdout, "[selene] loading %s lib\n", _reg->name);
 #endif
@@ -494,7 +497,6 @@ int luaopen_selene(lua_State *L) {
         _reg->func(L);
         lua_setfield(L, -2, _reg->name);
 #endif
-        
     }
 
     char* path = NULL;
@@ -518,6 +520,7 @@ int luaopen_selene(lua_State *L) {
     lua_pushstring(L, path);
     r_user_path = luaL_ref(L, LUA_REGISTRYINDEX);
 
+#if defined(OS_ANDROID)
     /* Setup SDL_RWops loader */
     lua_getglobal(L, "package");
 #if SELENE_USE_JIT
@@ -525,9 +528,12 @@ int luaopen_selene(lua_State *L) {
 #else
     lua_getfield(L, -1, "searchers");
 #endif
-    lua_pushcfunction(L, l_load_from_sdl_rwops);
-    lua_rawseti(L, -2, (lua_Integer)lua_rawlen(L, -2) + 1);
+    //lua_pushcfunction(L, l_load_from_sdl_rwops);
+    lua_pushcfunction(L, lua_android_require);
+    //lua_rawseti(L, -2, (lua_Integer)lua_rawlen(L, -2) + 1);
+    lua_rawseti(L, -2, 2);
     lua_pop(L, 2);
+#endif
 
     /* Setup extended libs */
     l_setup_extended_libs(L);
