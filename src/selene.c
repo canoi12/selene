@@ -262,6 +262,7 @@ static const luaL_Reg _global_modules_reg[] = {
 // Selene Modules
 extern int luaopen_audio(lua_State *L);
 extern int luaopen_filesystem(lua_State* L);
+extern int luaopen_font(lua_State* L);
 extern int luaopen_json(lua_State* L);
 extern int luaopen_renderer(lua_State *L);
 extern int luaopen_window(lua_State* L);
@@ -269,6 +270,7 @@ extern int luaopen_window(lua_State* L);
 static const luaL_Reg _selene_modules_reg[] = {
     {"audio", luaopen_audio},
     {"filesystem", luaopen_filesystem},
+    {"font", luaopen_font},
     {"json", luaopen_json},
     {"renderer", luaopen_renderer},
     {"window", luaopen_window},

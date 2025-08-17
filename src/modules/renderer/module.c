@@ -1,6 +1,6 @@
 #include "modules/renderer.h"
 
-#include "font8x8/font8x8_latin.h"
+// #include "font8x8/font8x8_latin.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
