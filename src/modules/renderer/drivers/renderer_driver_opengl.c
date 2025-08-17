@@ -336,7 +336,7 @@ int l_GL_Renderer__send_rectangle(lua_State* L) {
 /**
  * Textures
  */
-
+#if 0
 int l_GL_Renderer__create_font(lua_State* L) {
     CHECK_META(selene_Renderer);
     int w = 2048;
@@ -422,6 +422,7 @@ int l_GL_Renderer__create_font(lua_State* L) {
     }
     return 1;
 }
+#endif
 
 int l_GL_Renderer__create_texture2d(lua_State* L) {
     CHECK_META(selene_Renderer);

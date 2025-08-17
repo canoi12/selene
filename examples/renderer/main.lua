@@ -11,12 +11,13 @@ elseif backend == 'vulkan' then
     vulkan = true
 end
 
+selene{meta={org='Selene', name='App'}}
+
 print(filesystem.resolve('exec://'))
 print(filesystem.resolve('root://'))
 print(filesystem.resolve('user://'))
 print(filesystem.exists('user://'))
 
-selene{meta={org='Selene', name='App'}}
 local title = 'Renderer ' .. backend .. ' example'
 local win = selene.create_window(title, 640, 380, {opengl=opengl, vulkan=vulkan})
 local ren = selene.create_renderer(win, backend)
