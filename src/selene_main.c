@@ -47,11 +47,7 @@ int selene_init(void** userdata, int argc, char** argv) {
     r_exec_path = luaL_ref(L, LUA_REGISTRYINDEX);
     lua_pushstring(L, ".");
     r_root_path = luaL_ref(L, LUA_REGISTRYINDEX);
-    path = SDL_GetPrefPath("selene", "app");
-    len = strlen(path);
-    if (path[len - 1] == '/' || path[len - 1] == '\\')
-        path[len - 1] = '\0';
-    lua_pushstring(L, path);
+    lua_pushstring(L, ".");
     r_user_path = luaL_ref(L, LUA_REGISTRYINDEX);
 
     /* Setup args */
