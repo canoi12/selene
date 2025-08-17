@@ -8,31 +8,31 @@ function RenderBatch2D.create(win, backend)
     r.width, r.height = win:get_size()
     backend = backend or 'opengl'
     r.handle = selene.create_renderer(win, backend)
-    local renderer = r.handle
+    -- local renderer = r.handle
     r.backend = r.handle:get_backend()
-    r.batch = selene.renderer.VertexBatch(9*4, 1024)
+    r.batch = renderer.VertexBatch(9*4, 1024)
     print(renderer)
-    r.vertex = renderer:create_buffer('vertex', 9*4*256)
-    --renderer:send_triangle(r.vertex)
+    r.vertex = r.handle:create_buffer('vertex', 9*4*256)
+    --r.handle:send_triangle(r.vertex)
     r.index = nil
-    r.uniform = renderer:create_buffer('uniform', 4*16)
+    r.uniform = r.handle:create_buffer('uniform', 4*16)
     r.pipeline = nil
     r.target = nil
     r.draw_list = {top = 0}
     r.last_offset = 0
-    local font_8x8 = font.create8x8()
+    -- local font_8x8 = font.create8x8()
     r.font = Font.create8x8(r)
     print(r.font_texture, r.font_glyphs)
 
     if backend == 'opengl' then
-        r.shader_list = require('plugins.RenderBatch2D.gl_shaders').compile_all(renderer)
+        r.shader_list = require('plugins.RenderBatch2D.gl_shaders').compile_all(r.handle)
     elseif backend == 'dx11' then
-        r.shader_list = require('plugins.RenderBatch2D.dx_shaders').compile_all(renderer)
+        r.shader_list = require('plugins.RenderBatch2D.dx_shaders').compile_all(r.handle)
     end
     local shaders = r.shader_list
 
     r.pipelines = {
-        ['SPRITE2D'] = renderer:create_pipeline{
+        ['SPRITE2D'] = r.handle:create_pipeline{
             layout = {
                 stride = 9*4,
                 {name = 'a_position', offset = 0, size = 3, type = 'float'},
@@ -44,7 +44,7 @@ function RenderBatch2D.create(win, backend)
             blend = {enabled = true, func = 'alpha'},
             scissor = {enabled = true}
         },
-        ['PRIMITIVE2D'] = renderer:create_pipeline{
+        ['PRIMITIVE2D'] = r.handle:create_pipeline{
             layout = {
                 stride = 9*4,
                 {name = 'a_position', offset = 0, size = 3, type = 'float'},
@@ -53,7 +53,7 @@ function RenderBatch2D.create(win, backend)
             vs = shaders['PRIMITIVE2D'].vertex,
             ps = shaders['PRIMITIVE2D'].pixel
         },
-        ['PRIMITIVE3D'] = renderer:create_pipeline{
+        ['PRIMITIVE3D'] = r.handle:create_pipeline{
             layout = {
                 stride = 9*4,
                 {name = 'a_position', offset = 0, size = 3, type = 'float'},
@@ -65,10 +65,10 @@ function RenderBatch2D.create(win, backend)
         }
     }
     --[[
-    renderer:destroy_shader(vertex_shader)
-    renderer:destroy_shader(pixel_shader)
-    renderer:destroy_shader(primitive_shaders[1])
-    renderer:destroy_shader(primitive_shaders[2])
+    r.handle:destroy_shader(vertex_shader)
+    r.handle:destroy_shader(pixel_shader)
+    r.handle:destroy_shader(primitive_shaders[1])
+    r.handle:destroy_shader(primitive_shaders[2])
     ]]
     return setmetatable(r, RenderBatch2D)
 end
@@ -230,11 +230,11 @@ function RenderBatch2D:draw_circle(x, y, radius)
         self.handle:set_pipeline(self.pipelines['PRIMITIVE2D'])
         self.pipeline = self.pipelines['PRIMITIVE2D']
     end
-    self.batch:set_color(1, 0, 1, 1)
-    self.batch:set_z(32)
+    -- self.batch:set_color(1, 0, 1, 1)
+    -- self.batch:set_z(32)
     self.batch:push_fill_circle(x, y, radius)
-    self.batch:set_z(0)
-    self.batch:set_color(1, 1, 1, 1)
+    -- self.batch:set_z(0)
+    -- self.batch:set_color(1, 1, 1, 1)
 end
 
 function RenderBatch2D:draw_cube(x, y, sx, sy)

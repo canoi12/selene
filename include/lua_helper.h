@@ -113,20 +113,20 @@ lua_setfield(LUA_STATE_NAME, -2, "__index")
 
 #define NEW_UDATA(type, name)\
 type* name = (type*)lua_newuserdata(LUA_STATE_NAME, sizeof(type));\
-luaL_setmetatable(LUA_STATE_NAME, #type)
+luaL_setmetatable(LUA_STATE_NAME, type##_METANAME)
 
 #define NEW_UDATA_ADD(type, name, size)\
 type* name = (type*)lua_newuserdata(LUA_STATE_NAME, sizeof(type) + (size));\
-luaL_setmetatable(LUA_STATE_NAME, #type)
+luaL_setmetatable(LUA_STATE_NAME, type##_METANAME)
 
 #define GET_UDATA(type, name)\
 type* name = (type*)lua_touserdata(LUA_STATE_NAME, arg++)
 
 #define CHECK_UDATA(type, name)\
-type* name = (type*)luaL_checkudata(LUA_STATE_NAME, arg++, #type)
+type* name = (type*)luaL_checkudata(LUA_STATE_NAME, arg++, type##_METANAME)
 
 #define TEST_UDATA(type, name)\
-type* name = (type*)luaL_testudata(LUA_STATE_NAME, arg++, #type)
+type* name = (type*)luaL_testudata(LUA_STATE_NAME, arg++, type##_METANAME)
 
 // Light User Data
 
