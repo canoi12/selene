@@ -4,7 +4,7 @@
 
 # selene
 
-Selene is an executable with embedded Lua modules for game making programming (sdl2, opengl, linmath, json, asset loaders).
+Selene is an executable with embedded Lua modules for game making programming (audio, filesystem, renderer, window, ...).
 
 ## Running
 
@@ -12,7 +12,7 @@ After build or download a release file, you can execute the file `selene`, or `s
 Notice that on Windows you will also need to put the `SDL2.dll` in the same folder.
 
 The executable searches for a `main.lua` file, and it uses the lua `require` to do this job, so it will search the main file following the `package.path` hierarchy.
-From running a project that is on another directory, you can use the flag `-d` and provide the path (both absolute and relative works), `selene -d examples/sdl2`.
+From running a project that is on another directory, you can use the flag `-d` and provide the path (both absolute and relative works), `selene -d examples/renderer`.
 
 ### main.lua
 
@@ -33,59 +33,156 @@ selene.set_quit(function()
 end)
 ```
 
-### SDL2 example
+***Do not forget to call the `selene.set_running(false)` function, or you will get stuck in a infinite loop.***
 
-I will move this concept to [lgmtk](https://github.com/canoi12/lgmtk).
+### Modules
+
+Selene have some bultin modules to easier development, all of them are available as modules:
+
+- audio
+- filesystem
+- font
+- json
+- renderer
+- window
+
+So to create a window and renderer, you can run:
 
 ```lua
--- main.lua
-if not sdl.init(sdl.INIT_VIDEO) then
-    error('Failed to init SDL2 ' .. sdl.get_error())
+local backend = 'opengl'
+
+local opengl = false
+local vulkan = false
+
+if backend == 'opengl' then
+    opengl = true
+    vulkan = false
+elseif backend == 'vulkan' then
+    opengl = false
+    vulkan = true
 end
-local win = sdl.create_window('SDL2 example', sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED, 640, 380, sdl.WINDOW_SHOWN)
-if not win then
-    error("Failed to create SDL2 window " .. sdl.get_error())
+selene{meta={org='Selene',name='App'}}
+local win = selene.create_window('Selene App', 640, 380, {opengl=true})
+local render = selene.create_renderer(win)
+
+local buffer = ren:create_buffer('vertex', 1024*1024)
+local tex, str = ren:load_texture2d('root://selene_icon.png')
+if not tex then
+    print(tex, str)
 end
-local renderer = sdl.create_renderer(win)
-local event = sdl.create_event()
-selene.set_step(function()
-    while event:poll() do
-        local t = event:get_type()
-        if t == sdl.QUIT then selene.set_running(false) end
-        if t == sdl.WINDOWEVENT then
-            if t == sdl.WINDOWEVENT_CLOSE then selene.set_running(false) end
-        end
+print(tex)
+
+local batch = renderer.VertexBatch(9*4, 1024)
+batch:set_color(1, 1, 1, 1)
+batch:set_z(0)
+batch:push_vertex2d(-0.5, 0.5, 0, 1, 0, 1, 1, 0, 0)
+batch:push_vertex2d(0.5, 0.5, 0, 0, 1, 1, 1, 1, 0)
+batch:push_vertex2d(0.5, -0.5, 0, 1, 1, 0, 1, 1, 1)
+
+batch:push_vertex2d(-0.5, 0.5, 0, 1, 0, 1, 1, 0, 0)
+batch:push_vertex2d(0.5, -0.5, 0, 1, 1, 0, 1, 1, 1)
+batch:push_vertex2d(-0.5, -0.5, 0, 0, 1, 1, 1, 0, 1)
+
+ren:send_buffer_data(buffer, batch:get_offset()*batch:get_stride(), batch:get_data())
+
+-- load vertex shader
+local vert_file = 'root://shaders/vert.hlsl'
+if backend == 'opengl' then
+    vert_file = 'root://shaders/vert.glsl'
+    if os.host() == 'emscripten' or os.host() == 'android' then
+        vert_file = 'root://shaders/vert.glsl100'
     end
-    renderer:set_color(75, 125, 125, 255)
-    renderer:clear()
-    renderer:present()
-end)
-selene.set_quit(function()
-    renderer:destroy()
-    win:destroy()
-    sdl.quit()
-end)
-```
+elseif backend == 'vulkan' then
+    vert_file = 'root://shaders/vert.spv'
+end
+local vert = ren:load_shader('vertex', vert_file)
 
-### Selene runner (WIP)
+-- load fragment shader
+local frag_file = 'root://shaders/frag.hlsl'
+if backend == 'opengl' then
+    frag_file = 'root://shaders/frag.glsl'
+    if os.host() == 'emscripten' or os.host() == 'android' then
+        frag_file = 'root://shaders/frag.glsl100'
+    end
+elseif backend == 'vulkan' then
+    frag_file = 'root://shaders/frag.spv'
+end
+local frag = ren:load_shader('pixel', frag_file)
 
-The selene runner will be the easier way to start your application, it will be a C core with an bunch of integrated systems
-like OpenGL renderer, audio system and filesystem, fully powered by SDL2 and SDL3.
+print(vert, frag)
 
-```lua
-selene("MyGame", "1.0.0", "org.selene.MyGame")
-local render = selene.renderer.RenderBatch2D(selene.get_renderer())
+-- create render pipeline (WIP)
+local pipeline = ren:create_pipeline{
+    vs = vert,
+    ps = frag,
+    layout = {
+        stride = 9*4,
+        {name = 'a_position', offset = 0, size = 3, type = 'float'},
+        {name = 'a_color', offset = 12, size = 4, type = 'float'},
+        {name = 'a_texcoord', offset = 28, size = 2, type = 'float'},
+    },
+    blend = {enabled = true, func = 'alpha'},
+    scissor = {enabled = true},
+    descriptors = {
+        {type = 'combined_image_sampler', stage = 'fragment'}
+    }
+}
+
 selene.set_event(function(name, ...)
     if name == 'quit' or name == 'window closed' then selene.set_running(false) end
 end)
 selene.set_step(function()
-    render:begin()
-    render:enable_3d()
-    render:clear(0.2, 0.3, 0.3)
-    render:draw_cube({ 32, 64, -32 }, { math.rad(15), math.rad(60), 0 }, { 32, 32, 32 })
-    render:disable_3d()
-    render:finish()
-    render:present()
+    ren:set_render_target()
+    ren:set_viewport(0, 0, 640, 380)
+    ren:set_scissor(0, 0, 640, 380)
+    ren:clear_color(0.3, 0.4, 0.4, 1.0)
+    ren:clear_depth(1)
+    ren:set_pipeline(pipeline)
+    ren:set_vertex_buffer(buffer)
+    ren:set_texture(tex)
+    ren:draw('triangles', 0, 6)
+    ren:present()
+    selene.delay(16)
+end)
+
+selene.set_quit(function()
+    batch:destroy()
+    if pipeline then ren:destroy_pipeline(pipeline) end
+    if tex then ren:destroy_texture(tex) end
+    ren:destroy_shader(vert)
+    ren:destroy_shader(frag)
+    ren:destroy_buffer(buffer)
+    ren:destroy()
+    win:destroy()
+end)
+```
+
+And you can use the plugins (WIP) to abstract the creation of pipelines and other technical stuff:
+
+```lua
+local RenderBatch2D = require('plugins.RenderBatch2D')
+print(RenderBatch2D, RenderBatch2D.create)
+
+selene({ meta = {org = 'My Company', name = 'Roguelike'}})
+local win = selene.create_window('Roguelike', 640, 380, {opengl = true})
+local ren = RenderBatch2D.create(win)
+
+selene.set_event(function(name)
+    if name == 'quit' or name == 'window closed' then selene.set_running(false) end
+end)
+
+selene.set_step(function()
+    ren:begin_frame()
+    ren:clear(0.3, 0.4, 0.4, 1.0)
+    -- ren:set_color(1, 1, 1, 1)
+    ren:draw_circle(128, 96, 32)
+    ren:draw_text(ren.font, 'olar')
+    ren:end_frame()
+end)
+
+selene.set_quit(function()
+    ren:destroy()
+    win:destroy()
 end)
 ```
 
