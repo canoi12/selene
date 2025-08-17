@@ -15,6 +15,7 @@ selene.set_step(function()
     ren:clear(0.3, 0.4, 0.4, 1.0)
     -- ren:set_color(1, 1, 1, 1)
     ren:draw_circle(128, 96, 32)
+    ren:draw_text(ren.font, 'olar')
     ren:end_frame()
 end)
 
