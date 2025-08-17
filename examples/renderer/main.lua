@@ -11,10 +11,16 @@ elseif backend == 'vulkan' then
     vulkan = true
 end
 
-selene()
+print(filesystem.resolve('exec://'))
+print(filesystem.resolve('root://'))
+print(filesystem.resolve('user://'))
+print(filesystem.exists('user://'))
+
+selene{meta={org='Selene', name='App'}}
 local title = 'Renderer ' .. backend .. ' example'
 local win = selene.create_window(title, 640, 380, {opengl=opengl, vulkan=vulkan})
 local ren = selene.create_renderer(win, backend)
+
 print(win, ren)
 
 local buffer = ren:create_buffer('vertex', 1024*1024)
@@ -25,10 +31,14 @@ print(buffer)
 -- print(pixels, size)
 
 -- local tex = ren:create_texture2d(image.width, image.height, 'rgba', image.data)
-local tex = ren:load_texture2d('selene_icon.png')
+local tex, str = ren:load_texture2d('root://selene_icon.png')
+if not tex then
+    --error(str)
+    print(tex, str)
+end
 print(tex)
 
-local batch = selene.renderer.VertexBatch(9*4, 1024)
+local batch = renderer.VertexBatch(9*4, 1024)
 batch:set_color(1, 1, 1, 1)
 batch:set_z(0)
 
@@ -57,28 +67,28 @@ ren:send_buffer_data(buffer, batch:get_offset()*batch:get_stride(), batch:get_da
 -- print(size, data)
 -- local vert = ren:create_shader('vertex', size, data)
 
-local vert_file = selene.__dir .. '/shaders/vert.hlsl'
+local vert_file = 'root://shaders/vert.hlsl'
 if backend == 'opengl' then
-    vert_file = selene.__dir .. '/shaders/vert.glsl'
+    vert_file = 'root://shaders/vert.glsl'
     if os.host() == 'emscripten' or os.host() == 'android' then
-        vert_file = selene.__dir .. '/shaders/vert.glsl100'
+        vert_file = 'root://shaders/vert.glsl100'
     end
 elseif backend == 'vulkan' then
-    vert_file = selene.__dir .. '/shaders/vert.spv'
+    vert_file = 'root://shaders/vert.spv'
 end
 local vert = ren:load_shader('vertex', vert_file)
 
 -- data, size = selene.filesystem.read(selene.__dir .. '/shaders/shader.frag', true)
 -- print(size, data)
 -- local frag = ren:create_shader('pixel', size, data)
-local frag_file = selene.__dir .. '/shaders/frag.hlsl'
+local frag_file = 'root://shaders/frag.hlsl'
 if backend == 'opengl' then
-    frag_file = selene.__dir .. '/shaders/frag.glsl'
+    frag_file = 'root://shaders/frag.glsl'
     if os.host() == 'emscripten' or os.host() == 'android' then
-        frag_file = selene.__dir .. '/shaders/frag.glsl100'
+        frag_file = 'root://shaders/frag.glsl100'
     end
 elseif backend == 'vulkan' then
-    frag_file = selene.__dir .. '/shaders/frag.spv'
+    frag_file = 'root://shaders/frag.spv'
 end
 local frag = ren:load_shader('pixel', frag_file)
 
