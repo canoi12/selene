@@ -103,7 +103,7 @@ if (${LUA_VERSION} STREQUAL "jit")
 endif ()
 
 file(GLOB AUDIO_SOURCES src/modules/audio/*.c)
-file(GLOB FS_SOURCES src/modules/filesystem/*.c)
+file(GLOB FS_SOURCES src/modules/filesystem/*.c src/modules/font.c)
 file(GLOB RENDERER_SOURCES src/modules/renderer/**.c src/modules/renderer/drivers/*.c src/modules/renderer/drivers/*.cpp)
 file(GLOB WINDOW_SOURCES src/modules/window/*.c src/modules/window/backends/*.c)
 

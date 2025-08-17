@@ -8,7 +8,7 @@
 #include "font8x8/font8x8_latin.h"
 
 static MODULE_FUNCTION(FontGlyph, __index) {
-    CHECK_META(FontGlyph);
+    CHECK_META(selene_FontGlyph);
     int index = luaL_checkinteger(L, 2);
     lua_pushinteger(L, self[index].ax);
     lua_pushinteger(L, self[index].ay);
@@ -21,7 +21,7 @@ static MODULE_FUNCTION(FontGlyph, __index) {
 }
 
 static MODULE_FUNCTION(FontGlyph, meta) {
-    luaL_newmetatable(L, "FontGlyph");
+    luaL_newmetatable(L, selene_FontGlyph_METANAME);
     lua_pushcfunction(L, l_FontGlyph___index);
     lua_setfield(L, -2, "__index");
     return 1;
@@ -95,7 +95,7 @@ static MODULE_FUNCTION(font, create8x8) {
     lua_setfield(L, -2, "height");
     lua_pushstring(L, "rgba");
     lua_setfield(L, -2, "format");
-    NEW_UDATA_ADD(FontGlyph, glyphs, sizeof(FontGlyph)*256);
+    NEW_UDATA_ADD(selene_FontGlyph, glyphs, sizeof(selene_FontGlyph)*256);
     lua_setfield(L, -2, "glyphs");
     for (int i = 0; i < 256; i++) {
         glyphs[i].ax = 8.f / (float)w;
@@ -151,7 +151,7 @@ static MODULE_FUNCTION(font, from_ttf) {
     tw = th = 0;
 
     int i;
-    FontGlyph aux_glyphs[256];
+    selene_FontGlyph aux_glyphs[256];
 
     for (i = 0; i < 256; i++) {
         int ax, bl;
@@ -190,7 +190,7 @@ static MODULE_FUNCTION(font, from_ttf) {
     memset(bitmap, 0, final_size*sizeof(Data));
     int x = 0;
 
-    NEW_UDATA_ADD(FontGlyph, glyphs, sizeof(FontGlyph)*256);
+    NEW_UDATA_ADD(selene_FontGlyph, glyphs, sizeof(selene_FontGlyph)*256);
     memcpy(glyphs, aux_glyphs, sizeof(aux_glyphs));
     lua_setfield(L, -2, "glyphs");
     for (int i = 0; i < 256; i++) {
