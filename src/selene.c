@@ -216,49 +216,6 @@ void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf, int g
 
 extern void l_setup_extended_libs(lua_State *L);
 
-#if 0
-// Global Modules
-extern int luaopen_fs(lua_State *L);
-extern int luaopen_gl(lua_State *L);
-extern int luaopen_linmath(lua_State *L);
-#ifndef SELENE_NO_JSON
-extern int luaopen_json(lua_State *L);
-#endif
-#ifndef SELENE_NO_IMAGE
-extern int luaopen_image(lua_State *L);
-#endif
-#ifndef SELENE_NO_FONT
-extern int luaopen_font(lua_State *L);
-#endif
-#ifndef SELENE_NO_SDL
-extern int luaopen_sdl(lua_State *L);
-#endif
-extern int luaopen_ctypes(lua_State *L);
-#endif
-static const luaL_Reg _global_modules_reg[] = {
-#if 0
-    // {"fs", luaopen_fs},
-#ifndef SELENE_NO_OPENGL
-    {"gl", luaopen_gl},
-#endif
-    {"linmath", luaopen_linmath},
-#ifndef SELENE_NO_JSON
-    {"json", luaopen_json},
-#endif
-#ifndef SELENE_NO_FONT
-    {"font", luaopen_font},
-#endif
-#ifndef SELENE_NO_IMAGE
-    {"image", luaopen_image},
-#endif
-#ifndef SELENE_NO_SDL
-    {"sdl", luaopen_sdl},
-#endif
-    {"ctypes", luaopen_ctypes},
-#endif
-    {NULL, NULL}
-};
-
 // Selene Modules
 extern int luaopen_audio(lua_State *L);
 extern int luaopen_filesystem(lua_State* L);
@@ -434,19 +391,6 @@ static int l_selene_create_audio_system(lua_State* L) {
     return l_AudioSystem_create(L);
 }
 
-#if 0
-static int l_selene_get_context(lua_State* L) {
-    lua_newtable(L);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_window_ref);
-    lua_setfield(L, -2, "window");
-    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_renderer_ref);
-    lua_setfield(L, -2, "renderer");
-    lua_rawgeti(L, LUA_REGISTRYINDEX, s_ctx->l_audio_system_ref);
-    lua_setfield(L, -2, "audio_system");
-    return 1;
-}
-#endif
-
 #if defined(OS_ANDROID)
 extern int lua_android_require(lua_State* L);
 #endif
@@ -501,27 +445,6 @@ int luaopen_selene(lua_State *L) {
 #endif
     }
 
-    char* path = NULL;
-    int len;
-#ifndef OS_EMSCRIPTEN
-    path = SDL_GetBasePath();
-    len = strlen(path);
-    if (path[len-1] == '/' || path[len-1] == '\\')
-        path[len-1] = '\0';
-    lua_pushstring(L, path);
-#else
-    lua_pushstring(L, ".");
-#endif
-    r_exec_path = luaL_ref(L, LUA_REGISTRYINDEX);
-    lua_pushstring(L, ".");
-    r_root_path = luaL_ref(L, LUA_REGISTRYINDEX);
-    path = SDL_GetPrefPath("selene", "app");
-    len = strlen(path);
-    if (path[len-1] == '/' || path[len-1] == '\\')
-        path[len-1] = '\0';
-    lua_pushstring(L, path);
-    r_user_path = luaL_ref(L, LUA_REGISTRYINDEX);
-
 #if defined(OS_ANDROID)
     /* Setup SDL_RWops loader */
     lua_getglobal(L, "package");
@@ -539,13 +462,6 @@ int luaopen_selene(lua_State *L) {
 
     /* Setup extended libs */
     l_setup_extended_libs(L);
-#if 0
-    /* Setup global modules */
-    for (i = 0; _global_modules_reg[i].name != NULL; i++) {
-        luaL_requiref(L, _global_modules_reg[i].name, _global_modules_reg[i].func, 1);
-        lua_pop(L, 1);
-    }
-#endif
 
 #if 1
     /* Setup call function */

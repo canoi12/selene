@@ -28,9 +28,33 @@ int selene_init(void** userdata, int argc, char** argv) {
     luaopen_ffi(L);
 #endif
     luaL_requiref(L, "selene", luaopen_selene, 1);
-#if 1
+#ifndef NDEBUG
     fprintf(stdout, "[selene] lib opened\n");
 #endif
+    
+    /* Setup paths */
+    char* path = NULL;
+    int len;
+#ifndef OS_EMSCRIPTEN
+    path = SDL_GetBasePath();
+    len = strlen(path);
+    if (path[len - 1] == '/' || path[len - 1] == '\\')
+        path[len - 1] = '\0';
+    lua_pushstring(L, path);
+#else
+    lua_pushstring(L, ".");
+#endif
+    r_exec_path = luaL_ref(L, LUA_REGISTRYINDEX);
+    lua_pushstring(L, ".");
+    r_root_path = luaL_ref(L, LUA_REGISTRYINDEX);
+    path = SDL_GetPrefPath("selene", "app");
+    len = strlen(path);
+    if (path[len - 1] == '/' || path[len - 1] == '\\')
+        path[len - 1] = '\0';
+    lua_pushstring(L, path);
+    r_user_path = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    /* Setup args */
     lua_newtable(L);
     for (int i = 1; i < argc; i++) {
         lua_pushstring(L, argv[i]);
