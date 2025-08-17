@@ -1,10 +1,9 @@
 local RenderBatch2D = require('plugins.RenderBatch2D')
 print(RenderBatch2D, RenderBatch2D.create)
 
-selene()
+selene({ meta = {org = 'Canoi', name = 'Roguelike'}})
 local win = selene.create_window('batch 2D', 640, 380, {opengl = true})
 local ren = RenderBatch2D.create(win)
-
 
 selene.set_event(function(name)
     if name == 'quit' or name == 'window closed' then selene.set_running(false) end
