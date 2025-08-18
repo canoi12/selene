@@ -78,7 +78,7 @@ int lua_android_require(lua_State* L) {
         lua_pushstring(L, "AssetManager not initialized\n");
         return 1;
     }
-    AAsset* asset = AAssetManager_open(g_assetManager, filename, AASSET_MODE_BUFFER);
+    AAsset* asset = AAssetManager_open(g_asset_manager, filename, AASSET_MODE_BUFFER);
     char* buffer = NULL;
     size_t size;
     if (asset) {
@@ -169,7 +169,7 @@ static int l_filesystem_read(lua_State* L) {
             lua_pushstring(L, "AssetManager not initialized\n");
             return 1;
         }
-        AAsset* asset = AAssetManager_open(g_assetManager, filename, AASSET_MODE_BUFFER);
+        AAsset* asset = AAssetManager_open(g_asset_manager, filename, AASSET_MODE_BUFFER);
         if (!asset) {
             lua_pushfstring(L, "Asset not found: %s", filename);
             return 1;
@@ -320,7 +320,7 @@ static int l_filesystem_load(lua_State* L) {
             lua_pushstring(L, "AssetManager not initialized\n");
             return 1;
         }
-        AAsset* asset = AAssetManager_open(g_assetManager, path, AASSET_MODE_BUFFER);
+        AAsset* asset = AAssetManager_open(g_asset_manager, path, AASSET_MODE_BUFFER);
         if (!asset) {
             lua_pushfstring(L, "Asset not found: %s", path);
             return 1; // Retorna erro

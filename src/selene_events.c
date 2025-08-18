@@ -124,6 +124,7 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushinteger(L, event->jball.yrel);
             return 5;
         }
+#if SDL_VERSION_ATLEAST(2, 26, 0)
         case SDL_JOYBATTERYUPDATED: {
             lua_pushstring(L, "joystick battery");
             lua_pushinteger(L, event->jbattery.which);
@@ -131,6 +132,7 @@ int g_selene_process_event(lua_State* L, SDL_Event* event) {
             lua_pushstring(L, battery_level[event->jbattery.level+1]);
             return 3;
         }
+#endif
         /* Gamepad events */
         case SDL_CONTROLLERDEVICEADDED: {
             lua_pushstring(L, "gamepad added");
