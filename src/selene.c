@@ -284,9 +284,7 @@ extern int lua_android_require(lua_State* L);
  * @return Selene library
  */
 int luaopen_selene(lua_State *L) {
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] luaopen_selene\n");
-#endif
+    DEBUG_LOG("[selene] luaopen_selene\n");
     const luaL_Reg reg[] = {
         REG_FIELD(selene, alloc),
         REG_FIELD(selene, delay),
@@ -306,9 +304,7 @@ int luaopen_selene(lua_State *L) {
     };
     luaL_newlib(L, reg);
     // selene_open_enums(L);
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] opened enums\n");
-#endif
+    DEBUG_LOG("[selene] created newlib");
     lua_pushstring(L, SELENE_VERSION);
     lua_setfield(L, -2, "__version");
 
@@ -316,9 +312,7 @@ int luaopen_selene(lua_State *L) {
     int i;
     for (i = 0; _selene_modules_reg[i].name != NULL; i++) {
         const luaL_Reg* _reg = _selene_modules_reg + i;
-#ifndef NDEBUG
-        fprintf(stdout, "[selene] loading %s lib\n", _reg->name);
-#endif
+        DEBUG_LOG("[selene] loading %s lib\n", _reg->name);
 #if 1
         luaL_requiref(L, _reg->name, _reg->func, 1);
         lua_pop(L, 1);
@@ -378,9 +372,7 @@ int s_default_step_callback(lua_State* L) {
 }
 
 void s_default_quit_callback(lua_State* L, int status) {
-#if DEBUG
-    fprintf(stdout, "quit: %d\n", status);
-#endif
+    DEBUG_LOG("[selene] quit callback: %d\n", status);
     lua_rawgeti(L, LUA_REGISTRYINDEX, g_selene_context.l_quit_callback_ref);
     if (lua_isfunction(L, -1)) {
         if (lua_pcall(L, 0, 0, 0) != LUA_OK) {

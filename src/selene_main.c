@@ -57,9 +57,7 @@ int selene_init(void** userdata, int argc, char** argv) {
         lua_rawseti(L, -2, i);
     }
     lua_setfield(L, -2, "args");
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] initialized args\n");
-#endif
+    DEBUG_LOG("[selene] initialized args\n");
 #if !defined(OS_WIN) && !defined(OS_EMSCRIPTEN)
     const char* setup_path =
         "local path = filesystem.resolve('exec://')\n"
@@ -72,9 +70,7 @@ int selene_init(void** userdata, int argc, char** argv) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to setup package.path: %s\n", msg);
         return SELENE_APP_FAILURE;
     }
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] set up the package.path paths\n");
-#endif
+    DEBUG_LOG("[selene] set up the package.path paths\n");
 #endif
 
     const char* handle_args =
@@ -100,9 +96,7 @@ int selene_init(void** userdata, int argc, char** argv) {
         return SELENE_APP_FAILURE;
     }
     lua_pop(L, 1);
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] set up the exec params\n");
-#endif
+    DEBUG_LOG("[selene] set up the exec parameters\n");
 
     lua_getglobal(L, "package");
     lua_getfield(L, -1, "preload");
@@ -113,9 +107,7 @@ int selene_init(void** userdata, int argc, char** argv) {
         lua_setfield(L, -2, "boot");
     } else lua_pop(L, 1);
     lua_pop(L, 2);
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] set up boot package\n");
-#endif
+    DEBUG_LOG("[selene] set up boot package\n");
     if (luaL_dostring(L, "require('boot')") != LUA_OK) {
         const char* error = lua_tostring(L, -1);
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] Failed to load boot.lua: %s\n", error);
@@ -189,7 +181,8 @@ int selene_main(int argc, char** argv) {
     res = selene_main_loop(L);
     selene_quit((void*)L, res);
 QUIT:
-    fprintf(stdout, "[selene] exiting(%d)...\n", res);
+    // fprintf(stdout, "[selene] exiting(%d)...\n", res);
+    DEBUG_LOG("[selene] exiting program(%d)\n", res);
     lua_close(L);
     return res-1;
 }
