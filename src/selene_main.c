@@ -28,9 +28,7 @@ int selene_init(void** userdata, int argc, char** argv) {
     luaopen_ffi(L);
 #endif
     luaL_requiref(L, "selene", luaopen_selene, 1);
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] lib opened\n");
-#endif
+    DEBUG_LOG("[selene] lib opened\n");
     
     /* Setup paths */
     char* path = NULL;
