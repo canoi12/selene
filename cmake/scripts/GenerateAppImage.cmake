@@ -1,7 +1,5 @@
 include(${CMAKE_CURRENT_LIST_DIR}/../Config.cmake)
 message("Generating AppImage for [selene v${SELENE_VERSION}]")
-message("Searching for appimagetool in ${CMAKE_CURRENT_LIST_DIR}/../../.cache")
-find_program(APPIMAGETOOL appimagetool PATHS "${CMAKE_CURRENT_LIST_DIR}/../../.cache" REQUIRED)
 
 file(WRITE "${CPACK_TEMPORARY_DIRECTORY}/runtime/AppRun" [[#!/bin/bash
 export LD_LIBRARY_PATH="${APPDIR}/lib:${LD_LIBRARY_PATH}"
@@ -19,6 +17,10 @@ if(NOT TARGET_ARCHITECTURE)
         message(FATAL_ERROR "No supported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 endif()
+
+message("Searching for appimagetool in ${CMAKE_CURRENT_LIST_DIR}/../../.cache")
+find_program(APPIMAGETOOL appimagetool-${TARGET_ARCHITECTURE} PATHS "${CMAKE_CURRENT_LIST_DIR}/../../.cache" REQUIRED)
+
 #message("Package directory: ${CPACK_TEMPORARY_DIRECTORY} ${COMPONENT}")
 execute_process(
     COMMAND env ARCH=${TARGET_ARCHITECTURE}

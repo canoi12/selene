@@ -2,9 +2,7 @@
 #include "modules/renderer.h"
 #include "modules/window.h"
 
-const int vk_pixel_formats_values[] = {VK_FORMAT_R8G8B8_UNORM,
-                                       VK_FORMAT_R8G8B8A8_UNORM};
-
+const int vk_pixel_formats_values[] = {VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM};
 
 const int vk_front_face_values[] = { VK_FRONT_FACE_CLOCKWISE, VK_FRONT_FACE_COUNTER_CLOCKWISE};
 const int vk_cull_face_values[] = { VK_CULL_MODE_NONE, VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_FRONT_AND_BACK };
@@ -27,42 +25,40 @@ struct SwapChainSupportDetails {
 #define MAX_FRAMES_ 2
 
 VkResult vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
-                         VkSurfaceKHR surface,
-                         struct QueueFamilyIndices indices, uint32_t width,
-                         uint32_t height, struct VulkanSwapchain *outSwapchain);
+                             VkSurfaceKHR surface,
+                             struct QueueFamilyIndices indices, uint32_t width,
+                             uint32_t height, struct VulkanSwapchain *outSwapchain);
 void vk_destroy_swapchain(VkPhysicalDevice physical_device, VkDevice device,
                           struct VulkanSwapchain outSwapchain);
 VkResult vk_create_texture(VkDevice device, VkPhysicalDevice physicalDevice,
-                       uint32_t width, uint32_t height, VkFormat format,
-                       VkImageTiling tiling, VkImageUsageFlags usage,
-                       VkMemoryPropertyFlags properties, selene_Texture2D *outTexture);
+                           uint32_t width, uint32_t height, VkFormat format,
+                           VkImageTiling tiling, VkImageUsageFlags usage,
+                           VkMemoryPropertyFlags properties, selene_Texture2D *outTexture);
 VkResult vk_create_buffer(selene_Renderer *self, int size, int usage, int flags, VkBuffer *out_buf, VkDeviceMemory *out_mem);
 int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 VkImageView vk_create_image_view(selene_Renderer* self, VkImage image, VkFormat format);
 
-static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev,
-                                                     VkSurfaceKHR surface) {
+static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev, VkSurfaceKHR surface) {
     struct QueueFamilyIndices indices = {-1, -1};
 
     uint32_t count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, NULL);
 
-    VkQueueFamilyProperties *families =
-        malloc(sizeof(VkQueueFamilyProperties) * count);
+    VkQueueFamilyProperties *families = malloc(sizeof(VkQueueFamilyProperties) * count);
     vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, families);
     for (int i = 0; i < count; i++) {
-      if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-        indices.graphics_family = i;
-      }
-      VkBool32 present_support = VK_FALSE;
-      vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &present_support);
-      if (present_support)
-        indices.present_family = i;
+        if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            indices.graphics_family = i;
+        }
+        VkBool32 present_support = VK_FALSE;
+        vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &present_support);
+        if (present_support)
+            indices.present_family = i;
 
-      if (indices.present_family != -1 && indices.graphics_family != -1)
-        goto RETURN;
+        if (indices.present_family != -1 && indices.graphics_family != -1)
+            goto RETURN;
     }
     DEBUG_ERROR("No suitable queue family found\n");
 
@@ -74,16 +70,15 @@ const int vk_buffer_target_types_values[] = {
     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT};
 
-static int find_memory_type(VkPhysicalDevice phys, int type_filter,
-                            VkMemoryPropertyFlags properties) {
-  VkPhysicalDeviceMemoryProperties mem_props;
-  vkGetPhysicalDeviceMemoryProperties(phys, &mem_props);
-  for (int i = 0; i < mem_props.memoryTypeCount; i++) {
-    if ((type_filter & (1 << i)) &&
-        (mem_props.memoryTypes[i].propertyFlags & properties) == properties)
-      return i;
-  }
-  return -1;
+static int find_memory_type(VkPhysicalDevice phys, int type_filter, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties mem_props;
+    vkGetPhysicalDeviceMemoryProperties(phys, &mem_props);
+    for (int i = 0; i < mem_props.memoryTypeCount; i++) {
+        if ((type_filter & (1 << i)) &&
+            (mem_props.memoryTypes[i].propertyFlags & properties) == properties)
+        return i;
+    }
+    return -1;
 }
 
 int l_VK_Renderer__destroy(lua_State *L) {
