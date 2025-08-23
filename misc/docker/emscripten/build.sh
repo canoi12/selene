@@ -4,6 +4,8 @@ set -e
 BUILD_DIR=/build
 OUTPUT_DIR=/dist
 
+export EMSDK_DIR="$EMSDK"
+
 mkdir -p $BUILD_DIR
 mkdir -p $OUTPUT_DIR
 
