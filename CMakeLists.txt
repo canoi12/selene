@@ -21,6 +21,13 @@ endif ()
 
 
 configure_file("${CMAKE_SOURCE_DIR}/include/selene_config.h.in" "${CMAKE_SOURCE_DIR}/include/selene_config.h")
+if (NOT MSVC)
+    if (CMAKE_BUILD_TYPE MATCHES Debug)
+        add_definitions(-DDEBUG)
+    else ()
+        add_definitions(-DNDEBUG)
+    endif ()
+endif ()
 # if (DEFINED MSVC AND DEFINED CMAKE_GENERATOR_PLATFORM)
 #     message("GENERATOR: ${CMAKE_GENERATOR_PLATFORM}")
 #     if ("${CMAKE_GENERATOR_PLATFORM}" STREQUAL "")
