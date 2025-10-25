@@ -11,8 +11,8 @@ static int l_gl_renderer_functions_ref = LUA_NOREF;
 #endif             
 #ifndef SELENE_NO_VULKAN
 extern int l_VK_Renderer_create(lua_State* L);
-#endif
 static int l_vk_renderer_functions_ref = LUA_NOREF;
+#endif
 #if defined(OS_WIN)
 extern int l_DX11_Renderer_meta(lua_State* L);
 extern int l_DX11_Renderer_create(lua_State* L);
@@ -65,7 +65,7 @@ const char* comparison_func_options[] = {"never", "less", "equal", "less equal",
 
 const char* vertex_format_options[] = {"r32_float", "r32g32_float", "r32g32b32_float", "r32g32b32a32_float", NULL};
 
-const char* renderer_backend_options[] = { "opengl", "vulkan", "dx11", "dx12", NULL };
+const char* renderer_backend_options[] = { "opengl", "vulkan", "d3d11", "d3d12", NULL };
 
 int l_renderer_create(lua_State* L) {
     const char* api_name = luaL_checkstring(L, 2);
@@ -115,7 +115,6 @@ int luaopen_renderer(lua_State* L) {
 
     luaL_newmetatable(L, selene_Texture2D_METANAME);
     lua_setfield(L, -2, "Texture2D");
-
 
     l_VertexBatch_meta(L);
     luaL_ref(L, LUA_REGISTRYINDEX);

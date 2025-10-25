@@ -16,13 +16,13 @@ static int l_Renderer__get_backend(lua_State* L) {
     CHECK_META(selene_Renderer);
     switch (self->backend) {
         case SELENE_RENDERER_OPENGL: lua_pushstring(L, "opengl"); break;
-        case SELENE_RENDERER_DIRECTX11: lua_pushstring(L, "dx11"); break;
+        case SELENE_RENDERER_DIRECTX11: lua_pushstring(L, "d3d11"); break;
+        case SELENE_RENDERER_DIRECTX12: lua_pushstring(L, "d3d12"); break;
         case SELENE_RENDERER_VULKAN: lua_pushstring(L, "vulkan"); break;
         default: lua_pushstring(L, "unknown");
     }
     return 1;
 }
-
 
 int l_Renderer__destroy(lua_State* L) {
     CHECK_META(selene_Renderer);
