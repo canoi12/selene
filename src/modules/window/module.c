@@ -20,6 +20,8 @@ int l_create_window(lua_State* L) {
 extern int l_selene_Window__destroy(lua_State* L);
 extern int l_selene_Window__get_size(lua_State* L);
 extern int l_selene_Window__set_size(lua_State* L);
+extern int l_selene_Window__get_title(lua_State* L);
+extern int l_selene_Window__set_title(lua_State* L);
 
 int luaopen_window(lua_State* L) {
     luaL_newmetatable(L, selene_Window_METANAME);
@@ -29,6 +31,8 @@ int luaopen_window(lua_State* L) {
         REG_META_FIELD(selene_Window, destroy),
         REG_META_FIELD(selene_Window, get_size),
         REG_META_FIELD(selene_Window, set_size),
+        REG_META_FIELD(selene_Window, get_title),
+        REG_META_FIELD(selene_Window, set_title),
         {NULL, NULL}
     };
     luaL_setfuncs(L, _reg, 0);

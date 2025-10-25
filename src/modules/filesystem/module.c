@@ -323,7 +323,7 @@ static int l_filesystem_load(lua_State* L) {
         AAsset* asset = AAssetManager_open(g_asset_manager, path, AASSET_MODE_BUFFER);
         if (!asset) {
             lua_pushfstring(L, "Asset not found: %s", path);
-            return 1; // Retorna erro
+            return 1;
         }
         size = AAsset_getLength(asset);
         buffer = (char*)malloc(size + 1);
@@ -334,7 +334,7 @@ static int l_filesystem_load(lua_State* L) {
         }
 
         AAsset_read(asset, buffer, size);
-        buffer[size] = '\0'; // Null-terminate
+        buffer[size] = '\0';
         AAsset_close(asset);
     }
     luaL_loadbuffer(L, buffer, size, path); 

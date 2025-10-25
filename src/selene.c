@@ -65,7 +65,7 @@ static int l_selene__call(lua_State *L) {
         }
         lua_pop(L, 1);
     }
-    
+
     if (SDL_Init(flags) < 0) {
         return luaL_error(L, "failed to initialize SDL: %s", SDL_GetError());
     }
@@ -77,7 +77,7 @@ static int l_selene__call(lua_State *L) {
     lua_pushstring(L, path);
     lua_rawseti(L, LUA_REGISTRYINDEX, r_user_path);
     SDL_free(path);
-    
+
     return 0;
 }
 
@@ -117,7 +117,7 @@ static const luaL_Reg _selene_modules_reg[] = {
     {NULL, NULL}
 };
 
-#ifndef SELENE_NO_SDL
+#if !defined(SELENE_NO_SDL) && 0
 static int l_load_from_sdl_rwops(lua_State *L) {
     const char *module_name = luaL_checkstring(L, 1);
     size_t len = strlen(module_name);
@@ -304,7 +304,7 @@ int luaopen_selene(lua_State *L) {
     };
     luaL_newlib(L, reg);
     // selene_open_enums(L);
-    DEBUG_LOG("[selene] created newlib");
+    DEBUG_LOG("[selene] created newlib\n");
     lua_pushstring(L, SELENE_VERSION);
     lua_setfield(L, -2, "__version");
 
