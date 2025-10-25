@@ -1,5 +1,6 @@
+#include "lua/lua5.4/source/src/lua.h"
 #include "selene.h"
-#include "lua_helper.h"
+//#include "lua_helper.h"
 
 // #include "modules/renderer.h"
 #include "modules/filesystem.h"
@@ -22,14 +23,14 @@ static const char* s_boot_script =
 
 int selene_init(void** userdata, int argc, char** argv) {
     lua_State* L = (lua_State*)*userdata;
-    fprintf(stdout, "Initializing selene\n");
+    DEBUG_LOG("[selene] initializing engine\n");
     luaL_openlibs(L);
 #if SELENE_USE_JIT
     luaopen_ffi(L);
 #endif
     luaL_requiref(L, "selene", luaopen_selene, 1);
     DEBUG_LOG("[selene] lib opened\n");
-    
+
     /* Setup paths */
     char* path = NULL;
     int len;

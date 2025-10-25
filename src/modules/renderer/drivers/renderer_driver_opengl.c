@@ -868,20 +868,20 @@ int l_GL_Renderer__present(lua_State* L) {
 
 int l_GL_Renderer_create(lua_State* L) {
 #ifndef NDEBUG
-    fprintf(stdout, "[selene] creating GL Renderer\n");
+    fprintf(stdout, "[renderer] creating OpenGL Renderer\n");
 #endif
     INIT_ARG();
     selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
 #ifndef NDEBUG
-    fprintf(stdout, "[selene] window: %p\n", win);
-    fprintf(stdout, "[selene] creating GL Context\n");
+    fprintf(stdout, "[renderer] window: %p\n", win);
+    fprintf(stdout, "[renderer] creating GL Context\n");
 #endif
     SDL_GLContext ctx = SDL_GL_CreateContext(win->handle);
     if (!ctx) {
         return luaL_error(L, "failed to create SDL OpenGL context: %s", SDL_GetError());
     }
 #ifndef NDEBUG
-    fprintf(stdout, "[selene] GL Context created\n");
+    fprintf(stdout, "[renderer] GL Context created\n");
 #endif
     NEW_UDATA(selene_Renderer, r);
     r->window_ptr = win;
@@ -894,10 +894,10 @@ int l_GL_Renderer_create(lua_State* L) {
         return luaL_error(L, "Failed to init glad");
 #endif
 #ifndef NDEBUG
-    fprintf(stdout, "[selene] modern OpenGL loaded\n");
+    fprintf(stdout, "[renderer] modern OpenGL loaded\n");
 #endif
-    const char* version = glGetString(GL_VERSION);
-    fprintf(stdout, "OpenGL Version: %s\n", version);
+    const unsigned char* version = glGetString(GL_VERSION);
+    fprintf(stdout, "[renderer] OpenGL Version: %s\n", version);
     r->command_offset = 0;
     r->command_count = 512;
     r->command_pool = (struct RenderCommand*)malloc(sizeof(struct RenderCommand) * r->command_count);

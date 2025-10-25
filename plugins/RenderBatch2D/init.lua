@@ -26,7 +26,7 @@ function RenderBatch2D.create(win, backend)
 
     if backend == 'opengl' then
         r.shader_list = require('plugins.RenderBatch2D.gl_shaders').compile_all(r.handle)
-    elseif backend == 'dx11' then
+    elseif backend == 'd3d11' then
         r.shader_list = require('plugins.RenderBatch2D.dx_shaders').compile_all(r.handle)
     end
     local shaders = r.shader_list

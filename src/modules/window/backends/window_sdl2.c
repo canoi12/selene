@@ -3,9 +3,7 @@
 #ifndef SELENE_USE_GLFW
 
 int l_create_SDL_window(lua_State* L) {
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] creating SDL window\n");
-#endif
+    DEBUG_LOG("[window] creating SDL window\n");
     INIT_ARG();
     CHECK_STRING(title);
     CHECK_INTEGER(width);
@@ -60,9 +58,7 @@ int l_create_SDL_window(lua_State* L) {
     );
     if (win == NULL)
         return luaL_error(L, "failed to create SDL window: %s", SDL_GetError());
-#ifndef NDEBUG
-    fprintf(stdout, "[selene] created SDL window\n");
-#endif
+    DEBUG_LOG("[window] created SDL window\n");
     selene_Window* win_ptr = (selene_Window*)lua_newuserdata(L, sizeof(selene_Window));
     memset(win_ptr, 0, sizeof(*win_ptr));
     luaL_setmetatable(L, selene_Window_METANAME);
@@ -92,6 +88,20 @@ int l_selene_Window__set_size(lua_State* L) {
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
     SDL_SetWindowSize(self->handle, width, height);
+    return 0;
+}
+
+int l_selene_Window__get_title(lua_State* L) {
+    CHECK_META(selene_Window);
+    PUSH_STRING(self->title);
+    return 1;
+}
+
+int l_selene_Window__set_title(lua_State* L) {
+    CHECK_META(selene_Window);
+    CHECK_STRING(title);
+    strcpy(self->title, title);
+    SDL_SetWindowTitle(self->handle, title);
     return 0;
 }
 #endif

@@ -1,0 +1,81 @@
+def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
+def buildAsApplication = !buildAsLibrary
+if (buildAsApplication) {
+    apply plugin: 'com.android.application'
+}
+else {
+    apply plugin: 'com.android.library'
+}
+
+android {
+    if (buildAsApplication) {
+        namespace System.getenv("ANDROID_APP_NAMESPACE") ?: "com.selene.app"
+    }
+    ndkVersion System.getenv("ANDROID_NDK_VERSION") ?: "25.2.9519653"
+    compileSdkVersion 34
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName System.getenv("SELENE_VERSION") ?: "1.0"
+        externalNativeBuild {
+            // ndkBuild {
+            //     arguments "APP_PLATFORM=android-26"
+            //     abiFilters 'x86', 'x86_64', 'arm64-v8a'
+            // }
+            cmake {
+                arguments "-DANDROID_APP_PLATFORM=android-21", "-DANDROID_STL=c++_static", "-DUSE_SDL_SOURCE=ON"
+                def abiEnv = System.getenv("SELENE_ANDROID_ABIS")
+                if (abiEnv != null) {
+                    abiFilters abiEnv.split(",")
+                } else {
+                    abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+                }
+                // abiFilters 'arm64-v8a'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    applicationVariants.all { variant ->
+        tasks["merge${variant.name.capitalize()}Assets"]
+            .dependsOn("externalNativeBuild${variant.name.capitalize()}")
+    }
+    if (!project.hasProperty('EXCLUDE_NATIVE_LIBS')) {
+        sourceSets.main {
+            jniLibs.srcDir 'libs'
+        }
+        externalNativeBuild {
+            // ndkBuild {
+            //     path 'jni/Application.mk'
+            // }
+            cmake {
+                path '/source/CMakeLists.txt'
+            }
+        }
+       
+    }
+    lint {
+        abortOnError false
+    }
+
+    if (buildAsLibrary) {
+        libraryVariants.all { variant ->
+            variant.outputs.each { output ->
+                def outputFile = output.outputFile
+                if (outputFile != null && outputFile.name.endsWith(".aar")) {
+                    def fileName = System.getenv("ANDROID_APP_NAMESPACE")+".aar" ?: "com.selene.app.aar";
+                    output.outputFile = new File(outputFile.parent, fileName);
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+}
