@@ -105,7 +105,7 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
         char log[512];
-        glGetProgramInfoLog(program, 512, log, NULL);
+        glGetProgramInfoLog(program, 512, NULL, log);
         glDeleteProgram(program);
         return luaL_error(L, "failed to link program: %s", log);
     }
