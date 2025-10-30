@@ -39,6 +39,7 @@ int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat forma
 void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 VkImageView vk_create_image_view(selene_Renderer* self, VkImage image, VkFormat format);
+VkResult vk_create_sampler(selene_Renderer* self, VkFilter filter, VkSampler *out);
 
 static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev, VkSurfaceKHR surface) {
     struct QueueFamilyIndices indices = {-1, -1};
@@ -90,7 +91,7 @@ int l_VK_Renderer__destroy(lua_State *L) {
     if (self->vk.image_semaphore) vkDestroySemaphore(dev, self->vk.image_semaphore, NULL);
     if (self->vk.render_semaphore) vkDestroySemaphore(dev, self->vk.render_semaphore, NULL);
     if (self->vk.fence) vkDestroyFence(dev, self->vk.fence, NULL);
-    
+
     self->vk.descriptor_pool = VK_NULL_HANDLE;
     self->vk.image_semaphore = NULL;
     self->vk.render_semaphore = NULL;
@@ -412,7 +413,6 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
                     else if (strcmp(stage, "fragment") == 0) {
                         binding->stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
                     }
-                    // Add more stages as needed
                 }
                 lua_pop(L, 1);
             }
@@ -438,7 +438,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     VkDescriptorSetLayoutCreateInfo layout_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = descriptor_set_layout_count,
-        .pBindings = &descriptor_bindings
+        .pBindings = descriptor_bindings
     };
 
     VkDescriptorSetLayout descriptor_layout = VK_NULL_HANDLE;
@@ -865,7 +865,7 @@ int l_VK_Renderer__flush(lua_State *L) {
                 vkCmdBindPipeline(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.handle);
                 vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.layout, 0, 1, &(rc->pipeline->vk.descriptor_set), 0, NULL);
                 state.pipe = rc->pipeline;
-        } break; 
+        } break;
         case RENDER_COMMAND_SET_VERTEX_BUFFER: {
             selene_GpuBuffer* buf = rc->buffer.ptr;
             VkBuffer buffers[] = {buf->vk.handle};
@@ -958,7 +958,7 @@ int l_VK_Renderer__present(lua_State *L) {
 
     VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submit_info.pWaitDstStageMask = wait_stages;
-    
+
     VkSemaphore wait_sem[] = {self->vk.image_semaphore};
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = wait_sem;
@@ -1060,7 +1060,7 @@ int l_VK_Renderer_create(lua_State *L) {
     };
 
     const char *device_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    
+
     VkDeviceCreateInfo dev_crt_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pQueueCreateInfos = &queue_crt_info,
@@ -1397,7 +1397,7 @@ VkResult vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
             }
             free(outSwapchain->views);
             free(outSwapchain->images);
-            return;
+            return result;
         }
     }
 
