@@ -136,7 +136,7 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
         int opt = luaL_checkoption(L, -1, NULL, type_name_options);
         pipe->layout.attributes[i].type = gl_type_values[opt];
         lua_pop(L, 1);
-        fprintf(stdout, "name: %s, offset: %d, size: %d, type: %d\n", name, pipe->layout.attributes[i].offset, size, pipe->layout.attributes[i].type);
+        DEBUG_LOG("name: %s, offset: %d, size: %d, type: %d\n", name, pipe->layout.attributes[i].offset, size, pipe->layout.attributes[i].type);
         switch (opt) {
             case 0:
             case 1:
@@ -151,7 +151,7 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
         }
         lua_pop(L, 1);
     }
-    fprintf(stdout, "registered layout\n");
+   DEBUG_LOG("registered layout\n");
 
     pipe->gl.program = program;
     pipe->gl.vao = vao;
@@ -545,7 +545,7 @@ int l_GL_Renderer__create_shader(lua_State* L) {
         if (size > aux_source_size) {
             aux_source = realloc(aux_source, size + 1);
             aux_source_size = size + 1;
-            fprintf(stdout, "alloc memory for aux_source: %d\n", size + 1);
+            DEBUG_LOG("alloc memory for aux_source: %d\n", size+1);
             if (!aux_source)
                 return luaL_error(L, "failed to alloc memory for shader compiler auxiliar source");
         }
