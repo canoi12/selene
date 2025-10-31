@@ -85,7 +85,7 @@ static MODULE_FUNCTION(font, create8x8) {
     }
     lua_newtable(L);
     size_t size = w*h*4;
-    NEW_UDATA_ADD(Data, dt, sizeof(Data)+size);
+    NEW_UDATA_ADD(Data, dt, size);
     memcpy(&dt[1], bitmap, size);
     free(bitmap);
     lua_setfield(L, -2, "data");
@@ -118,7 +118,7 @@ static MODULE_FUNCTION(font, from_ttf) {
 #if defined(SELENE_USE_SDL3)
     SDL_IOStream* fp = SDL_IOFromFile(path, "rb");
 #else
-    SDL_RWops* fp = SDL_RWFromFile(path, "rb");    
+    SDL_RWops* fp = SDL_RWFromFile(path, "rb");
 #endif
     if (!fp)
         return luaL_error(L, "Failed to open font: %s", path);
@@ -187,7 +187,7 @@ static MODULE_FUNCTION(font, from_ttf) {
     lua_setfield(L, -2, "format");
 
     uint32_t* bitmap = &dt[1];
-    memset(bitmap, 0, final_size*sizeof(Data));
+    memset(bitmap, 0, final_size);
     int x = 0;
 
     NEW_UDATA_ADD(selene_FontGlyph, glyphs, sizeof(selene_FontGlyph)*256);
