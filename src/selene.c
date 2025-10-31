@@ -61,7 +61,7 @@ static int l_selene__call(lua_State *L) {
             lua_getfield(L, -1, "name");
             if (lua_isstring(L, -1)) name = lua_tostring(L, -1);
             lua_pop(L, 1);
-            fprintf(stdout, "%s %s\n", org, name);
+            DEBUG_LOG("Meta: %s %s\n", org, name);
         }
         lua_pop(L, 1);
     }
