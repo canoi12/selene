@@ -1,4 +1,5 @@
-﻿local Font = require('plugins.RenderBatch2D.Font')
+﻿local
+Font = require('plugins.RenderBatch2D.Font')
 local RenderBatch2D = {}
 RenderBatch2D.__index = RenderBatch2D
 
@@ -10,15 +11,15 @@ function RenderBatch2D.create(win, backend)
     r.handle = selene.create_renderer(win, backend)
     -- local renderer = r.handle
     r.backend = r.handle:get_backend()
-    r.batch = renderer.VertexBatch(9*4, 1024)
+    r.batch = renderer.VertexBatch(9 * 4, 1024)
     print(renderer)
-    r.vertex = r.handle:create_buffer('vertex', 9*4*256)
+    r.vertex = r.handle:create_buffer('vertex', 9 * 4 * 256)
     --r.handle:send_triangle(r.vertex)
     r.index = nil
-    r.uniform = r.handle:create_buffer('uniform', 4*16)
+    r.uniform = r.handle:create_buffer('uniform', 4 * 16)
     r.pipeline = nil
     r.target = nil
-    r.draw_list = {top = 0}
+    r.draw_list = { top = 0 }
     r.last_offset = 0
     -- local font_8x8 = font.create8x8()
     r.font = Font.create8x8(r)
@@ -32,36 +33,36 @@ function RenderBatch2D.create(win, backend)
     local shaders = r.shader_list
 
     r.pipelines = {
-        ['SPRITE2D'] = r.handle:create_pipeline{
+        ['SPRITE2D'] = r.handle:create_pipeline {
             layout = {
-                stride = 9*4,
-                {name = 'a_position', offset = 0, size = 3, type = 'float'},
-                {name = 'a_color', offset = 12, size = 4, type = 'float'},
-                {name = 'a_texcoord', offset = 28, size = 2, type = 'float'},
+                stride = 9 * 4,
+                { name = 'a_position', offset = 0,  size = 3, type = 'float' },
+                { name = 'a_color',    offset = 12, size = 4, type = 'float' },
+                { name = 'a_texcoord', offset = 28, size = 2, type = 'float' },
             },
             vs = shaders['SPRITE2D'].vertex,
             ps = shaders['SPRITE2D'].pixel,
-            blend = {enabled = true, func = 'alpha'},
-            scissor = {enabled = true}
+            blend = { enabled = true, func = 'alpha' },
+            scissor = { enabled = true }
         },
-        ['PRIMITIVE2D'] = r.handle:create_pipeline{
+        ['PRIMITIVE2D'] = r.handle:create_pipeline {
             layout = {
-                stride = 9*4,
-                {name = 'a_position', offset = 0, size = 3, type = 'float'},
-                {name = 'a_color', offset = 12, size = 4, type = 'float'},
+                stride = 9 * 4,
+                { name = 'a_position', offset = 0,  size = 3, type = 'float' },
+                { name = 'a_color',    offset = 12, size = 4, type = 'float' },
             },
             vs = shaders['PRIMITIVE2D'].vertex,
             ps = shaders['PRIMITIVE2D'].pixel
         },
-        ['PRIMITIVE3D'] = r.handle:create_pipeline{
+        ['PRIMITIVE3D'] = r.handle:create_pipeline {
             layout = {
-                stride = 9*4,
-                {name = 'a_position', offset = 0, size = 3, type = 'float'},
-                {name = 'a_color', offset = 12, size = 4, type = 'float'},
+                stride = 9 * 4,
+                { name = 'a_position', offset = 0,  size = 3, type = 'float' },
+                { name = 'a_color',    offset = 12, size = 4, type = 'float' },
             },
             vs = shaders['PRIMITIVE2D'].vertex,
             ps = shaders['PRIMITIVE2D'].pixel,
-            depth = {enabled = true, func = 'less'}
+            depth = { enabled = true, func = 'less' }
         }
     }
     --[[
@@ -75,16 +76,17 @@ end
 
 function RenderBatch2D:destroy()
     print('destroying RenderBatch2D')
-    for k,pipeline in pairs(self.pipelines) do
+    for k, pipeline in pairs(self.pipelines) do
         print(pipeline)
         self.handle:destroy_pipeline(pipeline)
     end
     print("Destroyed Pipelines")
-    for i,shader in pairs(self.shader_list) do
+    for i, shader in pairs(self.shader_list) do
         print(shader.vertex, shader.pixel)
         self.handle:destroy_shader(shader.vertex)
         self.handle:destroy_shader(shader.pixel)
     end
+    if self.font then self.font:destroy(self) end
     if self.vertex then self.handle:destroy_buffer(self.vertex) end
     if self.index then self.handle:destroy_buffer(self.index) end
     if self.uniform then self.handle:destroy_buffer(self.uniform) end
@@ -117,8 +119,8 @@ end
 
 function RenderBatch2D:end_frame()
     self:push_draw('triangles')
-    
-    self.handle:send_buffer_data(self.vertex, self.batch:get_offset()*self.batch:get_stride(), self.batch:get_data())
+
+    self.handle:send_buffer_data(self.vertex, self.batch:get_offset() * self.batch:get_stride(), self.batch:get_data())
     -- print('Pushing')
     self.handle:present()
 end
@@ -127,7 +129,7 @@ function RenderBatch2D:push_draw(mode)
     local offset = self.batch:get_offset()
     if self.last_offset ~= offset then
         -- self:push_draw('triangles', self.last_offset, offset-self.last_offset)
-        self.handle:draw(mode, self.last_offset, offset-self.last_offset)
+        self.handle:draw(mode, self.last_offset, offset - self.last_offset)
         self.last_offset = offset
     end
 end
@@ -135,8 +137,11 @@ end
 function RenderBatch2D:set_canvas(canvas)
     if canvas ~= self.canvas then
         self:push_draw('triangles')
-        if canvas then self.handle:set_render_target(canvas.target)
-        else self.handle:set_render_target(nil) end
+        if canvas then
+            self.handle:set_render_target(canvas.target)
+        else
+            self.handle:set_render_target(nil)
+        end
         self.canvas = canvas
     end
 end
@@ -159,7 +164,8 @@ function RenderBatch2D:set_color(x, y, w, h)
 end
 
 function RenderBatch2D:set_texture(drawable)
-    if not drawable then self.handle:set_texture()
+    if not drawable then
+        self.handle:set_texture()
     else
         self.handle:set_texture(drawable.texture)
     end
@@ -243,7 +249,7 @@ function RenderBatch2D:draw_cube(x, y, sx, sy)
         self.handle:set_pipeline(self.pipelines['PRIMITIVE3D'])
         self.pipeline = self.pipelines['PRIMITIVE3D']
     end
-    self.batch:push_fill_cube({x, y, -320}, {math.rad(30)*self.time, math.rad(15)*self.time, 0}, {32, 32, 32})
+    self.batch:push_fill_cube({ x, y, -320 }, { math.rad(30) * self.time, math.rad(15) * self.time, 0 }, { 32, 32, 32 })
 end
 
 function RenderBatch2D:draw_sphere(x, y, r)

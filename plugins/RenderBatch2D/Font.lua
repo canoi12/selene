@@ -9,8 +9,18 @@ function Font.create8x8(batch)
     return setmetatable(f, Font)
 end
 
-function Font:destroy()
-    if self.texture then self.texture:destroy() end
+function Font.load_ttf(batch, path, size)
+    local f = {}
+    local ttf = font.from_ttf(path, size)
+    f.texture = batch.handle:create_texture2d(ttf.width, ttf.height, ttf.format, ttf.data)
+    f.glyphs = ttf.glyphs
+    return setmetatable(f, Font)
+end
+
+function Font:destroy(batch)
+    if self.texture then
+        batch.handle:destroy_texture(self.texture)
+    end
     self.texture = nil
     self.glyphs = nil
 end

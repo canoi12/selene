@@ -10,8 +10,7 @@ end
 
 function Image.load(batch, path)
     local i = {}
-    local img = image.from_file(path)
-    i.texture = batch.handle:create_texture2d(img.width, img.height, 'rgba', img.data)
+    i.texture = batch.handle:load_texture2d(path)
     return setmetatable(i, Image)
 end
 
