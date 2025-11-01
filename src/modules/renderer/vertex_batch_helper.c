@@ -245,7 +245,7 @@ static int l_VertexBatch__push_line_rect(lua_State* L) {
 static int l_VertexBatch__push_fill_rect(lua_State* L) {
     CHECK_META(VertexBatch);
     s_check_buf_size(self, 6);
-    Vertex2D* v = (char*)self->data + (self->offset*self->stride);
+    Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset*self->stride));
     for (int i = 0; i < 6; i++) {
         v[i].r = self->color[0];
         v[i].g = self->color[1];
@@ -432,7 +432,7 @@ int l_VertexBatch__push_fill_circle(lua_State* L) {
     int segments = (int)luaL_optinteger(L, arg++, 16);
 
     s_check_buf_size(self, 3 * segments);
-    Vertex2D* v = (char*)self->data + (self->offset * self->stride);
+    Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset * self->stride));
 
     float inc = M_PI2 / (float)segments;
     for (int i = 0; i < segments; i++) {
@@ -590,7 +590,7 @@ int l_VertexBatch__push_sprite(lua_State* L) {
     }
 
     s_check_buf_size(self, 6);
-    Vertex2D* v = (char*)self->data + (self->offset * self->stride);
+    Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset * self->stride));
     for (int i = 0; i < 6; i++) {
         v[i].r = self->color[0];
         v[i].g = self->color[1];
@@ -724,7 +724,7 @@ static int l_VertexBatch__push_fill_cube(lua_State* L) {
     arg++;
     int is_white = 0;
     if (lua_isboolean(L, arg)) { is_white = 1; }
-    Vertex2D* bv = (char*)self->data + (self->offset * self->stride);
+    Vertex2D* bv = (Vertex2D*)((char*)self->data + (self->offset * self->stride));
     static const vec2 tex_uv[] = {
         {0.f, 0.f},
         {1.f, 0.f},
@@ -763,7 +763,7 @@ int l_VertexBatch__push_fill_sphere(lua_State* L) {
     int totalVertices = 6 * slices * stacks; // 6 vértices por face (2 triângulos)
     // s_check_buffer(L, self, totalVertices);
     s_check_buf_size(self, totalVertices);
-    Vertex2D* v = (char*)self->data + (self->offset * self->stride);
+    Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset * self->stride));
 
     float stackStep = M_PI / (float)stacks; // Angle between stacks
     float sliceStep = 2.0f * M_PI / (float)slices; // Angle between slices
@@ -878,7 +878,7 @@ static int l_VertexBatch__push_text(lua_State* L) {
     }
     p = (uint8_t*)text;
     s_check_buf_size(self, len * 6);
-    Vertex2D* v = (char*)self->data + (self->offset * self->stride);
+    Vertex2D* v = (Vertex2D*)((char*)self->data + (self->offset * self->stride));
     while (*p != 0) {
         int codepoint;
         int n = utf8_codepoint(p, &codepoint);
