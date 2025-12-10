@@ -29,11 +29,13 @@ function RenderBatch2D.create(win, backend)
         r.shader_list = require('plugins.RenderBatch2D.gl_shaders').compile_all(r.handle)
     elseif backend == 'd3d11' then
         r.shader_list = require('plugins.RenderBatch2D.dx_shaders').compile_all(r.handle)
+    elseif backend == 'vulkan' then
+        r.shader_list = require('plugins.RenderBatch2D.spirv_shaders').compile_all(r.handle)
     end
     local shaders = r.shader_list
 
     r.pipelines = {
-        ['SPRITE2D'] = r.handle:create_pipeline {
+        --[[['SPRITE2D'] = r.handle:create_pipeline {
             layout = {
                 stride = 9 * 4,
                 { name = 'a_position', offset = 0,  size = 3, type = 'float' },
@@ -44,7 +46,7 @@ function RenderBatch2D.create(win, backend)
             ps = shaders['SPRITE2D'].pixel,
             blend = { enabled = true, func = 'alpha' },
             scissor = { enabled = true }
-        },
+        },]]
         ['PRIMITIVE2D'] = r.handle:create_pipeline {
             layout = {
                 stride = 9 * 4,
@@ -62,7 +64,10 @@ function RenderBatch2D.create(win, backend)
             },
             vs = shaders['PRIMITIVE2D'].vertex,
             ps = shaders['PRIMITIVE2D'].pixel,
-            depth = { enabled = true, func = 'less' }
+            depth = { enabled = true, func = 'less' },
+            descriptors = {
+                { type = 'uniform_buffer', stage = 'vertex' }
+            }
         }
     }
     --[[
