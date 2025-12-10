@@ -1,3 +1,4 @@
+#include "common.h"
 #include "modules/renderer.h"
 #include "modules/window.h"
 #include "modules/filesystem.h"
@@ -187,7 +188,7 @@ int l_Renderer__load_texture2d(lua_State* L) {
     int req_comp = STBI_rgb_alpha;
     stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)data, size, &w, &h, &comp, req_comp);
     free(data);
-    
+
     lua_pushcfunction(L, self->create_texture2d);
     lua_pushvalue(L, 1);
     lua_pushinteger(L, w);
@@ -274,13 +275,17 @@ int l_Renderer__load_shader(lua_State* L) {
     if (virt > 0) filename = lua_tostring(L, -1);
     lua_pop(L, 1);
     SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
+    if (!rw) {
+        DEBUG_ERROR("[renderer] failed to load shader: %s\n", filename);
+        return luaL_error(L, "failed to load shader: %s", filename);
+    }
     size_t size = SDL_RWsize(rw);
     char* data = malloc(size+1);
     SDL_RWread(rw, data, 1, size);
     SDL_RWclose(rw);
 #endif
     data[size] = '\0';
-    
+
     lua_pushcfunction(L, self->create_shader);
     lua_pushvalue(L, 1);
     lua_pushvalue(L, 2);

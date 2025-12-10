@@ -1,3 +1,4 @@
+#include <vulkan/vulkan_core.h>
 #ifndef SELENE_NO_VULKAN
 #include "modules/renderer.h"
 #include "modules/window.h"
@@ -378,7 +379,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         for (int i = 0; i < desc_count; i++) {
             lua_rawgeti(L, -1, i + 1);
 
-            VkDescriptorSetLayoutBinding* bindings = NULL;
+            // VkDescriptorSetLayoutBinding* bindings = NULL;
             VkDescriptorSetLayoutBinding* binding = descriptor_bindings + i;
             int binding_count = 0;
             binding->binding = i;
@@ -453,7 +454,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         VkDescriptorSetAllocateInfo allocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self->vk.descriptor_pool,
-            .descriptorSetCount = 1,
+            .descriptorSetCount = MAX_FRAMES_,
             .pSetLayouts = descriptor_layout ? &descriptor_layout : NULL
         };
 
@@ -1181,11 +1182,11 @@ int l_VK_Renderer_create(lua_State *L) {
     VkDescriptorPool descriptor_pool;
     VkDescriptorPoolSize descriptor_pool_size[] = {
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 }, // Enough for all pipelines
-        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
     };
     VkDescriptorPoolCreateInfo descriptor_pool_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = 100,
+        .maxSets = MAX_FRAMES_,
         .poolSizeCount = 2,
         .pPoolSizes = descriptor_pool_size
     };
@@ -1193,7 +1194,6 @@ int l_VK_Renderer_create(lua_State *L) {
     if (result != VK_SUCCESS) {
         return luaL_error(L, "failed to create descriptor pool, 0x%8x", result);
     }
-
 
     VkSemaphore image_sem;
     VkSemaphore render_sem;
