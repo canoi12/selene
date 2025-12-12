@@ -1,3 +1,4 @@
+#include "common.h"
 #include <vulkan/vulkan_core.h>
 #ifndef SELENE_NO_VULKAN
 #include "modules/renderer.h"
@@ -392,7 +393,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
                     }
                     else if (strcmp(type, "combined_image_sampler") == 0) {
                         binding->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                        fprintf(stderr, "descriptor image sampler\n");
+                        DEBUG_LOG("descripton image sampler\n");
                     }
                     // Add more types as needed
                 }
@@ -460,7 +461,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
 
         descriptorSet = malloc(sizeof(VkDescriptorSet));
         result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, &descriptorSet);
-        fprintf(stdout, "descriptor set: %p\n", descriptorSet);
+        DEBUG_LOG("descriptor set: %p\n", descriptorSet);
         if (result != VK_SUCCESS || descriptorSet == VK_NULL_HANDLE) {
             //free(bindings);
             return luaL_error(L, "failed to alloc descriptor set, error: 0x%d", result);
@@ -526,7 +527,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     pipeline->vk.descriptor_layout = descriptor_layout;
     pipeline->vk.descriptor_set = descriptorSet;
     //memcpy((pipeline->vk.descriptor_layout), descriptor_set_layouts, sizeof(descriptor_set_layouts));
-    fprintf(stderr, "pipeline %p, handle: %p\n", pipeline, handle);
+    DEBUG_LOG("pipeline %p, handle %p\n", pipeline, handle);
     return 1;
 }
 
@@ -1023,13 +1024,13 @@ int l_VK_Renderer_create(lua_State *L) {
         return luaL_error(L, "failed to create Vulkan instance");
     }
     free(exts);
-    fprintf(stdout, "created Vulkan instance\n");
+    DEBUG_LOG("created Vulkan instance\n");
     VkSurfaceKHR surface;
     if (SDL_Vulkan_CreateSurface(win->handle, instance, &surface) != SDL_TRUE) {
         vkDestroyInstance(instance, NULL);
         return luaL_error(L, "failed to create Vulkan surface: %s", SDL_GetError());
     }
-    fprintf(stdout, "created Vulkan surface\n");
+    DEBUG_LOG("created Vulkan surface\n");
 #if 1
     uint32_t dev_count = 0;
     vkEnumeratePhysicalDevices(instance, &dev_count, NULL);
@@ -1078,7 +1079,7 @@ int l_VK_Renderer_create(lua_State *L) {
         vkDestroyInstance(instance, NULL);
         return luaL_error(L, "failed to create Vulkan device");
     }
-    fprintf(stdout, "created Vulkan device\n");
+    DEBUG_LOG("created Vulkan device\n");
 
     VkQueue gfx_queue, present_queue;
     vkGetDeviceQueue(device, indices.graphics_family, 0, &gfx_queue);
