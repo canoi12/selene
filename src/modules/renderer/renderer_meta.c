@@ -140,6 +140,11 @@ int l_Renderer__send_buffer_ortho(lua_State* L) {
     CHECK_NUMBER(float, f);
     mat4 matrix;
     glm_mat4_identity(matrix);
+    if (self->backend == SELENE_RENDERER_VULKAN) {
+        float aux = bottom;
+        bottom = top;
+        top = aux;
+    }
     glm_ortho(left, right, bottom, top, n, f, matrix);
     lua_pushcfunction(L, self->send_buffer_data);
     lua_pushvalue(L, 1);

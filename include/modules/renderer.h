@@ -478,7 +478,7 @@ struct _RenderPipeline {
             VkPipeline handle;
             VkPipelineLayout layout;
             VkDescriptorSetLayout descriptor_layout;
-            VkDescriptorSet descriptor_set;
+            VkDescriptorSet* descriptor_set;
             VkShaderModule vs;
             VkShaderModule ps;
             // Cache

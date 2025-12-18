@@ -330,6 +330,9 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     };
 
     pipe->blend_state.enabled = 0;
+    pipe->blend_state.src = VK_BLEND_FACTOR_SRC_ALPHA;
+    pipe->blend_state.dst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    pipe->blend_state.equation = VK_BLEND_OP_ADD;
     if (lua_getfield(L, arg, "blend") == LUA_TTABLE) {
         if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->blend_state.enabled = lua_toboolean(L, -1);
         lua_pop(L, 1);
@@ -443,27 +446,33 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .pBindings = descriptor_bindings
     };
 
-    VkDescriptorSetLayout descriptor_layout = VK_NULL_HANDLE;
-    VkDescriptorSet* descriptorSet = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptor_set_layout;
+    VkDescriptorSetLayout* layouts;
+    VkDescriptorSet* descriptor_set = VK_NULL_HANDLE;
     if (descriptor_set_layout_count > 0) {
-        result = vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_layout);
+        result = vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_set_layout);
         if (result != VK_SUCCESS) {
             //free(bindings);
-            return luaL_error(L, "failed to create descriptor set layout, error: 0x%8x", result);
+            return luaL_error(L, "failed to create descriptor set layout, error: 0x%d", result);
         }
+
+        layouts = malloc(sizeof(VkDescriptorSetLayout) * MAX_FRAMES_);
+        memcpy(layouts, &descriptor_set_layout, sizeof(VkDescriptorSetLayout));
+        memcpy(layouts+1, &descriptor_set_layout, sizeof(VkDescriptorSetLayout));
 
         VkDescriptorSetAllocateInfo allocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self->vk.descriptor_pool,
             .descriptorSetCount = MAX_FRAMES_,
-            .pSetLayouts = descriptor_layout ? &descriptor_layout : NULL
+            .pSetLayouts = layouts
         };
 
-        descriptorSet = malloc(sizeof(VkDescriptorSet) * MAX_FRAMES_);
-        result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, descriptorSet);
-        DEBUG_LOG("descriptor set: %p\n", descriptorSet);
-        if (result != VK_SUCCESS || descriptorSet == VK_NULL_HANDLE) {
+        descriptor_set = malloc(sizeof(VkDescriptorSet) * MAX_FRAMES_);
+        result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, descriptor_set);
+        DEBUG_LOG("descriptor set: %p\n", descriptor_set);
+        if (result != VK_SUCCESS) {
             //free(bindings);
+            free(descriptor_set);
             return luaL_error(L, "failed to alloc descriptor set, error: 0x%d", result);
         }
     }
@@ -482,7 +491,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
 #if 1
     if (descriptor_set_layout_count > 0) {
         pipeline_layout_info.setLayoutCount = descriptor_set_layout_count;
-        pipeline_layout_info.pSetLayouts = &descriptor_layout;
+        pipeline_layout_info.pSetLayouts = layouts;
     }
 #endif
 
@@ -514,7 +523,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     result = vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &handle);
     if (result != VK_SUCCESS) {
         vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
-        return luaL_error(L, "failed to create Vulkan pipeline, error: 0x%8x", result);
+        return luaL_error(L, "failed to create Vulkan pipeline, error: %d", result);
     }
     if (handle == VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
@@ -524,8 +533,8 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     NEW_UDATA(selene_RenderPipeline, pipeline);
     pipeline->vk.handle = handle;
     pipeline->vk.layout = pipeline_layout;
-    pipeline->vk.descriptor_layout = descriptor_layout;
-    pipeline->vk.descriptor_set = descriptorSet;
+    pipeline->vk.descriptor_layout = descriptor_set_layout;
+    pipeline->vk.descriptor_set = descriptor_set;
     //memcpy((pipeline->vk.descriptor_layout), descriptor_set_layouts, sizeof(descriptor_set_layouts));
     DEBUG_LOG("pipeline %p, handle %p\n", pipeline, handle);
     return 1;
@@ -535,7 +544,8 @@ static int l_VK_Renderer__destroy_pipeline(lua_State *L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_RenderPipeline, pipeline);
     vkDeviceWaitIdle(self->vk.device);
-    if (pipeline->vk.descriptor_layout) vkDestroyDescriptorSetLayout(self->vk.device, pipeline->vk.descriptor_layout, NULL);
+    if (pipeline->vk.descriptor_layout)
+        vkDestroyDescriptorSetLayout(self->vk.device, pipeline->vk.descriptor_layout, NULL);
     if (pipeline->vk.layout)
         vkDestroyPipelineLayout(self->vk.device, pipeline->vk.layout, NULL);
     if (pipeline->vk.handle)
@@ -794,6 +804,7 @@ int l_VK_Renderer__destroy_shader(lua_State *L) {
 
 int l_VK_Renderer__flush(lua_State *L) {
     CHECK_META(selene_Renderer);
+    // DEBUG_LOG("Render flush\n");
     struct {
         selene_RenderPipeline *pipe;
         selene_GpuBuffer *vertex;
@@ -864,9 +875,28 @@ int l_VK_Renderer__flush(lua_State *L) {
             vkCmdClearAttachments(self->vk.command_buffer, 1, &clear_attachment, 1, &clear_rect);
         } break;
         case RENDER_COMMAND_SET_PIPELINE: {
-                vkCmdBindPipeline(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.handle);
-                vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.layout, 0, 1, &(rc->pipeline->vk.descriptor_set), 0, NULL);
-                state.pipe = rc->pipeline;
+            // DEBUG_LOG("Set pipeline\n");
+            if (state.uniform) {
+                selene_GpuBuffer* buf = state.uniform;
+                VkDescriptorBufferInfo buffer_info = {
+                    .buffer = buf->vk.handle,
+                    .offset = 0,
+                    .range = buf->size
+                };
+                VkWriteDescriptorSet write = {
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = rc->pipeline->vk.descriptor_set[0],
+                    .dstBinding = 0,  // Texture binding slot
+                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    .pBufferInfo = &buffer_info,
+                    .descriptorCount = 1,
+                    .dstArrayElement = 0,
+                };
+                vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
+            }
+            vkCmdBindPipeline(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.handle);
+            vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.layout, 0, 1, &(rc->pipeline->vk.descriptor_set[0]), 0, NULL);
+            state.pipe = rc->pipeline;
         } break;
         case RENDER_COMMAND_SET_VERTEX_BUFFER: {
             selene_GpuBuffer* buf = rc->buffer.ptr;
@@ -878,7 +908,31 @@ int l_VK_Renderer__flush(lua_State *L) {
             selene_GpuBuffer* buf = rc->buffer.ptr;
             vkCmdBindIndexBuffer(self->vk.command_buffer, buf->vk.handle, 0, VK_INDEX_TYPE_UINT32);
         } break;
+        case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
+            selene_GpuBuffer* buf = rc->buffer.ptr;
+            state.uniform = buf;
+            VkDescriptorBufferInfo buffer_info = {
+                .buffer = buf->vk.handle,
+                .offset = 0,
+                .range = buf->size
+            };
+            // DEBUG_LOG("Update uniform buffer\n");
+            if (state.pipe) {
+                VkWriteDescriptorSet write = {
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = state.pipe->vk.descriptor_set[0],
+                    .dstBinding = 0,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    .pBufferInfo = &buffer_info,
+                    .descriptorCount = 1,
+                    .dstArrayElement = 0,
+                };
+                vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
+            }
+
+        } break;
         case RENDER_COMMAND_DRAW_VERTEX: {
+            // DEBUG_LOG("Draw vertex\n");
             vkCmdDraw(self->vk.command_buffer, rc->draw.count, 1, rc->draw.start, 0);
         } break;
         case RENDER_COMMAND_SET_TEXTURE: {
@@ -889,18 +943,19 @@ int l_VK_Renderer__flush(lua_State *L) {
                 .sampler = tex->vk.sampler,
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             };
+            if (state.pipe) {
+                VkWriteDescriptorSet write = {
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = state.pipe->vk.descriptor_set[0],
+                    .dstBinding = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &new_image_info,
+                    .descriptorCount = 1,
+                    .dstArrayElement = 0,
+                };
 
-            VkWriteDescriptorSet write = {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = state.pipe->vk.descriptor_set,
-                .dstBinding = 0,  // Texture binding slot
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &new_image_info,
-                .descriptorCount = 1,
-                .dstArrayElement = 0,
-            };
-
-            vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
+                vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
+            }
         } break;
         case RENDER_COMMAND_SET_VIEWPORT: {
             VkViewport view;
@@ -1182,12 +1237,14 @@ int l_VK_Renderer_create(lua_State *L) {
 
     VkDescriptorPool descriptor_pool;
     VkDescriptorPoolSize descriptor_pool_size[] = {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 }, // Enough for all pipelines
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
     };
+
+    const int max_sets_count = 10;
     VkDescriptorPoolCreateInfo descriptor_pool_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = MAX_FRAMES_,
+        .maxSets = MAX_FRAMES_ * max_sets_count,
         .poolSizeCount = 2,
         .pPoolSizes = descriptor_pool_size
     };
