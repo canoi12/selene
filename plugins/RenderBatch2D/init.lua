@@ -54,7 +54,10 @@ function RenderBatch2D.create(win, backend)
                 { name = 'a_color',    offset = 12, size = 4, type = 'float' },
             },
             vs = shaders['PRIMITIVE2D'].vertex,
-            ps = shaders['PRIMITIVE2D'].pixel
+            ps = shaders['PRIMITIVE2D'].pixel,
+            descriptors = {
+                { type = 'uniform_buffer', stage = 'vertex' }
+            }
         },
         ['PRIMITIVE3D'] = r.handle:create_pipeline {
             layout = {
