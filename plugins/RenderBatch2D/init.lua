@@ -35,7 +35,7 @@ function RenderBatch2D.create(win, backend)
     local shaders = r.shader_list
 
     r.pipelines = {
-        --[[['SPRITE2D'] = r.handle:create_pipeline {
+        ['SPRITE2D'] = r.handle:create_pipeline {
             layout = {
                 stride = 9 * 4,
                 { name = 'a_position', offset = 0,  size = 3, type = 'float' },
@@ -45,8 +45,12 @@ function RenderBatch2D.create(win, backend)
             vs = shaders['SPRITE2D'].vertex,
             ps = shaders['SPRITE2D'].pixel,
             blend = { enabled = true, func = 'alpha' },
-            scissor = { enabled = true }
-        },]]
+            scissor = { enabled = true },
+            descriptors = {
+                { type = 'uniform_buffer',         stage = 'vertex' },
+                { type = 'combined_image_sampler', stage = 'fragment' }
+            }
+        },
         ['PRIMITIVE2D'] = r.handle:create_pipeline {
             layout = {
                 stride = 9 * 4,
@@ -113,6 +117,7 @@ end
 function RenderBatch2D:begin_frame()
     self.draw_list.top = 0
     self.last_offset = 0
+    self.batch:reset()
     self.batch:set_color(1, 1, 1, 1)
     self.batch:set_z(0)
     self.handle:set_vertex_buffer(self.vertex)
@@ -122,10 +127,11 @@ function RenderBatch2D:begin_frame()
     self.texture = nil
     self.target = nil
     self.handle:set_render_target(nil, false)
-    self.batch:reset()
+    --print('Begin')
 end
 
 function RenderBatch2D:end_frame()
+    -- print('End')
     self:push_draw('triangles')
 
     self.handle:send_buffer_data(self.vertex, self.batch:get_offset() * self.batch:get_stride(), self.batch:get_data())
@@ -136,6 +142,7 @@ end
 function RenderBatch2D:push_draw(mode)
     local offset = self.batch:get_offset()
     if self.last_offset ~= offset then
+        --print('drawing')
         -- self:push_draw('triangles', self.last_offset, offset-self.last_offset)
         self.handle:draw(mode, self.last_offset, offset - self.last_offset)
         self.last_offset = offset
@@ -240,6 +247,7 @@ end
 
 function RenderBatch2D:draw_circle(x, y, radius)
     if self.pipelines['PRIMITIVE2D'] ~= self.pipeline then
+        -- print('changed pipeline')
         self:push_draw('triangles')
         self.handle:set_pipeline(self.pipelines['PRIMITIVE2D'])
         self.pipeline = self.pipelines['PRIMITIVE2D']
