@@ -672,7 +672,7 @@ struct _Renderer {
             VkCommandPool command_pool;
             VkCommandBuffer command_buffer;
             VkFramebuffer* framebuffers;
-            int current_framebuffer;
+            unsigned int current_framebuffer;
             VkDescriptorSetLayout descriptor_set_layout;
             VkDescriptorPool descriptor_pool;
             VkDescriptorSet* descriptor_sets;

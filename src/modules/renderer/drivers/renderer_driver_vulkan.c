@@ -444,7 +444,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     };
 
     VkDescriptorSetLayout descriptor_layout = VK_NULL_HANDLE;
-    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+    VkDescriptorSet* descriptorSet = VK_NULL_HANDLE;
     if (descriptor_set_layout_count > 0) {
         result = vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_layout);
         if (result != VK_SUCCESS) {
@@ -459,8 +459,8 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
             .pSetLayouts = descriptor_layout ? &descriptor_layout : NULL
         };
 
-        descriptorSet = malloc(sizeof(VkDescriptorSet));
-        result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, &descriptorSet);
+        descriptorSet = malloc(sizeof(VkDescriptorSet) * MAX_FRAMES_);
+        result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, descriptorSet);
         DEBUG_LOG("descriptor set: %p\n", descriptorSet);
         if (result != VK_SUCCESS || descriptorSet == VK_NULL_HANDLE) {
             //free(bindings);
@@ -753,7 +753,7 @@ int l_VK_Renderer__destroy_texture(lua_State *L) {
 int l_VK_Renderer__create_shader(lua_State *L) {
     CHECK_META(selene_Renderer);
     int opt = luaL_checkoption(L, arg++, "vertex", shader_type_options);
-    int size = 0;
+    size_t size = 0;
     void* data = NULL;
     if (lua_isinteger(L, arg)) {
         size = luaL_checkinteger(L, arg++);
@@ -767,25 +767,25 @@ int l_VK_Renderer__create_shader(lua_State *L) {
         .codeSize = size,
         .pCode = data
     };
-  if (vkCreateShaderModule(self->vk.device, &shader_info, NULL, &handle) != VK_SUCCESS) {
-    return luaL_error(L, "failed to create Vulkan shader");
-  }
-  if (handle == NULL) {
+    if (vkCreateShaderModule(self->vk.device, &shader_info, NULL, &handle) != VK_SUCCESS) {
+        return luaL_error(L, "failed to create Vulkan shader");
+    }
+    if (handle == NULL) {
         return luaL_error(L, "failed to create Vulkan shader, handle NULL");
-  }
-  NEW_UDATA(selene_Shader, shader);
-  shader->type = opt;
-  shader->vk.handle = handle;
-  return 1;
+    }
+    NEW_UDATA(selene_Shader, shader);
+    shader->type = opt;
+    shader->vk.handle = handle;
+    return 1;
 }
 
 int l_VK_Renderer__destroy_shader(lua_State *L) {
-  CHECK_META(selene_Renderer);
-  CHECK_UDATA(selene_Shader, shader);
-  if (shader->vk.handle)
-    vkDestroyShaderModule(self->vk.device, shader->vk.handle, NULL);
-  shader->vk.handle = NULL;
-  return 0;
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_Shader, shader);
+    if (shader->vk.handle)
+        vkDestroyShaderModule(self->vk.device, shader->vk.handle, NULL);
+    shader->vk.handle = NULL;
+    return 0;
 }
 
 /**
@@ -1595,6 +1595,7 @@ int vk_create_descriptor_sets(selene_Renderer* self, VkBuffer* uniforms, int uni
 
         vkUpdateDescriptorSets(self->vk.device, 1, &descriptorWrite, 0, NULL);
     }
+    return 0;
 }
 
 
@@ -1716,6 +1717,7 @@ int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat forma
     );
 
     end_single_time_command(self, buf);
+    return 0;
 }
 
 void copy_buffer_to_image(selene_Renderer* self, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
