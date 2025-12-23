@@ -955,7 +955,7 @@ static int l_VertexBatch__push_text(lua_State* L) {
         v[5].a = self->color[3];
 
         v[0].z = v[1].z = v[2].z =
-            v[3].z = v[4].z = v[5].z = self->z;
+        v[3].z = v[4].z = v[5].z = self->z;
 
         v += 6;
         self->offset += 6;
@@ -971,27 +971,27 @@ int l_VertexBatch_meta(lua_State* L) {
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     const luaL_Reg _reg[] = {
-            REG_META_FIELD(VertexBatch, destroy),
-            REG_META_FIELD(VertexBatch, get_offset),
-            REG_META_FIELD(VertexBatch, get_count),
-            REG_META_FIELD(VertexBatch, get_stride),
-            REG_META_FIELD(VertexBatch, get_data),
-            REG_META_FIELD(VertexBatch, reset),
-            REG_META_FIELD(VertexBatch, set_color),
-            REG_META_FIELD(VertexBatch, set_z),
-            REG_META_FIELD(VertexBatch, push_vertex2d),
-            REG_META_FIELD(VertexBatch, push_line),
-            REG_META_FIELD(VertexBatch, push_line_triangle),
-            REG_META_FIELD(VertexBatch, push_fill_triangle),
-            REG_META_FIELD(VertexBatch, push_line_rect),
-            REG_META_FIELD(VertexBatch, push_fill_rect),
-            REG_META_FIELD(VertexBatch, push_line_circle),
-            REG_META_FIELD(VertexBatch, push_fill_circle),
-            REG_META_FIELD(VertexBatch, push_sprite),
-            REG_META_FIELD(VertexBatch, push_fill_cube),
-            REG_META_FIELD(VertexBatch, push_fill_sphere),
-            REG_META_FIELD(VertexBatch, push_text),
-            {NULL, NULL}
+        REG_META_FIELD(VertexBatch, destroy),
+        REG_META_FIELD(VertexBatch, get_offset),
+        REG_META_FIELD(VertexBatch, get_count),
+        REG_META_FIELD(VertexBatch, get_stride),
+        REG_META_FIELD(VertexBatch, get_data),
+        REG_META_FIELD(VertexBatch, reset),
+        REG_META_FIELD(VertexBatch, set_color),
+        REG_META_FIELD(VertexBatch, set_z),
+        REG_META_FIELD(VertexBatch, push_vertex2d),
+        REG_META_FIELD(VertexBatch, push_line),
+        REG_META_FIELD(VertexBatch, push_line_triangle),
+        REG_META_FIELD(VertexBatch, push_fill_triangle),
+        REG_META_FIELD(VertexBatch, push_line_rect),
+        REG_META_FIELD(VertexBatch, push_fill_rect),
+        REG_META_FIELD(VertexBatch, push_line_circle),
+        REG_META_FIELD(VertexBatch, push_fill_circle),
+        REG_META_FIELD(VertexBatch, push_sprite),
+        REG_META_FIELD(VertexBatch, push_fill_cube),
+        REG_META_FIELD(VertexBatch, push_fill_sphere),
+        REG_META_FIELD(VertexBatch, push_text),
+        {NULL, NULL}
     };
     luaL_setfuncs(L, _reg, 0);
     return 1;

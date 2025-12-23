@@ -1,5 +1,4 @@
 #include "common.h"
-#include <vulkan/vulkan_core.h>
 #ifndef SELENE_NO_VULKAN
 #include "modules/renderer.h"
 #include "modules/window.h"
@@ -522,10 +521,12 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     VkPipeline handle;
     result = vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &handle);
     if (result != VK_SUCCESS) {
+        vkDestroyDescriptorSetLayout(self->vk.device, descriptor_set_layout, NULL);
         vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
         return luaL_error(L, "failed to create Vulkan pipeline, error: %d", result);
     }
     if (handle == VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(self->vk.device, descriptor_set_layout, NULL);
         vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
         return luaL_error(L, "failed to create Vulkan pipeline, NULL handle");
     }
