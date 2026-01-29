@@ -810,7 +810,7 @@ int l_VK_Renderer__flush(lua_State *L) {
         selene_RenderPipeline *pipe;
         selene_GpuBuffer *vertex;
         selene_GpuBuffer *index;
-        selene_GpuBuffer *uniform;
+        SetBufferCommand *uniform;
         selene_Texture2D *texture;
         selene_RenderTarget *target;
         int stride;
@@ -878,7 +878,7 @@ int l_VK_Renderer__flush(lua_State *L) {
         case RENDER_COMMAND_SET_PIPELINE: {
             // DEBUG_LOG("Set pipeline\n");
             if (state.uniform) {
-                selene_GpuBuffer* buf = state.uniform;
+                selene_GpuBuffer* buf = state.uniform->ptr;
                 VkDescriptorBufferInfo buffer_info = {
                     .buffer = buf->vk.handle,
                     .offset = 0,
@@ -887,7 +887,7 @@ int l_VK_Renderer__flush(lua_State *L) {
                 VkWriteDescriptorSet write = {
                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                     .dstSet = rc->pipeline->vk.descriptor_set[0],
-                    .dstBinding = 0,  // Texture binding slot
+                    .dstBinding = state.uniform->binding,
                     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                     .pBufferInfo = &buffer_info,
                     .descriptorCount = 1,
@@ -911,7 +911,7 @@ int l_VK_Renderer__flush(lua_State *L) {
         } break;
         case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
             selene_GpuBuffer* buf = rc->buffer.ptr;
-            state.uniform = buf;
+            state.uniform = &rc->buffer;
             VkDescriptorBufferInfo buffer_info = {
                 .buffer = buf->vk.handle,
                 .offset = 0,
@@ -922,7 +922,7 @@ int l_VK_Renderer__flush(lua_State *L) {
                 VkWriteDescriptorSet write = {
                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                     .dstSet = state.pipe->vk.descriptor_set[0],
-                    .dstBinding = 0,
+                    .dstBinding = rc->buffer.binding,
                     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                     .pBufferInfo = &buffer_info,
                     .descriptorCount = 1,
@@ -948,7 +948,7 @@ int l_VK_Renderer__flush(lua_State *L) {
                 VkWriteDescriptorSet write = {
                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                     .dstSet = state.pipe->vk.descriptor_set[0],
-                    .dstBinding = 1,
+                    .dstBinding = rc->texture.binding,
                     .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     .pImageInfo = &new_image_info,
                     .descriptorCount = 1,

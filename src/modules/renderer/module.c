@@ -84,7 +84,9 @@ int l_renderer_create(lua_State* L) {
         return l_VK_Renderer_create(L);
     }
 #endif
-    return luaL_argerror(L, 2, "invalid Renderer backend");
+    char buf[512];
+    sprintf(buf, "invalid Renderer backend: %s", api_name);
+    return luaL_argerror(L, 2, buf);
 }
 
 extern int l_Renderer_meta(lua_State* L);

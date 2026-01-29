@@ -526,6 +526,8 @@ enum RenderCommandType {
     RENDER_COMMAND_SET_CULL_FACE,
     RENDER_COMMAND_SET_VIEWPORT,
 
+    RENDER_COMMAND_UPDATE_UNIFORM_BUFFER,
+
     RENDER_COMMAND_INTEGER_UNIFORM,
     RENDER_COMMAND_FLOAT_UNIFORM,
 
@@ -541,21 +543,57 @@ enum RenderCommandType {
     RENDER_COMMAND_COUNT
 };
 
+typedef struct {
+    unsigned int binding;
+    unsigned int slot;
+    unsigned int target;
+    selene_Texture2D* ptr;
+} SetTextureCommand;
+
+typedef struct {
+    unsigned int binding;
+    selene_GpuBuffer* ptr;
+} SetBufferCommand;
+
+typedef struct {
+    int has_depth;
+    unsigned int target;
+    selene_RenderTarget* ptr;
+} SetRenderTargetCommand;
+
+enum {
+    UNIFORM_TYPE_INT,
+    UNIFORM_TYPE_INT2,
+    UNIFORM_TYPE_INT3,
+    UNIFORM_TYPE_INT4,
+
+    UNIFORM_TYPE_FLOAT,
+    UNIFORM_TYPE_FLOAT2,
+    UNIFORM_TYPE_FLOAT3,
+    UNIFORM_TYPE_FLOAT4
+};
+
 struct RenderCommand {
     enum RenderCommandType type;
     union {
         struct {
-            Uint32 program;
+            selene_GpuBuffer* buffer;
+            int offset;
+            int size;
             int location;
+            int type;
             union {
-                Sint8 c;
-                Uint8 uc;
-                Sint16 s;
-                Uint16 us;
+                // Sint8 c;
+                // Uint8 uc;
+                // Sint16 s;
+                // Uint16 us;
                 Sint32 i;
                 Uint32 ui;
                 float f;
                 double d;
+                ivec2 iv2;
+                ivec3 iv3;
+                ivec4 iv4;
                 vec2 v2;
                 vec3 v3;
                 vec4 v4;
@@ -567,10 +605,13 @@ struct RenderCommand {
 
         struct { int width, height; } size;
 
-        struct { Uint32 target; Uint32 handle; selene_GpuBuffer* ptr; } buffer;
+        //struct { Uint32 target; Uint32 binding; Uint32 handle; selene_GpuBuffer* ptr; } buffer;
+        SetBufferCommand buffer;
+        SetTextureCommand texture;
+        SetRenderTargetCommand target;
         struct { Uint32 handle; } program;
-        struct { Uint32 slot; Uint32 target; Uint32 handle; void* ptr; } texture;
-        struct { int depth; Uint32 target; Uint32 handle; selene_RenderTarget* ptr; } target;
+        //struct { Uint32 binding; Uint32 slot; Uint32 target; Uint32 handle; void* ptr; } texture;
+        //struct { int depth; Uint32 target; Uint32 handle; selene_RenderTarget* ptr; } target;
 
         struct { int x, y, width, height; } viewport;
         struct { int enabled; int x, y, width, height; } scissor;

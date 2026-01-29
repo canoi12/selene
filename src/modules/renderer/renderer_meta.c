@@ -116,9 +116,15 @@ int l_Renderer__set_index_buffer(lua_State* L) {
 int l_Renderer__set_uniform_buffer(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_GpuBuffer, buffer);
+    OPT_INTEGER(binding, 0);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_UNIFORM_BUFFER;
     cmd.buffer.ptr = buffer;
+#if !GL_VERSION_3_1 && !GL_ES_VERSION_3_0
+    #warning "Unsupported OpenGL version"
+#else
+    cmd.uniform.location = binding;
+#endif
     PUSH_COMMAND(self, &cmd);
     return 0;
 }
@@ -218,12 +224,14 @@ int l_Renderer__destroy_texture(lua_State* L) {
 static int l_Renderer__set_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
     TEST_UDATA(selene_Texture2D, tex);
-    OPT_INTEGER(slot, 0);
+    OPT_INTEGER(binding, 0);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_TEXTURE;
     cmd.texture.target = GL_TEXTURE_2D;
-    cmd.texture.ptr = (void*)tex;
-    cmd.texture.slot = slot;
+    cmd.texture.ptr = tex;
+    cmd.texture.binding = binding;
+    // OPT_INTEGER(slot, 0);
+    // cmd.texture.slot = slot;
     PUSH_COMMAND(self, &cmd);
     return 0;
 }
@@ -246,11 +254,11 @@ static int l_Renderer__set_render_target(lua_State* L) {
     CHECK_META(selene_Renderer);
     TEST_UDATA(selene_RenderTarget, target);
     struct RenderCommand cmd;
-    cmd.target.depth = 0;
+    cmd.target.has_depth = 0;
     cmd.type = RENDER_COMMAND_SET_RENDER_TARGET;
-    if (lua_type(L, arg) == LUA_TBOOLEAN) cmd.target.depth = lua_toboolean(L, arg++);
+    if (lua_type(L, arg) == LUA_TBOOLEAN) cmd.target.has_depth = lua_toboolean(L, arg++);
     if (!target) {
-        cmd.target.depth = self->default_target.depth != NULL;
+        cmd.target.has_depth = self->default_target.depth != NULL;
     }
     cmd.target.ptr = target;
     PUSH_COMMAND(self, &cmd);
@@ -304,6 +312,64 @@ int l_Renderer__load_shader(lua_State* L) {
 int l_Renderer__destroy_shader(lua_State* L) {
     CHECK_META(selene_Renderer);
     return self->destroy_shader(L);
+}
+
+int l_Renderer__update_uniform(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
+    CHECK_INTEGER(offset);
+    CHECK_INTEGER(size);
+    CHECK_LUDATA(void, data);
+    struct RenderCommand cmd;
+    cmd.type = RENDER_COMMAND_UPDATE_UNIFORM_BUFFER;
+    cmd.uniform.buffer = buffer;
+    cmd.uniform.offset = offset;
+    cmd.uniform.size = size;
+    memcpy(cmd.uniform.m, data, size);
+    PUSH_COMMAND(self, &cmd);
+    return 0;
+}
+
+int l_Renderer__update_uniform_matrix(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
+    CHECK_INTEGER(offset);
+    int size = sizeof(mat4);
+    float m[16];
+    for (int i = 0; i < 16; i++) {
+        m[i] = luaL_checknumber(L, arg + i);
+    }
+    struct RenderCommand cmd;
+    cmd.type = RENDER_COMMAND_UPDATE_UNIFORM_BUFFER;
+    cmd.uniform.buffer = buffer;
+    cmd.uniform.offset = offset;
+    cmd.uniform.size = size;
+    memcpy(cmd.uniform.m, m, sizeof(m));
+    PUSH_COMMAND(self, &cmd);
+    return 0;
+}
+
+int l_Renderer__update_uniform_ortho(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
+    CHECK_INTEGER(offset);
+    mat4 m;
+    glm_mat4_identity(m);
+    CHECK_NUMBER(float, left);
+    CHECK_NUMBER(float, right);
+    CHECK_NUMBER(float, bottom);
+    CHECK_NUMBER(float, top);
+    CHECK_NUMBER(float, near);
+    CHECK_NUMBER(float, far);
+    glm_ortho(left, right, bottom, top, near, far, m);
+    struct RenderCommand cmd;
+    cmd.type = RENDER_COMMAND_UPDATE_UNIFORM_BUFFER;
+    cmd.uniform.buffer = buffer;
+    cmd.uniform.offset = offset;
+    cmd.uniform.size = sizeof(m);
+    memcpy(cmd.uniform.m, m, sizeof(m));
+    PUSH_COMMAND(self, &cmd);
+    return 0;
 }
 
 /**
@@ -419,6 +485,7 @@ int l_Renderer_meta(lua_State* L) {
         REG_META_FIELD(Renderer, create_shader),
         REG_META_FIELD(Renderer, load_shader),
         REG_META_FIELD(Renderer, destroy_shader),
+        REG_META_FIELD(Renderer, update_uniform_ortho),
         {NULL, NULL}
     };
     luaL_setfuncs(L, _reg, 0);

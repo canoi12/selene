@@ -745,7 +745,7 @@ int l_GL_Renderer__flush(lua_State* L) {
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
 #if defined(USE_GLES2)
-                if (state.pipe->gl.program) {
+                /*if (state.pipe->gl.program) {
                     GLuint program = state.pipe->gl.program;
                     GLint count;
                     glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
@@ -761,13 +761,15 @@ int l_GL_Renderer__flush(lua_State* L) {
                         printf("Uniform #%d: name = %s, type = 0x%X, size = %d, location = %d\n",
                             i, name, type, size, location);
                     }
+                }*/
+                if (b && state.pipe) {
                 }
 #else
                 glBindBuffer(GL_UNIFORM_BUFFER, b ? b->gl.handle : 0);
                 glBindBufferBase(GL_UNIFORM_BUFFER, 0, b->gl.handle);
                 if (b && state.pipe) {
-                    int index = glGetUniformBlockIndex(state.pipe->gl.program, "Matrices");
-                    glUniformBlockBinding(state.pipe->gl.program, index, 0);
+                    //int index = glGetUniformBlockIndex(state.pipe->gl.program, "Matrices");
+                    glUniformBlockBinding(state.pipe->gl.program, rc->buffer.binding, 0);
                 }
 #endif
                 state.uniform = b;
@@ -775,7 +777,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_TEXTURE: {
                 selene_Texture2D* t = (selene_Texture2D*)rc->texture.ptr;
-                glActiveTexture(GL_TEXTURE0+rc->texture.slot);
+                glActiveTexture(GL_TEXTURE0+rc->texture.binding);
                 glBindTexture(rc->texture.target, t ? t->gl.handle : 0);
             }
                 break;
@@ -788,6 +790,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                     int width = t ? t->color->width : 640;
                     int height = t ? t->color->height : 380;
                     glBindFramebuffer(GL_FRAMEBUFFER, t ? t->gl.fbo : 0);
+                    #if 0
                     glViewport(0, 0, width, height);
                     if (state.uniform) {
                     #if !defined(USE_GLES2)
@@ -801,6 +804,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                         glBindBuffer(GL_UNIFORM_BUFFER, 0);
                     #endif
                     }
+                    #endif
                 }
                 state.target = t;
             }
@@ -817,6 +821,16 @@ int l_GL_Renderer__flush(lua_State* L) {
                 glBlendEquation(rc->blend.equation);
                 break;
 #endif
+            case RENDER_COMMAND_UPDATE_UNIFORM_BUFFER: {
+#if !defined(USE_GLES2)
+                selene_GpuBuffer* buf = rc->uniform.buffer;
+                glBindBuffer(GL_UNIFORM_BUFFER, buf->gl.handle);
+                glBufferSubData(GL_UNIFORM_BUFFER, rc->uniform.offset, rc->uniform.size, (void*)rc->uniform.m);
+                if (state.uniform) glBindBuffer(GL_UNIFORM_BUFFER, state.uniform->gl.handle);
+                else glBindBuffer(GL_UNIFORM_BUFFER, 0);
+#endif
+            }
+            break;
             case RENDER_COMMAND_FLOAT_UNIFORM:
                 glUniform1f(rc->uniform.location, rc->uniform.f);
                 break;
