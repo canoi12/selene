@@ -53,8 +53,9 @@ extern "C" {
 #ifndef SELENE_NO_SDL
 #if defined(OS_EMSCRIPTEN)
     #include <SDL2/SDL.h>
-    #include <SDL2/SDL_opengles2.h>
-    #define USE_GLES2 1
+    #include <GLES3/gl3.h>
+    //#include <SDL2/SDL_opengles2.h>
+    //#define USE_GLES2 1
 #else
     #if defined(SELENE_USE_SDL3)
         #include <SDL3/SDL.h>
@@ -66,11 +67,18 @@ extern "C" {
         #endif
     #else
         #include <SDL.h>
+        #if defined(SELENE_USE_GLES)
+        #include <GLES3/gl3.h>
+        #else
+        #include <SDL_opengl.h>
+        #endif
+        #if 0
         #if !defined(OS_ANDROID)
             #include <SDL_opengl.h>
         #else
             #include <SDL_opengles2.h>
             #define USE_GLES2 1
+        #endif
         #endif
     #endif
 #endif
@@ -80,8 +88,8 @@ extern "C" {
     #define DEBUG_LOG(...) fprintf(stdout, __VA_ARGS__)
     #define DEBUG_ERROR(...) fprintf(stderr, __VA_ARGS__)
 #else
-    #define DEBUG_LOG(...) 
-    #define DEBUG_ERROR(...) 
+    #define DEBUG_LOG(...)
+    #define DEBUG_ERROR(...)
 #endif
 
 #endif /* COMMON_H_ */
