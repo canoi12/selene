@@ -269,6 +269,11 @@ struct _RenderTarget {
             GLuint fbo;
         } gl;
 #endif
+#ifndef SELENE_NO_VULKAN
+        struct {
+            VkFramebuffer handle;
+        } vk;
+#endif
 #if defined(OS_WIN)
 #ifndef SELENE_NO_D3D11
         struct {

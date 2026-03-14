@@ -758,6 +758,46 @@ int l_VK_Renderer__destroy_texture(lua_State *L) {
 }
 
 /**
+ * Render Target
+ */
+
+int l_VK_Renderer__create_render_target(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_Texture2D, color);
+    TEST_UDATA(selene_Texture2D, depth);
+
+    VkFramebuffer handle = malloc(sizeof(VkFramebuffer));
+    VkFramebufferCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = self->vk.render_pass,
+        .attachmentCount = 1,
+        .pAttachments = &color->vk.view,
+        .width = color->width,
+        .height = color->height,
+        .layers = 1
+    };
+    if (vkCreateFramebuffer(self->vk.device, &info, NULL, &handle) != VK_SUCCESS) {
+        return luaL_error(L, "failed to create framebuffer");
+    }
+
+    NEW_UDATA(selene_RenderTarget, target);
+    target->color = color;
+    target->depth = depth;
+    target->vk.handle = handle;
+
+    return 1;
+}
+
+int l_VK_Renderer__destroy_render_target(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_RenderTarget, target);
+    if (target->vk.handle) {
+        vkDestroyFramebuffer(self->vk.device, target->vk.handle, NULL);
+    }
+    return 0;
+}
+
+/**
  * Shader
  */
 
@@ -957,6 +997,9 @@ int l_VK_Renderer__flush(lua_State *L) {
 
                 vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
             }
+        } break;
+        case RENDER_COMMAND_SET_RENDER_TARGET: {
+            selene_RenderTarget* t = rc->target.ptr;
         } break;
         case RENDER_COMMAND_SET_VIEWPORT: {
             VkViewport view;
@@ -1315,6 +1358,9 @@ int l_VK_Renderer_create(lua_State *L) {
 
     ren->create_texture2d = l_VK_Renderer__create_texture2d;
     ren->destroy_texture = l_VK_Renderer__destroy_texture;
+
+    ren->create_render_target = l_VK_Renderer__create_render_target;
+    ren->destroy_render_target = l_VK_Renderer__destroy_render_target;
 
     ren->create_shader = l_VK_Renderer__create_shader;
     ren->destroy_shader = l_VK_Renderer__destroy_shader;

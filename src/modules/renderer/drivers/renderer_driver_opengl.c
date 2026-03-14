@@ -744,7 +744,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
-#if defined(USE_GLES2)
+#if defined(SELENE_USE_LEGACY_OPENGL)
                 /*if (state.pipe->gl.program) {
                     GLuint program = state.pipe->gl.program;
                     GLint count;
@@ -810,9 +810,12 @@ int l_GL_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_SCISSOR: {
-                if (rc->scissor.enabled) glEnable(GL_SCISSOR_TEST);
+                if (rc->scissor.enabled) {
+                    glEnable(GL_SCISSOR_TEST);
+                    glScissor(rc->scissor.x, rc->scissor.y, rc->scissor.width, rc->scissor.height);
+                }
                 else glDisable(GL_SCISSOR_TEST);
-                glScissor(rc->scissor.x, rc->scissor.y, rc->scissor.width, rc->scissor.height);
+                
             }
                 break;
 #if 0
@@ -822,7 +825,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                 break;
 #endif
             case RENDER_COMMAND_UPDATE_UNIFORM_BUFFER: {
-#if !defined(USE_GLES2)
+#if !defined(SELENE_USE_LEGACY_OPENGL)
                 selene_GpuBuffer* buf = rc->uniform.buffer;
                 glBindBuffer(GL_UNIFORM_BUFFER, buf->gl.handle);
                 glBufferSubData(GL_UNIFORM_BUFFER, rc->uniform.offset, rc->uniform.size, (void*)rc->uniform.m);

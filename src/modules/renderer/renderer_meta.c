@@ -123,7 +123,8 @@ int l_Renderer__set_uniform_buffer(lua_State* L) {
 #if !GL_VERSION_3_1 && !GL_ES_VERSION_3_0
     #warning "Unsupported OpenGL version"
 #else
-    cmd.uniform.location = binding;
+    // cmd.uniform.location = binding;
+    cmd.buffer.binding = binding;
 #endif
     PUSH_COMMAND(self, &cmd);
     return 0;
@@ -224,7 +225,7 @@ int l_Renderer__destroy_texture(lua_State* L) {
 static int l_Renderer__set_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
     TEST_UDATA(selene_Texture2D, tex);
-    OPT_INTEGER(binding, 0);
+    OPT_INTEGER(binding, self->backend == SELENE_RENDERER_VULKAN ? 1 : 0);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_SET_TEXTURE;
     cmd.texture.target = GL_TEXTURE_2D;
@@ -322,6 +323,7 @@ int l_Renderer__update_uniform(lua_State* L) {
     CHECK_LUDATA(void, data);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_UPDATE_UNIFORM_BUFFER;
+    // cmd.uniform.binding = 0;
     cmd.uniform.buffer = buffer;
     cmd.uniform.offset = offset;
     cmd.uniform.size = size;
