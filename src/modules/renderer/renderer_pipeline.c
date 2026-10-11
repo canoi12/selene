@@ -34,6 +34,8 @@ int renderer_pipeline_binding_index(const selene_RenderPipeline* pipe, int bindi
         if (pipe->bindings[i].type == binding_type && pipe->bindings[i].slot == slot)
             return i;
     }
+    /* Slot não encontrado no pipeline bindings — clamp ao binding count do layout. */
+    if (slot >= pipe->binding_count) slot = pipe->binding_count > 0 ? pipe->binding_count - 1 : 0;
     return slot;
 }
 
