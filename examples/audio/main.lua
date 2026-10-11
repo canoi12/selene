@@ -1,33 +1,39 @@
-selene('Audio Example', '1.0.0', 'org.selene.AudioExample')
-local audio_system = selene.audio.create_system()
+selene{meta={org='Selene', name='AudioExample'}}
+local audio_system = selene.create_audio_system()
 audio_system:resume_device()
 print(audio_system)
-local dec = selene.audio.load_decoder(selene.__dir .. '/music.ogg')
-local d = selene.audio.load_data(selene.__dir .. '/sound.wav')
+
+-- Use filesystem protocol for assets (audio module is global)
+local dec = audio.load_decoder('root://music.ogg')
+local d = audio.load_data('root://sound.wav')
 print(dec)
+
 local inst = audio_system:play(dec, true, 0.1)
 local playing = true
-local events = {}
-events['key'] = function(key, pressed, repeating)
-    if key == selene.KEY_A and pressed and not repeating then
-        audio_system:play(d, false, 0.4)
-    elseif key == selene.KEY_D and pressed and not repeating then
-        playing = not playing
-        audio_system:pause(inst, playing)
-    end
-end
+local keys = {}
 
 selene.set_event(function(name, ...)
-    if name == 'quit' then selene.set_running(false)
-    elseif name == 'window closed' then selene.set_running(false) end
-    if events[name] then events[name](...) end
+    if name == 'quit' or name == 'window closed' then
+        selene.set_running(false)
+    elseif name == 'key' then
+        local key, pressed, repeating = ...
+        keys[string.lower(key)] = pressed
+        if key == 'A' and pressed and not repeating then
+            audio_system:play(d, false, 0.4)
+        elseif key == 'D' and pressed and not repeating then
+            playing = not playing
+            audio_system:pause(inst, playing)
+        end
+    end
 end)
+
 selene.set_step(function()
     audio_system:update()
-    gl.clear_color(0.3, 0.4, 0.4, 1.0)
-    gl.clear(gl.COLOR_BUFFER_BIT)
+    -- Create a minimal window for rendering the clear color
+    -- Note: In a real app, you'd have a window and renderer
+    selene.delay(16)
 end)
+
 selene.set_quit(function()
     audio_system:close()
-    sdl.quit()
 end)
