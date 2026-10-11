@@ -190,7 +190,11 @@ int l_Renderer__end_pass(lua_State* L) {
 
 int l_Renderer__create_frame_data(lua_State* L) {
     CHECK_META(selene_Renderer);
-    selene_FrameData* frame_data = lua_newuserdata(L, sizeof(selene_FrameData));
+    /* cglm mat4 ops use 16-byte aligned SSE stores; lua_newuserdata only
+     * guarantees 8-byte alignment (the Udata header shifts the payload),
+     * so over-allocate and align the pointer manually. */
+    void* raw = lua_newuserdata(L, sizeof(selene_FrameData) + 16);
+    selene_FrameData* frame_data = (selene_FrameData*)(((uintptr_t)raw + 15) & ~(uintptr_t)15);
     luaL_setmetatable(L, selene_FrameData_METANAME);
     glm_mat4_identity(frame_data->projection);
     glm_mat4_identity(frame_data->view);
