@@ -67,6 +67,9 @@ extern int l_FrameData_meta(lua_State* L);
 extern int l_VertexBatch_meta(lua_State* L);
 extern int l_VertexBatch_create(lua_State* L);
 
+extern int l_Texture2D_meta(lua_State* L);
+extern int l_RenderTarget_meta(lua_State* L);
+
 int luaopen_renderer(lua_State* L) {
     lua_newtable(L);
     l_Renderer_meta(L);
@@ -74,6 +77,9 @@ int luaopen_renderer(lua_State* L) {
 
     l_FrameData_meta(L);
     luaL_ref(L, LUA_REGISTRYINDEX);
+
+    l_Texture2D_meta(L);
+    lua_setfield(L, -2, "Texture2D");
 
     luaL_newmetatable(L, selene_Font_METANAME);
     lua_setfield(L, -2, "Font");
@@ -84,7 +90,7 @@ int luaopen_renderer(lua_State* L) {
     luaL_newmetatable(L, selene_RenderPipeline_METANAME);
     lua_setfield(L, -2, "RenderPipeline");
 
-    luaL_newmetatable(L, selene_RenderTarget_METANAME);
+    l_RenderTarget_meta(L);
     lua_setfield(L, -2, "RenderTarget");
 
     luaL_newmetatable(L, selene_Shader_METANAME);

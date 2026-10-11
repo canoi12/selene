@@ -418,7 +418,9 @@ int l_GL_Renderer__create_texture(lua_State* L) {
     int pixel_format = gl_pixel_format(self, opt);
     if (!pixel_format)
         return luaL_error(L, "pixel format '%s' is not supported by this context", pixel_formats[opt]);
-    void* data = lua_touserdata(L, arg++);
+    void* data = NULL;
+    if (lua_type(L, arg) == LUA_TSTRING) data = (void*)lua_tostring(L, arg++);
+    else if (lua_isuserdata(L, arg)) data = lua_touserdata(L, arg++);
 
     Uint32 handle;
     glGenTextures(1, &handle);
@@ -843,7 +845,9 @@ int l_GL_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_RENDER_TARGET: {
                 selene_RenderTarget* t = rc->target.ptr;
-                if (t != state.target) {
+                if (t != state.target || t == NULL) {
+                    /* state resets every flush but the GL FBO binding
+                     * persists, so always restore the default target */
                     int width, height;
                     renderer_get_target_size(self, t, &width, &height);
                     glBindFramebuffer(GL_FRAMEBUFFER, t ? t->gl.fbo : 0);

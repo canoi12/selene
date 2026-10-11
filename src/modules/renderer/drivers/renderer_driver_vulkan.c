@@ -509,7 +509,9 @@ int l_VK_Renderer__create_texture2d(lua_State *L) {
     CHECK_INTEGER(height);
     int opt = luaL_checkoption(L, arg++, "rgba", pixel_formats);
     void *data = NULL;
-    if (lua_isuserdata(L, arg))
+    if (lua_type(L, arg) == LUA_TSTRING)
+        data = (void *)lua_tostring(L, arg++);
+    else if (lua_isuserdata(L, arg))
         data = lua_touserdata(L, arg++);
     int target = 0;
     if (lua_isboolean(L, arg))

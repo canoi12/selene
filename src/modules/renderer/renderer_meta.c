@@ -190,14 +190,15 @@ int l_Renderer__end_pass(lua_State* L) {
 
 int l_Renderer__create_frame_data(lua_State* L) {
     CHECK_META(selene_Renderer);
-    /* cglm mat4 ops use 16-byte aligned SSE stores; lua_newuserdata only
-     * guarantees 8-byte alignment (the Udata header shifts the payload),
-     * so over-allocate and align the pointer manually. */
-    void* raw = lua_newuserdata(L, sizeof(selene_FrameData) + 16);
-    selene_FrameData* frame_data = (selene_FrameData*)(((uintptr_t)raw + 15) & ~(uintptr_t)15);
+    selene_FrameData* frame_data = lua_newuserdata(L, sizeof(selene_FrameData));
     luaL_setmetatable(L, selene_FrameData_METANAME);
-    glm_mat4_identity(frame_data->projection);
-    glm_mat4_identity(frame_data->view);
+    /* cglm mat4 ops use 16-byte aligned SSE stores, but the userdata payload
+     * is only 8-byte aligned (the Udata header shifts it); compute in a
+     * stack-aligned mat4 and copy into the userdata with memcpy. */
+    mat4 tmp;
+    glm_mat4_identity(tmp);
+    memcpy(frame_data->projection, tmp, sizeof(mat4));
+    memcpy(frame_data->view, tmp, sizeof(mat4));
     frame_data->time = 0.f;
     frame_data->delta_time = 0.f;
     frame_data->screen_width = 0;
@@ -213,7 +214,9 @@ int l_FrameData__ortho(lua_State* L) {
     CHECK_NUMBER(float, top);
     CHECK_NUMBER(float, near_plane);
     CHECK_NUMBER(float, far_plane);
-    glm_ortho(left, right, bottom, top, near_plane, far_plane, self->projection);
+    mat4 tmp;
+    glm_ortho(left, right, bottom, top, near_plane, far_plane, tmp);
+    memcpy(self->projection, tmp, sizeof(mat4));
     return 0;
 }
 
@@ -223,7 +226,9 @@ int l_FrameData__perspective(lua_State* L) {
     CHECK_NUMBER(float, aspect);
     CHECK_NUMBER(float, near_plane);
     CHECK_NUMBER(float, far_plane);
-    glm_perspective(fovy, aspect, near_plane, far_plane, self->projection);
+    mat4 tmp;
+    glm_perspective(fovy, aspect, near_plane, far_plane, tmp);
+    memcpy(self->projection, tmp, sizeof(mat4));
     return 0;
 }
 
@@ -238,7 +243,9 @@ int l_FrameData__lookat(lua_State* L) {
     CHECK_NUMBER(float, upx);
     CHECK_NUMBER(float, upy);
     CHECK_NUMBER(float, upz);
-    glm_lookat((vec3){ eyex, eyey, eyez }, (vec3){ centerx, centery, centerz }, (vec3){ upx, upy, upz }, self->view);
+    mat4 tmp;
+    glm_lookat((vec3){ eyex, eyey, eyez }, (vec3){ centerx, centery, centerz }, (vec3){ upx, upy, upz }, tmp);
+    memcpy(self->view, tmp, sizeof(mat4));
     return 0;
 }
 
@@ -512,6 +519,40 @@ static int l_Renderer__set_texture(lua_State* L) {
 /**
  * Render Target
  */
+
+static int l_RenderTarget__index(lua_State* L) {
+    selene_RenderTarget* target = (selene_RenderTarget*)luaL_checkudata(L, 1, selene_RenderTarget_METANAME);
+    const char* key = luaL_checkstring(L, 2);
+    if (strcmp(key, "width") == 0) { lua_pushinteger(L, target->width); return 1; }
+    if (strcmp(key, "height") == 0) { lua_pushinteger(L, target->height); return 1; }
+    lua_pushnil(L);
+    return 1;
+}
+
+int l_RenderTarget_meta(lua_State* L) {
+    luaL_newmetatable(L, selene_RenderTarget_METANAME);
+    lua_pushcfunction(L, l_RenderTarget__index);
+    lua_setfield(L, -2, "__index");
+    return 1;
+}
+
+static int l_Texture2D__index(lua_State* L) {
+    selene_Texture2D* tex = (selene_Texture2D*)luaL_checkudata(L, 1, selene_Texture2D_METANAME);
+    const char* key = luaL_checkstring(L, 2);
+    if (strcmp(key, "width") == 0) { lua_pushinteger(L, tex->width); return 1; }
+    if (strcmp(key, "height") == 0) { lua_pushinteger(L, tex->height); return 1; }
+    if (strcmp(key, "format") == 0) { lua_pushinteger(L, tex->format); return 1; }
+    if (strcmp(key, "id") == 0) { lua_pushinteger(L, tex->id); return 1; }
+    lua_pushnil(L);
+    return 1;
+}
+
+int l_Texture2D_meta(lua_State* L) {
+    luaL_newmetatable(L, selene_Texture2D_METANAME);
+    lua_pushcfunction(L, l_Texture2D__index);
+    lua_setfield(L, -2, "__index");
+    return 1;
+}
 
 int l_Renderer__create_render_target(lua_State* L) {
     CHECK_META(selene_Renderer);

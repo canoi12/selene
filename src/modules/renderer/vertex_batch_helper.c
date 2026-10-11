@@ -61,6 +61,12 @@ int l_VertexBatch__set_color(lua_State* L) {
     return 0;
 }
 
+int l_VertexBatch__get_color(lua_State* L) {
+    CHECK_META(VertexBatch);
+    for (int i = 0; i < 4; i++) lua_pushnumber(L, self->color[i]);
+    return 4;
+}
+
 int l_VertexBatch__set_z(lua_State* L) {
     CHECK_META(VertexBatch);
     self->z = luaL_checknumber(L, arg++);
@@ -984,6 +990,7 @@ int l_VertexBatch_meta(lua_State* L) {
             REG_META_FIELD(VertexBatch, get_data),
             REG_META_FIELD(VertexBatch, reset),
             REG_META_FIELD(VertexBatch, set_color),
+            REG_META_FIELD(VertexBatch, get_color),
             REG_META_FIELD(VertexBatch, set_z),
             REG_META_FIELD(VertexBatch, get_z),
             REG_META_FIELD(VertexBatch, push_vertex2d),
