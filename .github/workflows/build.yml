@@ -31,16 +31,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install CMake
-        run: |
-          Invoke-WebRequest -Uri https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4-windows-x86_64.msi -OutFile cmake.msi
-          Start-Process msiexec -ArgumentList '/i cmake.msi /quiet /norestart' -Wait
-          Remove-Item cmake.msi
+      # windows-latest now ships Visual Studio 2026; the preinstalled CMake
+      # (4.x) knows its generator, unlike the old 3.26 MSI previously pinned
+      # here, which fell back to NMake / could not find any VS instance.
 
       - name: Build project
         run: |
           cmake -P cmake/scripts/DownloadSDL2.cmake
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G "Visual Studio 18 2026" -A x64 -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
