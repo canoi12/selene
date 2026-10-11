@@ -16,6 +16,15 @@ static char* aux_source = NULL;
 #define glBindVertexArray glBindVertexArrayOES
 #define glDeleteVertexArrays glDeleteVertexArraysOES
 #endif
+/* On GLES2 SDKs instancing only exists through GL_ANGLE_instanced_arrays */
+#ifdef SELENE_GLES_INSTANCING_OES
+#define glDrawArraysInstanced glDrawArraysInstancedANGLE
+#define glDrawElementsInstanced glDrawElementsInstancedANGLE
+#endif
+/* GLES2 core only has glClearDepthf (glClearDepth is desktop GL) */
+#ifdef SELENE_GLES_GLCLEARDEPTH_F
+#define glClearDepth glClearDepthf
+#endif
 
 const int gl_clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_STENCIL_BUFFER_BIT };
 
@@ -140,7 +149,7 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
     renderer_parse_pipeline_desc(L, arg, &desc);
 
     GLuint vao = 0;
-#ifndef USE_LEGACY_GL
+#ifndef SELENE_NO_VAO
     if (self->gl.caps.has_vao)
         glGenVertexArrays(1, &vao);
 #endif
@@ -169,7 +178,7 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
 
     pipe->gl.program = program;
     pipe->gl.vao = vao;
-#ifndef USE_LEGACY_GL
+#ifndef SELENE_NO_VAO
     if (self->gl.caps.has_vao) {
         glBindVertexArray(vao);
         for (int i = 0; i < pipe->layout.count; i++) {
@@ -193,7 +202,7 @@ int l_GL_Renderer__destroy_pipeline(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_RenderPipeline, pipe);
     glDeleteProgram(pipe->gl.program);
-#ifndef USE_LEGACY_GL
+#ifndef SELENE_NO_VAO
     if (self->gl.caps.has_vao)
         glDeleteVertexArrays(1, &(pipe->gl.vao));
 #endif
@@ -609,7 +618,9 @@ static void gl_draw_arrays_cmd(selene_Renderer* r, const struct RenderCommand* r
     GLenum mode = gl_draw_modes_values[rc->draw.topology];
     int instances = rc->draw.instance_count < 1 ? 1 : rc->draw.instance_count;
     if (instances > 1 && r->gl.caps.has_instancing) {
+#ifndef SELENE_NO_INSTANCING
         glDrawArraysInstanced(mode, rc->draw.start, rc->draw.count, instances);
+#endif
     } else {
         for (int i = 0; i < instances; i++)
             glDrawArrays(mode, rc->draw.start, rc->draw.count);
@@ -622,7 +633,9 @@ static void gl_draw_indexed_cmd(selene_Renderer* r, selene_GpuBuffer* index, con
     int instances = rc->draw.instance_count < 1 ? 1 : rc->draw.instance_count;
     const void* offset = (const void*)(uintptr_t)(rc->draw.start * (itype == GL_UNSIGNED_SHORT ? 2 : 4));
     if (instances > 1 && r->gl.caps.has_instancing) {
+#ifndef SELENE_NO_INSTANCING
         glDrawElementsInstanced(mode, rc->draw.count, itype, offset, instances);
+#endif
     } else {
         for (int i = 0; i < instances; i++)
             glDrawElements(mode, rc->draw.count, itype, offset);
@@ -708,7 +721,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                 if (rp == state.pipe) break;
                 if (rp == NULL) {
                     glUseProgram(0);
-#ifndef USE_LEGACY_GL
+#ifndef SELENE_NO_VAO
                     if (self->gl.caps.has_vao)
                         glBindVertexArray(0);
 #endif
@@ -724,8 +737,10 @@ int l_GL_Renderer__flush(lua_State* L) {
 
                 if (state.pipe->gl.program != rp->gl.program) {
                     glUseProgram(rp->gl.program);
+#ifndef SELENE_NO_UBO
                     if (self->gl.caps.has_ubo && state.uniform)
                         glUniformBlockBinding(rp->gl.program, 0, 0);
+#endif
                 }
 
                 if (rp->blend_state.enabled != state.pipe->blend_state.enabled) {
@@ -753,7 +768,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                 if (rp->raster_state.front_face != state.pipe->raster_state.front_face)
                     glFrontFace(gl_front_face_values[rp->raster_state.front_face]);
 
-#ifndef USE_LEGACY_GL
+#ifndef SELENE_NO_VAO
                 if (self->gl.caps.has_vao) {
                     if (rp->gl.vao != state.pipe->gl.vao) {
                         glBindVertexArray(rp->gl.vao);
@@ -787,6 +802,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
+#ifndef SELENE_NO_UBO
                 if (self->gl.caps.has_ubo) {
                     glBindBuffer(GL_UNIFORM_BUFFER, b ? b->gl.handle : 0);
                     glBindBufferBase(GL_UNIFORM_BUFFER, rc->buffer.slot, b ? b->gl.handle : 0);
@@ -796,6 +812,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                             glUniformBlockBinding(state.pipe->gl.program, index, rc->buffer.slot);
                     }
                 }
+#endif
                 state.uniform = b;
             }
                 break;
@@ -859,7 +876,7 @@ int l_GL_Renderer__flush(lua_State* L) {
     }
     self->command_offset = 0;
     glUseProgram(0);
-#ifndef USE_LEGACY_GL
+#ifndef SELENE_NO_VAO
     if (self->gl.caps.has_vao)
         glBindVertexArray(0);
 #endif
@@ -938,11 +955,17 @@ static void gl_detect_capabilities(selene_Renderer* r) {
         gl_supports_extension(r, "GL_ANGLE_instanced_arrays") ||
         gl_supports_extension(r, "GL_EXT_draw_instanced") ||
         gl_supports_extension(r, "GL_ARB_draw_instanced");
+#ifdef SELENE_NO_INSTANCING
+    caps->has_instancing = 0; /* not declared in this SDK's headers */
+#endif
     /* UBO: core in GL 3.1+ / GLES 3.0+ */
     caps->has_ubo = (caps->is_gles && caps->major >= 3) ||
         (!caps->is_gles && (caps->major > 3 ||
                             (caps->major == 3 && caps->minor >= 1))) ||
         gl_supports_extension(r, "GL_ARB_uniform_buffer_object");
+#ifdef SELENE_NO_UBO
+    caps->has_ubo = 0; /* not declared in this SDK's headers */
+#endif
     /* glBlendEquation: core in GL 1.4+ / GLES 3.0+ */
     caps->has_blend_equation = !caps->is_gles || caps->major >= 3 ||
         gl_supports_extension(r, "GL_EXT_blend_subtract") ||
