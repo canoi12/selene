@@ -70,16 +70,17 @@ extern "C" {
         #if defined(SELENE_USE_GLES)
         #include <GLES3/gl3.h>
         #else
-        #include <SDL_opengl.h>
-        #endif
-        #if 0
+        #if 1
         #if !defined(OS_ANDROID)
             #include <SDL_opengl.h>
         #else
             #include <SDL_opengles2.h>
-            #define USE_GLES2 1
+        #endif
+        #else
+        #include <SDL_opengl.h>
         #endif
         #endif
+        
     #endif
 #endif
 #endif

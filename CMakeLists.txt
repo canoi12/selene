@@ -6,6 +6,8 @@ include(Config)
 project(${SELENE_NAME} VERSION ${SELENE_VERSION} LANGUAGES C CXX)
 
 include(CheckLibraryExists)
+include(CheckCSourceCompiles)
+include(CMakePushCheckState)
 include(CheckIncludeFile)
 include(CheckPlatform)
 include(CheckTriple)
@@ -134,6 +136,47 @@ if (NOT ANDROID AND NOT EMSCRIPTEN)
     find_package(OpenGL REQUIRED)
 elseif (ANDROID)
     set (OPENGL_LIBRARIES GLESv1_CM GLESv2)
+    # Feature probes (compile-only, no link): what does the GLES2 SDK declare?
+    # 1) core VAO entry points (GLES 3.x headers)
+    # 2) GL_OES_vertex_array_object extension entry points (gl2ext.h)
+    # USE_LEGACY_GL is only defined when NEITHER is declared.
+    cmake_push_check_state()
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+    check_c_source_compiles("
+#include <GLES2/gl2.h>
+int main(void) {
+    GLuint vao = 0;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glDeleteVertexArrays(1, &vao);
+    return 0;
+}" SELENE_PROBE_GLES_VAO_CORE)
+    if (NOT SELENE_PROBE_GLES_VAO_CORE)
+        check_c_source_compiles("
+#define GL_GLEXT_PROTOTYPES 1
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#ifndef GL_OES_vertex_array_object
+#error GL_OES_vertex_array_object is not defined in gl2ext.h
+#endif
+int main(void) {
+    GLuint vao = 0;
+    glGenVertexArraysOES(1, &vao);
+    glBindVertexArrayOES(vao);
+    glDeleteVertexArraysOES(1, &vao);
+    return 0;
+}" SELENE_PROBE_GLES_VAO_OES)
+    endif ()
+    cmake_pop_check_state()
+    if (SELENE_PROBE_GLES_VAO_CORE)
+        message("Android GLES: VAO entry points declared in GLES2 headers")
+    elseif (SELENE_PROBE_GLES_VAO_OES)
+        message("Android GLES: VAO available via GL_OES_vertex_array_object — defining SELENE_GLES_VAO_OES")
+        add_definitions(-DSELENE_GLES_VAO_OES)
+    else ()
+        message("Android GLES: no VAO declarations found — defining USE_LEGACY_GL")
+        add_definitions(-DUSE_LEGACY_GL)
+    endif ()
 endif ()
 if (NOT DEFINED EMSCRIPTEN)
     if (${SELENE_USE_SDL3})

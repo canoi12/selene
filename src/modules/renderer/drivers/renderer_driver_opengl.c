@@ -8,6 +8,15 @@ extern char font8x8_ext_latin[96][8];
 static int aux_source_size = 0;
 static char* aux_source = NULL;
 
+/* On GLES2 SDKs that only expose VAO through GL_OES_vertex_array_object,
+ * alias the core entry-point names to the OES ones (detected at build
+ * time by the CMake probes). */
+#ifdef SELENE_GLES_VAO_OES
+#define glGenVertexArrays glGenVertexArraysOES
+#define glBindVertexArray glBindVertexArrayOES
+#define glDeleteVertexArrays glDeleteVertexArraysOES
+#endif
+
 const int gl_clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_STENCIL_BUFFER_BIT };
 
 const int gl_enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST, GL_SCISSOR_TEST, GL_CULL_FACE };
@@ -131,8 +140,10 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
     renderer_parse_pipeline_desc(L, arg, &desc);
 
     GLuint vao = 0;
+#ifndef USE_LEGACY_GL
     if (self->gl.caps.has_vao)
         glGenVertexArrays(1, &vao);
+#endif
 
     GLuint program = glCreateProgram();
     glAttachShader(program, desc.vs->gl.handle);
@@ -142,7 +153,6 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
         char log[512];
-        glGetProgramInfoLog(program, 512, NULL, log);
         glGetProgramInfoLog(program, 512, NULL, log);
         glDeleteProgram(program);
         return luaL_error(L, "failed to link program: %s", log);
@@ -159,6 +169,7 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
 
     pipe->gl.program = program;
     pipe->gl.vao = vao;
+#ifndef USE_LEGACY_GL
     if (self->gl.caps.has_vao) {
         glBindVertexArray(vao);
         for (int i = 0; i < pipe->layout.count; i++) {
@@ -173,6 +184,7 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
         }
         glBindVertexArray(0);
     }
+#endif
     pipe->id = next_pipeline_id++;
     return 1;
 }
@@ -181,8 +193,10 @@ int l_GL_Renderer__destroy_pipeline(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_RenderPipeline, pipe);
     glDeleteProgram(pipe->gl.program);
+#ifndef USE_LEGACY_GL
     if (self->gl.caps.has_vao)
         glDeleteVertexArrays(1, &(pipe->gl.vao));
+#endif
     return 0;
 }
 
@@ -694,8 +708,10 @@ int l_GL_Renderer__flush(lua_State* L) {
                 if (rp == state.pipe) break;
                 if (rp == NULL) {
                     glUseProgram(0);
+#ifndef USE_LEGACY_GL
                     if (self->gl.caps.has_vao)
                         glBindVertexArray(0);
+#endif
                     glDisable(GL_BLEND);
                     glDisable(GL_DEPTH_TEST);
                     glDisable(GL_CULL_FACE);
@@ -737,13 +753,16 @@ int l_GL_Renderer__flush(lua_State* L) {
                 if (rp->raster_state.front_face != state.pipe->raster_state.front_face)
                     glFrontFace(gl_front_face_values[rp->raster_state.front_face]);
 
+#ifndef USE_LEGACY_GL
                 if (self->gl.caps.has_vao) {
                     if (rp->gl.vao != state.pipe->gl.vao) {
                         glBindVertexArray(rp->gl.vao);
                         if (state.vertex)
                             gl_enable_layout(self, &(rp->layout));
                     }
-                } else {
+                } else
+#endif
+                {
                     for (int j = 0; j < 8; j++) glDisableVertexAttribArray(j);
                     gl_enable_layout(self, &(rp->layout));
                 }
@@ -840,8 +859,10 @@ int l_GL_Renderer__flush(lua_State* L) {
     }
     self->command_offset = 0;
     glUseProgram(0);
+#ifndef USE_LEGACY_GL
     if (self->gl.caps.has_vao)
         glBindVertexArray(0);
+#endif
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
