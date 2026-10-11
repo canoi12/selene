@@ -281,8 +281,7 @@ int l_FrameData_meta(lua_State* L) {
         {NULL, NULL}
     };
     luaL_setfuncs(L, _reg, 0);
-    lua_pop(L, 1);
-    return 0;
+    return 1;
 }
 
 /**
