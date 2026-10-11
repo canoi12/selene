@@ -26,6 +26,39 @@ static int l_Renderer__get_backend(lua_State* L) {
     return 1;
 }
 
+static int l_Renderer__get_info(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    lua_newtable(L);
+    l_Renderer__get_backend(L);
+    lua_setfield(L, -2, "backend");
+#ifndef SELENE_NO_OPENGL
+    if (self->backend == SELENE_RENDERER_OPENGL) {
+        const struct selene_GLCapabilities* caps = &self->gl.caps;
+        lua_pushboolean(L, caps->is_gles);
+        lua_setfield(L, -2, "es");
+        lua_pushinteger(L, caps->major);
+        lua_setfield(L, -2, "major");
+        lua_pushinteger(L, caps->minor);
+        lua_setfield(L, -2, "minor");
+        lua_pushboolean(L, caps->has_vao);
+        lua_setfield(L, -2, "vao");
+        lua_pushboolean(L, caps->has_instancing);
+        lua_setfield(L, -2, "instancing");
+        lua_pushboolean(L, caps->has_ubo);
+        lua_setfield(L, -2, "ubo");
+        lua_pushboolean(L, caps->has_blend_equation);
+        lua_setfield(L, -2, "blend_equation");
+        lua_pushboolean(L, caps->has_depth_texture);
+        lua_setfield(L, -2, "depth_texture");
+        lua_pushboolean(L, caps->has_bgra);
+        lua_setfield(L, -2, "bgra");
+        lua_pushboolean(L, caps->has_unpack_flip_y);
+        lua_setfield(L, -2, "unpack_flip_y");
+    }
+#endif
+    return 1;
+}
+
 static int l_Renderer__get_size(lua_State* L) {
     CHECK_META(selene_Renderer);
     lua_pushinteger(L, self->width);
@@ -674,6 +707,7 @@ int l_Renderer_meta(lua_State* L) {
     lua_setfield(L, -2, "__index");
     const luaL_Reg _reg[] = {
         REG_META_FIELD(Renderer, get_backend),
+        REG_META_FIELD(Renderer, get_info),
         REG_META_FIELD(Renderer, get_size),
         REG_META_FIELD(Renderer, set_size),
         REG_META_FIELD(Renderer, destroy),

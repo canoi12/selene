@@ -12,34 +12,32 @@ const int gl_clear_masks_values[] = {GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, G
 
 const int gl_enable_attribs_values[] = { GL_BLEND, GL_DEPTH_TEST, GL_SCISSOR_TEST, GL_CULL_FACE };
 
-const int gl_pixel_formats_values[] = {
-    GL_RGB, GL_RGBA,
-#if defined(USE_GLES2)
-    GL_DEPTH_COMPONENT16,
-    GL_RGBA
-#else
-    GL_DEPTH_COMPONENT32,
-    GL_BGRA
-#endif
-};
+/* Formats that depend on the context version are resolved at runtime
+ * by gl_pixel_format(); only universally-defined tokens go here. */
+const int gl_pixel_formats_values[] = { GL_RGB, GL_RGBA, 0, 0 };
 
 const int gl_texture_filters_values[] = { GL_NEAREST, GL_LINEAR };
 const int gl_texture_targets_values[] = { GL_TEXTURE_2D, GL_TEXTURE_3D, GL_TEXTURE_CUBE_MAP };
 
 const int gl_draw_modes_values[] = {GL_POINTS, GL_LINES, GL_TRIANGLES};
 
-#if defined(USE_GLES2)
-const int gl_buffer_target_types_values[] = {GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER};
+/* GL_UNIFORM_BUFFER / GL_DOUBLE only exist in GL 3.1+ / GLES 3 headers;
+ * runtime capability checks gate their use. */
+const int gl_buffer_target_types_values[] = {
+    GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER,
+#if defined(GL_UNIFORM_BUFFER)
+    GL_UNIFORM_BUFFER
 #else
-const int gl_buffer_target_types_values[] = {GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER, GL_UNIFORM_BUFFER};
+    0
 #endif
+};
 const int gl_shader_types_values[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER};
 
 const int gl_front_face_values[] = {GL_CW, GL_CCW};
 const int gl_cull_face_values[] = {GL_NONE, GL_FRONT, GL_BACK, GL_FRONT_AND_BACK};
 
 const int gl_type_values[] = {GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT, GL_UNSIGNED_INT, GL_FLOAT
-#if !defined(USE_GLES2)
+#if defined(GL_DOUBLE)
     , GL_DOUBLE
 #endif
 };
@@ -69,23 +67,23 @@ int l_GL_Renderer__destroy(lua_State* L) {
 }
 
 
-static void gl_apply_blend_mode(int mode) {
+static void gl_apply_blend_mode(selene_Renderer* r, int mode) {
     switch (mode) {
         case SELENE_BLEND_ADDITIVE:
             glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-            glBlendEquation(GL_FUNC_ADD);
+            if (r->gl.caps.has_blend_equation) glBlendEquation(GL_FUNC_ADD);
             break;
         case SELENE_BLEND_SUBTRACT:
             glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-            glBlendEquation(GL_FUNC_SUBTRACT);
+            if (r->gl.caps.has_blend_equation) glBlendEquation(GL_FUNC_SUBTRACT);
             break;
         case SELENE_BLEND_MULTIPLY:
             glBlendFunc(GL_DST_COLOR, GL_ZERO);
-            glBlendEquation(GL_FUNC_ADD);
+            if (r->gl.caps.has_blend_equation) glBlendEquation(GL_FUNC_ADD);
             break;
         default:
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glBlendEquation(GL_FUNC_ADD);
+            if (r->gl.caps.has_blend_equation) glBlendEquation(GL_FUNC_ADD);
             break;
     }
 }
@@ -94,6 +92,34 @@ static void gl_apply_viewport(selene_Renderer* r, selene_RenderTarget* target, i
     int tw, th;
     renderer_get_target_size(r, target, &tw, &th);
     glViewport(x, th - y - h, w, h);
+}
+
+/* Resolve a SELENE_FORMAT_* pixel format for the current context.
+ * Returns 0 when the format is not supported. */
+static int gl_pixel_format(selene_Renderer* r, int opt) {
+    struct selene_GLCapabilities* caps = &r->gl.caps;
+    switch (opt) {
+        case SELENE_FORMAT_DEPTH:
+            if (!caps->has_depth_texture) return 0;
+            if (caps->is_gles) {
+#if defined(GL_DEPTH_COMPONENT24)
+                if (caps->major >= 3) return GL_DEPTH_COMPONENT24;
+#endif
+                return GL_DEPTH_COMPONENT;
+            }
+#if defined(GL_DEPTH_COMPONENT32)
+            return GL_DEPTH_COMPONENT32;
+#else
+            return GL_DEPTH_COMPONENT;
+#endif
+        case SELENE_FORMAT_BGRA:
+#if defined(GL_BGRA)
+            if (caps->has_bgra) return GL_BGRA;
+#endif
+            return 0;
+        default:
+            return gl_pixel_formats_values[opt];
+    }
 }
 
 /**
@@ -105,9 +131,8 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
     renderer_parse_pipeline_desc(L, arg, &desc);
 
     GLuint vao = 0;
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-    glGenVertexArrays(1, &vao);
-#endif
+    if (self->gl.caps.has_vao)
+        glGenVertexArrays(1, &vao);
 
     GLuint program = glCreateProgram();
     glAttachShader(program, desc.vs->gl.handle);
@@ -127,30 +152,27 @@ int l_GL_Renderer__create_pipeline(lua_State* L) {
     memset(pipe, 0, sizeof(*pipe));
     renderer_apply_pipeline_desc(pipe, &desc);
     for (int i = 0; i < pipe->layout.count; i++) {
+        if (pipe->layout.attributes[i].type == SELENE_DOUBLE && self->gl.caps.is_gles)
+            return luaL_error(L, "double vertex attributes are not supported on GLES");
         pipe->layout.attributes[i].binding = glGetAttribLocation(program, pipe->layout.attributes[i].name);
-        fprintf(stdout, "name: %s, offset: %d, size: %d, type: %d\n",
-                pipe->layout.attributes[i].name,
-                pipe->layout.attributes[i].offset,
-                pipe->layout.attributes[i].size,
-                pipe->layout.attributes[i].type);
     }
 
     pipe->gl.program = program;
     pipe->gl.vao = vao;
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-    glBindVertexArray(vao);
-    for (int i = 0; i < pipe->layout.count; i++) {
-        int binding = pipe->layout.attributes[i].binding;
-        if (binding < 0) continue;
-        int offset = pipe->layout.attributes[i].offset;
-        int size = pipe->layout.attributes[i].size;
-        int type = pipe->layout.attributes[i].type;
-        int stride = (int)pipe->layout.vertex_stride;
-        glEnableVertexAttribArray(binding);
-        glVertexAttribPointer(binding, size, gl_type_values[type], GL_FALSE, stride, (const void*)(uintptr_t)offset);
+    if (self->gl.caps.has_vao) {
+        glBindVertexArray(vao);
+        for (int i = 0; i < pipe->layout.count; i++) {
+            int binding = pipe->layout.attributes[i].binding;
+            if (binding < 0) continue;
+            int offset = pipe->layout.attributes[i].offset;
+            int size = pipe->layout.attributes[i].size;
+            int type = pipe->layout.attributes[i].type;
+            int stride = (int)pipe->layout.vertex_stride;
+            glEnableVertexAttribArray(binding);
+            glVertexAttribPointer(binding, size, gl_type_values[type], GL_FALSE, stride, (const void*)(uintptr_t)offset);
+        }
+        glBindVertexArray(0);
     }
-    glBindVertexArray(0);
-#endif
     pipe->id = next_pipeline_id++;
     return 1;
 }
@@ -159,9 +181,8 @@ int l_GL_Renderer__destroy_pipeline(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_RenderPipeline, pipe);
     glDeleteProgram(pipe->gl.program);
-#if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
-    glDeleteVertexArrays(1, &(pipe->gl.vao));
-#endif
+    if (self->gl.caps.has_vao)
+        glDeleteVertexArrays(1, &(pipe->gl.vao));
     return 0;
 }
 
@@ -174,13 +195,10 @@ int l_GL_Renderer__create_buffer(lua_State* L) {
     CHECK_META(selene_Renderer);
     Uint32 handle;
     int opt = luaL_checkoption(L, arg++, "vertex", buffer_target_options);
-#if defined(USE_GLES2)
-    if (opt >= SELENE_BUFFER_UNIFORM)
-        return luaL_error(L, "uniform/storage buffers are not available on GLES2");
-#else
     if (opt == SELENE_BUFFER_STORAGE)
         return luaL_error(L, "storage buffers are not implemented on OpenGL yet");
-#endif
+    if (opt == SELENE_BUFFER_UNIFORM && !self->gl.caps.has_ubo)
+        return luaL_error(L, "uniform buffers are not supported by this context");
     int size = (int)luaL_checkinteger(L, arg++);
     int target = gl_buffer_target_types_values[opt];
     glGenBuffers(1, &handle);
@@ -374,12 +392,15 @@ int l_GL_Renderer__create_texture(lua_State* L) {
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
     int opt = luaL_checkoption(L, arg++, "rgb", pixel_formats);
+    int pixel_format = gl_pixel_format(self, opt);
+    if (!pixel_format)
+        return luaL_error(L, "pixel format '%s' is not supported by this context", pixel_formats[opt]);
     void* data = lua_touserdata(L, arg++);
 
     Uint32 handle;
     glGenTextures(1, &handle);
     glBindTexture(GL_TEXTURE_2D, handle);
-    glTexImage2D(GL_TEXTURE_2D, 0, gl_pixel_formats_values[opt], width, height, 0, gl_pixel_formats_values[opt], GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, pixel_format, width, height, 0, pixel_format, GL_UNSIGNED_BYTE, data);
     glBindTexture(GL_TEXTURE_2D, 0);
     NEW_UDATA(selene_Texture2D, tex);
     tex->id = next_texture_id;
@@ -398,7 +419,9 @@ int l_GL_Renderer__create_texture2d(lua_State* L) {
     int opt = luaL_checkoption(L, arg++, "rgba", pixel_formats);
     void* data = NULL;
     if (lua_isuserdata(L, arg)) data = lua_touserdata(L, arg++);
-    int pixel_format = gl_pixel_formats_values[opt];
+    int pixel_format = gl_pixel_format(self, opt);
+    if (!pixel_format)
+        return luaL_error(L, "pixel format '%s' is not supported by this context", pixel_formats[opt]);
     Uint32 handle;
     glGenTextures(1, &handle);
     glBindTexture(GL_TEXTURE_2D, handle);
@@ -423,14 +446,14 @@ int l_GL_Renderer__create_depth_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_INTEGER(width);
     CHECK_INTEGER(height);
+    int depth_format = gl_pixel_format(self, SELENE_FORMAT_DEPTH);
+    if (!depth_format)
+        return luaL_error(L, "depth textures are not supported by this context");
+    GLenum type = self->gl.caps.is_gles ? GL_UNSIGNED_INT : GL_FLOAT;
     Uint32 handle;
     glGenTextures(1, &handle);
     glBindTexture(GL_TEXTURE_2D, handle);
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-#else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
-#endif
+    glTexImage2D(GL_TEXTURE_2D, 0, depth_format, width, height, 0, depth_format, type, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
     NEW_UDATA(selene_Texture2D, tex);
     tex->gl.handle = handle;
@@ -510,6 +533,22 @@ int l_GL_Renderer__create_shader(lua_State* L) {
         aux_source[size] = '\0';
         source = aux_source;
     }
+    /* Desktop GLSL version directives are invalid on OpenGL ES (and
+     * crash some drivers' linkers) — fail fast with a clear error. */
+    if (self->gl.caps.is_gles && source) {
+        const char* ver = strstr(source, "#version");
+        if (ver) {
+            const char* p = ver + 8;
+            while (*p == ' ' || *p == '\t') p++;
+            int num = (int)strtol(p, (char**)&p, 10);
+            int es_suffix = (strncmp(p, " es", 3) == 0);
+            if (!(num == 100 || (num >= 300 && es_suffix)))
+                return luaL_error(L,
+                    "shader uses desktop GLSL '#version %d' which is invalid "
+                    "on OpenGL ES; use a GLSL ES source (e.g. '#version 100')",
+                    num);
+        }
+    }
     Uint32 handle = glCreateShader(gl_shader_types_values[opt]);
     glShaderSource(handle, 1, &source, NULL);
     int success;
@@ -552,29 +591,27 @@ static GLenum gl_index_type(selene_GpuBuffer* index) {
     return GL_UNSIGNED_INT;
 }
 
-static void gl_draw_arrays_cmd(const struct RenderCommand* rc) {
+static void gl_draw_arrays_cmd(selene_Renderer* r, const struct RenderCommand* rc) {
     GLenum mode = gl_draw_modes_values[rc->draw.topology];
     int instances = rc->draw.instance_count < 1 ? 1 : rc->draw.instance_count;
-    if (instances > 1) {
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
+    if (instances > 1 && r->gl.caps.has_instancing) {
         glDrawArraysInstanced(mode, rc->draw.start, rc->draw.count, instances);
-#endif
     } else {
-        glDrawArrays(mode, rc->draw.start, rc->draw.count);
+        for (int i = 0; i < instances; i++)
+            glDrawArrays(mode, rc->draw.start, rc->draw.count);
     }
 }
 
-static void gl_draw_indexed_cmd(selene_GpuBuffer* index, const struct RenderCommand* rc) {
+static void gl_draw_indexed_cmd(selene_Renderer* r, selene_GpuBuffer* index, const struct RenderCommand* rc) {
     GLenum mode = gl_draw_modes_values[rc->draw.topology];
     GLenum itype = gl_index_type(index);
     int instances = rc->draw.instance_count < 1 ? 1 : rc->draw.instance_count;
     const void* offset = (const void*)(uintptr_t)(rc->draw.start * (itype == GL_UNSIGNED_SHORT ? 2 : 4));
-    if (instances > 1) {
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
+    if (instances > 1 && r->gl.caps.has_instancing) {
         glDrawElementsInstanced(mode, rc->draw.count, itype, offset, instances);
-#endif
     } else {
-        glDrawElements(mode, rc->draw.count, itype, offset);
+        for (int i = 0; i < instances; i++)
+            glDrawElements(mode, rc->draw.count, itype, offset);
     }
 }
 
@@ -619,11 +656,10 @@ int l_GL_Renderer__flush(lua_State* L) {
                     mask |= GL_COLOR_BUFFER_BIT;
                 }
                 if (rc->pass.clear_depth) {
-                #if defined(USE_GLES2)
-                    glClearDepthf(rc->pass.depth);
-                #else
-                    glClearDepth(rc->pass.depth);
-                #endif
+                    if (self->gl.caps.is_gles)
+                        glClearDepthf(rc->pass.depth);
+                    else
+                        glClearDepth(rc->pass.depth);
                     mask |= GL_DEPTH_BUFFER_BIT;
                 }
                 if (mask) glClear(mask);
@@ -641,11 +677,10 @@ int l_GL_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_CLEAR_DEPTH: {
-            #if defined(USE_GLES2)
-                glClearDepthf(rc->clear.depth);
-            #else
-                glClearDepth(rc->clear.depth);
-            #endif
+                if (self->gl.caps.is_gles)
+                    glClearDepthf(rc->clear.depth);
+                else
+                    glClearDepth(rc->clear.depth);
                 glClear(GL_DEPTH_BUFFER_BIT);
             }
                 break;
@@ -659,9 +694,8 @@ int l_GL_Renderer__flush(lua_State* L) {
                 if (rp == state.pipe) break;
                 if (rp == NULL) {
                     glUseProgram(0);
-#if  !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
-                    glBindVertexArray(0);
-#endif
+                    if (self->gl.caps.has_vao)
+                        glBindVertexArray(0);
                     glDisable(GL_BLEND);
                     glDisable(GL_DEPTH_TEST);
                     glDisable(GL_CULL_FACE);
@@ -674,9 +708,8 @@ int l_GL_Renderer__flush(lua_State* L) {
 
                 if (state.pipe->gl.program != rp->gl.program) {
                     glUseProgram(rp->gl.program);
-        #if !defined(USE_GLES2)
-                    if (state.uniform) glUniformBlockBinding(rp->gl.program, 0, 0);
-        #endif
+                    if (self->gl.caps.has_ubo && state.uniform)
+                        glUniformBlockBinding(rp->gl.program, 0, 0);
                 }
 
                 if (rp->blend_state.enabled != state.pipe->blend_state.enabled) {
@@ -686,7 +719,7 @@ int l_GL_Renderer__flush(lua_State* L) {
                 if (rp->blend_state.enabled &&
                     (rp->blend_state.mode != state.pipe->blend_state.mode ||
                      !state.pipe->blend_state.enabled))
-                    gl_apply_blend_mode(rp->blend_state.mode);
+                    gl_apply_blend_mode(self, rp->blend_state.mode);
 
                 if (rp->depth_stencil_state.depth_enabled != state.pipe->depth_stencil_state.depth_enabled) {
                     if (rp->depth_stencil_state.depth_enabled) glEnable(GL_DEPTH_TEST);
@@ -704,16 +737,16 @@ int l_GL_Renderer__flush(lua_State* L) {
                 if (rp->raster_state.front_face != state.pipe->raster_state.front_face)
                     glFrontFace(gl_front_face_values[rp->raster_state.front_face]);
 
-#if  !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
-                if (rp->gl.vao != state.pipe->gl.vao) {
-                    glBindVertexArray(rp->gl.vao);
-                    if (state.vertex)
-                        gl_enable_layout(self, &(rp->layout));
+                if (self->gl.caps.has_vao) {
+                    if (rp->gl.vao != state.pipe->gl.vao) {
+                        glBindVertexArray(rp->gl.vao);
+                        if (state.vertex)
+                            gl_enable_layout(self, &(rp->layout));
+                    }
+                } else {
+                    for (int j = 0; j < 8; j++) glDisableVertexAttribArray(j);
+                    gl_enable_layout(self, &(rp->layout));
                 }
-#else
-                for (int j = 0; j < 8; j++) glDisableVertexAttribArray(j);
-                gl_enable_layout(self, &(rp->layout));
-#endif
                 state.pipe = rp;
             }
                 break;
@@ -735,17 +768,15 @@ int l_GL_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
-#if defined(USE_GLES2)
-                (void)b;
-#else
-                glBindBuffer(GL_UNIFORM_BUFFER, b ? b->gl.handle : 0);
-                glBindBufferBase(GL_UNIFORM_BUFFER, rc->buffer.slot, b ? b->gl.handle : 0);
-                if (b && state.pipe) {
-                    int index = glGetUniformBlockIndex(state.pipe->gl.program, "Matrices");
-                    if (index != (int)((GLuint)-1))
-                        glUniformBlockBinding(state.pipe->gl.program, index, rc->buffer.slot);
+                if (self->gl.caps.has_ubo) {
+                    glBindBuffer(GL_UNIFORM_BUFFER, b ? b->gl.handle : 0);
+                    glBindBufferBase(GL_UNIFORM_BUFFER, rc->buffer.slot, b ? b->gl.handle : 0);
+                    if (b && state.pipe) {
+                        int index = glGetUniformBlockIndex(state.pipe->gl.program, "Matrices");
+                        if (index != (int)((GLuint)-1))
+                            glUniformBlockBinding(state.pipe->gl.program, index, rc->buffer.slot);
+                    }
                 }
-#endif
                 state.uniform = b;
             }
                 break;
@@ -798,10 +829,10 @@ int l_GL_Renderer__flush(lua_State* L) {
                 glUniformMatrix4fv(rc->uniform.location, 1, GL_FALSE, rc->uniform.m[0]);
                 break;
             case RENDER_COMMAND_DRAW:
-                gl_draw_arrays_cmd(rc);
+                gl_draw_arrays_cmd(self, rc);
                 break;
             case RENDER_COMMAND_DRAW_INDEXED:
-                gl_draw_indexed_cmd(state.index, rc);
+                gl_draw_indexed_cmd(self, state.index, rc);
                 break;
             default:
                 break;
@@ -809,9 +840,8 @@ int l_GL_Renderer__flush(lua_State* L) {
     }
     self->command_offset = 0;
     glUseProgram(0);
-#if  !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
-    glBindVertexArray(0);
-#endif
+    if (self->gl.caps.has_vao)
+        glBindVertexArray(0);
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
@@ -921,14 +951,47 @@ int l_GL_Renderer_create(lua_State* L) {
 #endif
     INIT_ARG();
     selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
+    arg++; /* backend name (consumed by l_renderer_create) */
 #ifndef NDEBUG
     fprintf(stdout, "[renderer] window: %p\n", win);
     fprintf(stdout, "[renderer] creating GL Context\n");
 #endif
+    /* Optional context options: {es=true, major=3, minor=0, debug=true} */
+    int context_major = 0, context_minor = 0;
+    int profile_mask = 0, context_flags = 0;
+    if (lua_istable(L, arg)) {
+        if (lua_getfield(L, arg, "es") == LUA_TBOOLEAN && lua_toboolean(L, -1))
+            profile_mask = SDL_GL_CONTEXT_PROFILE_ES;
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "major") == LUA_TNUMBER)
+            context_major = (int)lua_tointeger(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "minor") == LUA_TNUMBER)
+            context_minor = (int)lua_tointeger(L, -1);
+        lua_pop(L, 1);
+        if (lua_getfield(L, arg, "debug") == LUA_TBOOLEAN && lua_toboolean(L, -1))
+            context_flags = SDL_GL_CONTEXT_DEBUG_FLAG;
+        lua_pop(L, 1);
+    }
+    if (profile_mask)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, profile_mask);
+    if (context_major)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, context_major);
+    if (context_minor)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, context_minor);
+    if (context_flags)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, context_flags);
+
     SDL_GLContext ctx = SDL_GL_CreateContext(win->handle);
     if (!ctx) {
         return luaL_error(L, "failed to create SDL OpenGL context: %s", SDL_GetError());
     }
+    /* Restore defaults so the next context is not affected */
+#if defined(SELENE_USE_SDL3)
+    SDL_ResetAttributes();
+#elif SDL_VERSION_ATLEAST(2, 24, 0)
+    SDL_GL_ResetAttributes();
+#endif
 #ifndef NDEBUG
     fprintf(stdout, "[renderer] GL Context created\n");
 #endif

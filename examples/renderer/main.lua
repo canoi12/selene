@@ -68,10 +68,12 @@ ren:send_buffer_data(buffer, batch:get_offset()*batch:get_stride(), batch:get_da
 -- print(size, data)
 -- local vert = ren:create_shader('vertex', size, data)
 
+local info = ren:get_info()
+
 local vert_file = 'root://shaders/vert.hlsl'
 if backend == 'opengl' then
     vert_file = 'root://shaders/vert.glsl'
-    if os.host() == 'emscripten' or os.host() == 'android' then
+    if info.es then
         vert_file = 'root://shaders/vert.glsl100'
     end
 elseif backend == 'vulkan' then
@@ -85,7 +87,7 @@ local vert = ren:load_shader('vertex', vert_file)
 local frag_file = 'root://shaders/frag.hlsl'
 if backend == 'opengl' then
     frag_file = 'root://shaders/frag.glsl'
-    if os.host() == 'emscripten' or os.host() == 'android' then
+    if info.es then
         frag_file = 'root://shaders/frag.glsl100'
     end
 elseif backend == 'vulkan' then
