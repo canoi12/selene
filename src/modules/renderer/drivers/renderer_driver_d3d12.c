@@ -3,9 +3,9 @@
 #if 0 && defined(OS_WIN) && !defined(SELENE_NO_D3D12)
 #include <SDL_video.h>
 
-const int dx11_buffer_target_types_values[] = {DX11_VERTEX_BUFFER, DX11_INDEX_BUFFER, DX11_CONSTANT_BUFFER, DX11_STAGING_BUFFER};
+const int dx12_buffer_target_types_values[] = {DX11_VERTEX_BUFFER, DX11_INDEX_BUFFER, DX11_CONSTANT_BUFFER, DX11_STAGING_BUFFER};
 
-int l_DX11_Renderer_create(lua_State* L) {
+int l_DX12_Renderer_create(lua_State* L) {
     INIT_ARG();
     selene_Window* win = (selene_Window*)luaL_checkudata(L, arg++, selene_Window_METANAME);
 
@@ -22,7 +22,7 @@ int l_DX11_Renderer_create(lua_State* L) {
 }
 
 // create vertex, index or uniform buffer
-int l_DX11_Renderer__create_buffer(lua_State* L) {
+int l_DX12_Renderer__create_buffer(lua_State* L) {
     CHECK_META(SeleneRenderer);
     int opt = luaL_checkoption(L, arg++, "vertex", buffer_target_types);
     D3D11_BUFFER_DESC desc = {0};

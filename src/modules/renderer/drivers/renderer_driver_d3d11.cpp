@@ -1,4 +1,4 @@
-﻿#include "modules/renderer.h"
+#include "modules/renderer.h"
 #include "modules/window.h"
 #if defined(OS_WIN) && !defined(SELENE_NO_D3D11)
 #include <SDL_syswm.h>
@@ -30,7 +30,12 @@ const D3D11_CULL_MODE dx11_cull_mode[] = {
         D3D11_CULL_BACK
 };
 
-const DXGI_FORMAT dx11_pixel_formats_values[] = { DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_D32_FLOAT };
+const DXGI_FORMAT dx11_pixel_formats_values[] = {
+    DXGI_FORMAT_R8G8B8A8_UNORM,
+    DXGI_FORMAT_R8G8B8A8_UNORM,
+    DXGI_FORMAT_D32_FLOAT,
+    DXGI_FORMAT_B8G8R8A8_UNORM
+};
 
 int l_DX11_Renderer__destroy(lua_State* L) {
     CHECK_META(selene_Renderer);
@@ -52,73 +57,54 @@ int l_DX11_Renderer__destroy(lua_State* L) {
  * selene_RenderPipeline
  */
 
+static void dx11_blend_from_mode(int mode, D3D11_BLEND_DESC* blendDesc) {
+    blendDesc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    blendDesc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    blendDesc->RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+    blendDesc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDesc->RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+    switch (mode) {
+        case SELENE_BLEND_ADDITIVE:
+            blendDesc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+            blendDesc->RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+            break;
+        case SELENE_BLEND_SUBTRACT:
+            blendDesc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+            blendDesc->RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+            blendDesc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_SUBTRACT;
+            blendDesc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_SUBTRACT;
+            break;
+        case SELENE_BLEND_MULTIPLY:
+            blendDesc->RenderTarget[0].SrcBlend = D3D11_BLEND_DEST_COLOR;
+            blendDesc->RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
+            break;
+        default:
+            blendDesc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+            blendDesc->RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+            break;
+    }
+}
+
 int l_DX11_Renderer__create_pipeline(lua_State* L) {
     CHECK_META(selene_Renderer);
-    if (!lua_istable(L, arg)) return luaL_argerror(L, arg, "must be a table");
+    struct selene_PipelineDesc desc;
+    renderer_parse_pipeline_desc(L, arg, &desc);
 
-    lua_getfield(L, arg, "vs");
-    selene_Shader* vertex = (selene_Shader*)luaL_checkudata(L, -1, selene_Shader_METANAME);
-    lua_getfield(L, arg, "ps");
-    selene_Shader* pixel = (selene_Shader*)luaL_checkudata(L, -1, selene_Shader_METANAME);
-    lua_pop(L, 2);
-
-    if (lua_getfield(L, arg, "layout") != LUA_TTABLE) return luaL_error(L, "invalid layout field");
     NEW_UDATA(selene_RenderPipeline, pipe);
     memset(pipe, 0, sizeof(*pipe));
-    if (lua_getfield(L, -2, "stride") == LUA_TNUMBER) pipe->layout.vertex_stride = lua_tointeger(L, -1);
-    lua_pop(L, 1);
+    renderer_apply_pipeline_desc(pipe, &desc);
+    pipe->id = next_pipeline_id++;
+    pipe->dx11.vs = desc.vs->dx11.vertex;
+    pipe->dx11.ps = desc.ps->dx11.pixel;
+    pipe->dx11.topology = dx11_primitive_topologies[desc.topology];
 
-    pipe->dx11.vs = vertex->dx11.vertex;
-    pipe->dx11.ps = pixel->dx11.pixel;
-
-    int len = lua_rawlen(L, -2);
-    pipe->layout.count = len;
-    for (int i = 0; i < len; i++) {
-        lua_rawgeti(L, -2, i+1);
-        lua_getfield(L, -1, "name");
-        const char* name = luaL_checkstring(L, -1);
-        pipe->layout.attributes[i].binding = 0;
-        SDL_strlcpy(pipe->layout.attributes[i].name, name, 64);
-
-        lua_pop(L, 1);
-        lua_getfield(L, -1, "offset");
-        pipe->layout.attributes[i].offset = lua_tointeger(L, -1);
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "size");
-        const int size = lua_tointeger(L, -1);
-        pipe->layout.attributes[i].size = size;
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "type");
-        int opt = luaL_checkoption(L, -1, NULL, type_name_options);
-        pipe->layout.attributes[i].type = opt;
-        lua_pop(L, 1);
-        // fprintf(stdout, "name: %s, offset: %d, size: %d, type: %d\n", name, pipe->layout.attributes[i].offset, size, pipe->layout.attributes[i].type);
-        switch (opt) {
-            case 0:
-            case 1:
-                pipe->layout.attributes[i].stride = size;
-                break;
-            case 2:
-            case 3:
-                pipe->layout.attributes[i].stride = size * 2;
-                break;
-            default:
-                pipe->layout.attributes[i].stride = size * 4;
-        }
-        lua_pop(L, 1);
-    }
-    fprintf(stdout, "registered layout\n");
-
+    int len = desc.layout.count;
     D3D11_INPUT_ELEMENT_DESC layout_desc[8];
+    memset(layout_desc, 0, sizeof(layout_desc));
     for (int i = 0; i < len; i++) {
         D3D11_INPUT_ELEMENT_DESC* l = layout_desc + i;
-        int binding = pipe->layout.attributes[i].binding;
-        int offset = pipe->layout.attributes[i].offset;
-        int size = pipe->layout.attributes[i].size;
-        int type = pipe->layout.attributes[i].type;
-        int stride = pipe->layout.vertex_stride;
+        int size = desc.layout.attributes[i].size;
+        int type = desc.layout.attributes[i].type;
         l->SemanticName = pipe->layout.attributes[i].name;
         l->SemanticIndex = 0;
         switch (type) {
@@ -126,103 +112,55 @@ int l_DX11_Renderer__create_pipeline(lua_State* L) {
                 if (size == 1) l->Format = DXGI_FORMAT_R32_FLOAT;
                 else if (size == 2) l->Format = DXGI_FORMAT_R32G32_FLOAT;
                 else if (size == 3) l->Format = DXGI_FORMAT_R32G32B32_FLOAT;
-                else if (size == 4) l->Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-            }
-            break;
+                else l->Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+            } break;
+            default:
+                l->Format = DXGI_FORMAT_R32_FLOAT;
+                break;
         }
         l->InputSlot = 0;
-        l->AlignedByteOffset = offset;
+        l->AlignedByteOffset = desc.layout.attributes[i].offset;
         l->InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
         l->InstanceDataStepRate = 0;
     }
-    ID3D11InputLayout* layout;
+    ID3D11InputLayout* layout = NULL;
     self->dx11.device->CreateInputLayout(
             layout_desc,
             len,
-            vertex->dx11.blob->GetBufferPointer(),
-            vertex->dx11.blob->GetBufferSize(),
+            desc.vs->dx11.blob->GetBufferPointer(),
+            desc.vs->dx11.blob->GetBufferSize(),
             &layout);
     pipe->dx11.input_layout = layout;
-    pipe->dx11.blend_state = NULL;
-    D3D11_BLEND_DESC blendDesc = {0};
-    blendDesc.RenderTarget[0].BlendEnable = FALSE;
-    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-    if (lua_getfield(L, arg, "blend") == LUA_TTABLE) {
-        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) blendDesc.RenderTarget[0].BlendEnable = lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, -1, "func") == LUA_TSTRING) {
-            const char* blendmode = luaL_optstring(L, -1, "alpha");
-            if (strcmp(blendmode, "alpha") == 0) {
-                //blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-                //blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-                blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-                blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
-                blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-                blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-                blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-                blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-                blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-                //fprintf(stdout, "entrando aqui\n");
-            }
-        }
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);
-    if (blendDesc.RenderTarget[0].BlendEnable) {
-        self->dx11.device->CreateBlendState(&blendDesc, &(pipe->dx11.blend_state));
-    }
 
-    D3D11_DEPTH_STENCIL_DESC depthDesc = {0};
-    depthDesc.DepthEnable = FALSE;
+    D3D11_BLEND_DESC blendDesc = {};
+    blendDesc.RenderTarget[0].BlendEnable = desc.blend.enabled ? TRUE : FALSE;
+    dx11_blend_from_mode(desc.blend.mode, &blendDesc);
+    pipe->dx11.blend_state = NULL;
+    if (blendDesc.RenderTarget[0].BlendEnable)
+        self->dx11.device->CreateBlendState(&blendDesc, &(pipe->dx11.blend_state));
+
+    D3D11_DEPTH_STENCIL_DESC depthDesc = {};
+    depthDesc.DepthEnable = desc.depth.depth_enabled ? TRUE : FALSE;
     depthDesc.StencilEnable = FALSE;
-    if (lua_getfield(L, arg, "depth") == LUA_TTABLE) {
-        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) depthDesc.DepthEnable = lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, -1, "func") == LUA_TSTRING) {
-            int opt = luaL_checkoption(L, -1, NULL, comparison_func_options);
-            // fprintf(stdout, "depth func: %d\n", opt);
-            depthDesc.DepthFunc = dx11_comparison_funcs[opt];
-        }
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);
-    if (depthDesc.DepthEnable) {
-        depthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-        ID3D11DepthStencilState* ds_state;
-        self->dx11.device->CreateDepthStencilState(&depthDesc, &ds_state);
-        pipe->dx11.depth_stencil_state = ds_state;
-        fprintf(stdout, "depth state\n");
-    }
-    D3D11_RASTERIZER_DESC rasterDesc = {0};
-    rasterDesc.ScissorEnable = FALSE;
+    depthDesc.DepthFunc = dx11_comparison_funcs[desc.depth.depth_func];
+    depthDesc.DepthWriteMask = desc.depth.depth_write_mask
+        ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+    pipe->dx11.depth_stencil_state = NULL;
+    if (depthDesc.DepthEnable)
+        self->dx11.device->CreateDepthStencilState(&depthDesc, &pipe->dx11.depth_stencil_state);
+
+    D3D11_RASTERIZER_DESC rasterDesc = {};
     rasterDesc.DepthClipEnable = FALSE;
-    rasterDesc.FillMode = D3D11_FILL_SOLID;
+    rasterDesc.FillMode = (desc.raster.fill_mode == SELENE_POLYGON_LINE)
+        ? D3D11_FILL_WIREFRAME : D3D11_FILL_SOLID;
     rasterDesc.CullMode = D3D11_CULL_NONE;
-    rasterDesc.FrontCounterClockwise = FALSE;
-    rasterDesc.ScissorEnable = FALSE;
-    if (lua_getfield(L, arg, "cull") == LUA_TTABLE) {
-        //if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->gl.rasterizer_state.cull_enabled = lua_toboolean(L, -1);
-        //lua_pop(L, 1);
-        if (lua_getfield(L, -1, "front_face") == LUA_TSTRING) {
-            int opt = luaL_checkoption(L, -1, "cw", front_face_options);
-            rasterDesc.FrontCounterClockwise = opt == 1;
-        }
-        lua_pop(L, 1);
-        if (lua_getfield(L, -1, "cull_face") == LUA_TSTRING) {
-            int opt = luaL_checkoption(L, -1, "back", cull_face_options);
-            rasterDesc.CullMode = dx11_cull_mode[opt];
-        }
-        lua_pop(L, 1);
+    if (desc.raster.cull_enabled) {
+        int face = desc.raster.cull_face;
+        if (face < 0 || face > SELENE_CULL_BACK) face = SELENE_CULL_BACK;
+        rasterDesc.CullMode = dx11_cull_mode[face];
     }
-    lua_pop(L, 1);
-    if (lua_getfield(L, arg, "scissor") == LUA_TTABLE) {
-        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) rasterDesc.ScissorEnable = lua_toboolean(L, -1);
-        fprintf(stdout, "Enabled scissor: %d\n", rasterDesc.ScissorEnable);
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);
+    rasterDesc.FrontCounterClockwise = (desc.raster.front_face == SELENE_FRONT_CCW) ? TRUE : FALSE;
+    rasterDesc.ScissorEnable = desc.raster.scissor_enabled ? TRUE : FALSE;
     ID3D11RasterizerState* raster_state = NULL;
     self->dx11.device->CreateRasterizerState(&rasterDesc, &raster_state);
     pipe->dx11.rasterizer_state = raster_state;
@@ -266,6 +204,7 @@ int l_DX11_Renderer__create_buffer(lua_State* L) {
     }
     buf->dx11.handle = handle;
     buf->size = size;
+    buf->index_type = (opt == SELENE_BUFFER_INDEX) ? SELENE_INDEX_UINT32 : 0;
     fprintf(stdout, "buffer created: %p\n", buf->dx11.handle);
     return 1;
 }
@@ -826,9 +765,43 @@ int l_DX11_Renderer__flush(lua_State* L) {
     for (int i = 0; i < self->command_offset; i++) {
         struct RenderCommand* rc = self->command_pool + i;
         switch (rc->type) {
+            case RENDER_COMMAND_BEGIN_PASS: {
+                selene_RenderTarget* t = rc->pass.target ? rc->pass.target : &self->default_target;
+                self->dx11.context->OMSetRenderTargets(1, &t->dx11.rtv, t->dx11.dsv);
+                state.target = t;
+                if (rc->pass.clear_color)
+                    self->dx11.context->ClearRenderTargetView(t->dx11.rtv, rc->pass.color);
+                if (rc->pass.clear_depth && t->dx11.dsv)
+                    self->dx11.context->ClearDepthStencilView(t->dx11.dsv, D3D11_CLEAR_DEPTH, rc->pass.depth, 0);
+                D3D11_VIEWPORT vp = {};
+                if (rc->pass.has_viewport) {
+                    vp.TopLeftX = (float)rc->pass.viewport.x;
+                    vp.TopLeftY = (float)rc->pass.viewport.y;
+                    vp.Width = (float)rc->pass.viewport.width;
+                    vp.Height = (float)rc->pass.viewport.height;
+                } else {
+                    int tw, th;
+                    renderer_get_target_size(self, rc->pass.target, &tw, &th);
+                    vp.Width = (float)tw;
+                    vp.Height = (float)th;
+                }
+                vp.MinDepth = 0.0f;
+                vp.MaxDepth = 1.0f;
+                self->dx11.context->RSSetViewports(1, &vp);
+                if (rc->pass.has_scissor && rc->pass.scissor.enabled) {
+                    D3D11_RECT rect;
+                    rect.left = rc->pass.scissor.x;
+                    rect.top = rc->pass.scissor.y;
+                    rect.right = rc->pass.scissor.x + rc->pass.scissor.width;
+                    rect.bottom = rc->pass.scissor.y + rc->pass.scissor.height;
+                    self->dx11.context->RSSetScissorRects(1, &rect);
+                }
+            }
+                break;
+            case RENDER_COMMAND_END_PASS:
+                break;
             case RENDER_COMMAND_CLEAR_COLOR: {
                 float* c = rc->clear.color;
-                // fprintf(stdout, "Clear Color command\n");
                 ID3D11RenderTargetView* rtv = state.target->dx11.rtv;
                 self->dx11.context->ClearRenderTargetView(rtv, c);
             }
@@ -912,17 +885,16 @@ int l_DX11_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_VERTEX_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
-                selene_RenderPipeline* rp = state.pipe;
-                UINT offset = 0;
+                UINT offset = (UINT)rc->buffer.offset;
                 UINT stride = state.stride;
                 self->dx11.context->IASetVertexBuffers(
-                        0,                  // Start slot
-                        1,                  // Number of buffers
-                        &b->dx11.handle,    // Pointer to buffer
+                        (UINT)rc->buffer.slot,
+                        1,
+                        &b->dx11.handle,
                         &stride,
                         &offset
                 );
-                
+
                 state.vertex = b;
             }
                 break;
@@ -934,7 +906,9 @@ int l_DX11_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
-                self->dx11.context->VSSetConstantBuffers(0, 1, b ? &(b->dx11.handle) : NULL);
+                UINT slot = (UINT)rc->buffer.slot;
+                self->dx11.context->VSSetConstantBuffers(slot, 1, b ? &(b->dx11.handle) : NULL);
+                self->dx11.context->PSSetConstantBuffers(slot, 1, b ? &(b->dx11.handle) : NULL);
                 state.uniform = b;
             }
                 break;
@@ -959,13 +933,12 @@ int l_DX11_Renderer__flush(lua_State* L) {
             }
                 break;
             case RENDER_COMMAND_SET_SCISSOR: {
+                if (!rc->scissor.enabled) break;
                 D3D11_RECT scissorRect;
-                scissorRect.left = rc->scissor.x;    // Left coordinate (in pixels)
-                scissorRect.top = rc->scissor.y;     // Top coordinate (in pixels)
-                scissorRect.right = rc->scissor.width;   // Right coordinate (in pixels)
-                scissorRect.bottom = rc->scissor.height;  // Bottom coordinate (in pixels)
-
-                // Set the scissor rectangle
+                scissorRect.left = rc->scissor.x;
+                scissorRect.top = rc->scissor.y;
+                scissorRect.right = rc->scissor.x + rc->scissor.width;
+                scissorRect.bottom = rc->scissor.y + rc->scissor.height;
                 self->dx11.context->RSSetScissorRects(1, &scissorRect);
             }
                 break;
@@ -983,24 +956,19 @@ int l_DX11_Renderer__flush(lua_State* L) {
             case RENDER_COMMAND_MATRIX_UNIFORM:
                 //glUniformMatrix4fv(rc->uniform.location, 1, GL_FALSE, rc->uniform.m[0]);
                 break;
-            case RENDER_COMMAND_DRAW_VERTEX:
-                // fprintf(stdout, "Draw Command\n");
-                // fprintf(stdout, "draw_vertex: %d %d %d\n", rc->draw.mode, rc->draw.start, rc->draw.count);
-                self->dx11.context->IASetPrimitiveTopology(dx11_primitive_topologies[rc->draw.mode]);
-                self->dx11.context->Draw(rc->draw.count, rc->draw.start);
+            case RENDER_COMMAND_DRAW:
+                self->dx11.context->IASetPrimitiveTopology(dx11_primitive_topologies[rc->draw.topology]);
+                if (rc->draw.instance_count > 1)
+                    self->dx11.context->DrawInstanced(rc->draw.count, rc->draw.instance_count, rc->draw.start, 0);
+                else
+                    self->dx11.context->Draw(rc->draw.count, rc->draw.start);
                 break;
-            case RENDER_COMMAND_DRAW_INDEX:
-                //glDrawElements(rc->draw.mode, rc->draw.count, GL_UNSIGNED_INT, NULL);
-                break;
-            case RENDER_COMMAND_DRAW_VERTEX_INSTANCED:
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                //glDrawArraysInstanced(rc->instanced.mode, rc->instanced.start, rc->instanced.count, rc->instanced.instance_count);
-#endif
-                break;
-            case RENDER_COMMAND_DRAW_INDEX_INSTANCED:
-#if !defined(OS_EMSCRIPTEN) && !defined(OS_ANDROID)
-                //glDrawElementsInstanced(rc->instanced.mode, rc->instanced.count, GL_UNSIGNED_INT, NULL, rc->instanced.instance_count);
-#endif
+            case RENDER_COMMAND_DRAW_INDEXED:
+                self->dx11.context->IASetPrimitiveTopology(dx11_primitive_topologies[rc->draw.topology]);
+                if (rc->draw.instance_count > 1)
+                    self->dx11.context->DrawIndexedInstanced(rc->draw.count, rc->draw.instance_count, rc->draw.start, rc->draw.base_vertex, 0);
+                else
+                    self->dx11.context->DrawIndexed(rc->draw.count, rc->draw.start, rc->draw.base_vertex);
                 break;
             default:
                 break;
@@ -1252,15 +1220,22 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
     self->default_target.depth = (selene_Texture2D*)malloc(sizeof(selene_Texture2D));
     self->default_target.depth->dx11.tex2d = depthStencilBuffer;
 
-    self->command_offset = 0;
-    self->command_count = 512;
-    self->command_pool = (struct RenderCommand*)malloc(sizeof(struct RenderCommand) * self->command_count);
+    self->width = width;
+    self->height = height;
+    self->in_frame = 0;
+    self->in_pass = 0;
+    if (!renderer_init_command_pool(self, 512))
+        return luaL_error(L, "failed to alloc renderer command pool");
     lua_pushvalue(L, 1);
     self->l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     self->backend = SELENE_RENDERER_DIRECTX11;
     fprintf(stdout, "create DirectX11 Renderer\n");
 
     self->destroy = l_DX11_Renderer__destroy;
+    self->begin_frame = NULL;
+    self->end_frame = NULL;
+    self->begin_pass = NULL;
+    self->end_pass = NULL;
 
     self->create_buffer = l_DX11_Renderer__create_buffer;
     self->destroy_buffer = l_DX11_Renderer__destroy_buffer;

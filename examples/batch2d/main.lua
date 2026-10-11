@@ -21,8 +21,12 @@ selene.set_event(function(name, ...)
 end)
 
 selene.set_step(function()
-    ren:begin_frame()
-    ren:clear(0.3, 0.4, 0.4, 1.0)
+    ren:begin_frame({
+        clear_color = {0.3, 0.4, 0.4, 1.0},
+        viewport = {0, 0, 640, 380},
+        scissor = {0, 0, 640, 380},
+    })
+    -- ren:clear(0.3, 0.4, 0.4, 1.0)
     -- ren:set_color(1, 1, 1, 1)
     ren:draw_rectangle(x, y, 32, 32)
     ren:draw_circle(128, 96, 32)

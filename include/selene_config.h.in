@@ -21,6 +21,8 @@
 #define selene_Shader_METANAME "selene.Shader"
 #define selene_Texture2D_METANAME "selene.Texture2D"
 
+#define selene_FrameData_METANAME "selene.FrameData"
+
 /* Window*/
 #define selene_Window_METANAME "selene.Window"
 

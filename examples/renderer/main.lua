@@ -1,4 +1,4 @@
-local backend = 'opengl'
+local backend = 'vulkan'
 
 local opengl = false
 local vulkan = false
@@ -107,8 +107,8 @@ local pipeline = ren:create_pipeline{
     },
     blend = {enabled = true, func = 'alpha'},
     scissor = {enabled = true},
-    descriptors = {
-        {type = 'combined_image_sampler', stage = 'fragment'}
+    bindings = {
+        {slot = 0, type = 'texture', stage = 'fragment'}
     }
 }
 print(pipeline)
@@ -118,15 +118,19 @@ selene.set_event(function(name)
 end)
 
 selene.set_step(function()
-    ren:set_render_target()
-    ren:set_viewport(0, 0, 640, 380)
-    ren:set_scissor(0, 0, 640, 380)
-    ren:clear_color(0.3, 0.4, 0.4, 1.0)
-    ren:clear_depth(1)
+    ren:begin_frame()
+    ren:begin_pass({
+        clear_color = {0.3, 0.4, 0.4, 1.0},
+        clear_depth = 1,
+        viewport = {0, 0, 640, 380},
+        scissor = {0, 0, 640, 380},
+    })
     ren:set_pipeline(pipeline)
     ren:set_vertex_buffer(buffer)
     ren:set_texture(tex)
     ren:draw('triangles', 0, 6)
+    ren:end_pass()
+    ren:end_frame()
     ren:present()
     selene.delay(16)
 end)

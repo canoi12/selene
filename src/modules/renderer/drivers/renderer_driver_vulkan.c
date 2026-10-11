@@ -3,7 +3,12 @@
 #include "modules/renderer.h"
 #include "modules/window.h"
 
-const int vk_pixel_formats_values[] = {VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM};
+const int vk_pixel_formats_values[] = {
+    VK_FORMAT_R8G8B8_UNORM,
+    VK_FORMAT_R8G8B8A8_UNORM,
+    VK_FORMAT_D32_SFLOAT,
+    VK_FORMAT_B8G8R8A8_UNORM
+};
 
 const int vk_front_face_values[] = { VK_FRONT_FACE_CLOCKWISE, VK_FRONT_FACE_COUNTER_CLOCKWISE};
 const int vk_cull_face_values[] = { VK_CULL_MODE_NONE, VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_FRONT_AND_BACK };
@@ -65,6 +70,7 @@ static struct QueueFamilyIndices find_queue_families(VkPhysicalDevice dev, VkSur
     DEBUG_ERROR("No suitable queue family found\n");
 
 RETURN:
+    free(families);
     return indices;
 }
 
@@ -131,116 +137,103 @@ int l_VK_Renderer__destroy(lua_State *L) {
     return 0;
 }
 
+static void vk_blend_from_mode(int mode, VkBlendFactor* src, VkBlendFactor* dst, VkBlendOp* op) {
+    *op = VK_BLEND_OP_ADD;
+    switch (mode) {
+        case SELENE_BLEND_ADDITIVE:
+            *src = VK_BLEND_FACTOR_SRC_ALPHA;
+            *dst = VK_BLEND_FACTOR_ONE;
+            break;
+        case SELENE_BLEND_SUBTRACT:
+            *src = VK_BLEND_FACTOR_SRC_ALPHA;
+            *dst = VK_BLEND_FACTOR_ONE;
+            *op = VK_BLEND_OP_SUBTRACT;
+            break;
+        case SELENE_BLEND_MULTIPLY:
+            *src = VK_BLEND_FACTOR_DST_COLOR;
+            *dst = VK_BLEND_FACTOR_ZERO;
+            break;
+        default:
+            *src = VK_BLEND_FACTOR_SRC_ALPHA;
+            *dst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            break;
+    }
+}
+
+static VkShaderStageFlags vk_stage_flags(int flags) {
+    VkShaderStageFlags out = 0;
+    if (flags & SELENE_STAGE_VERTEX) out |= VK_SHADER_STAGE_VERTEX_BIT;
+    if (flags & SELENE_STAGE_PIXEL) out |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    if (flags & SELENE_STAGE_COMPUTE) out |= VK_SHADER_STAGE_COMPUTE_BIT;
+    return out ? out : VK_SHADER_STAGE_ALL_GRAPHICS;
+}
+
+static void vk_apply_viewport(VkViewport* view, int x, int y, int w, int h) {
+    /* Selene: top-left Y-down. Negative height matches GL/D3D NDC. */
+    view->x = (float)x;
+    view->y = (float)(y + h);
+    view->width = (float)w;
+    view->height = -(float)h;
+    view->minDepth = 0.f;
+    view->maxDepth = 1.f;
+}
+
 int l_VK_Renderer__create_pipeline(lua_State *L) {
     CHECK_META(selene_Renderer);
-    if (!lua_istable(L, arg))
-        return luaL_argerror(L, arg, "must be a table");
-    lua_getfield(L, arg, "vs");
-    selene_Shader *vertex = (selene_Shader *)luaL_checkudata(L, -1, selene_Shader_METANAME);
-    lua_getfield(L, arg, "ps");
-    selene_Shader *pixel = (selene_Shader *)luaL_checkudata(L, -1, selene_Shader_METANAME);
-    lua_pop(L, 2);
+    struct selene_PipelineDesc desc;
+    renderer_parse_pipeline_desc(L, arg, &desc);
     VkResult result = -1;
 
     VkPipelineShaderStageCreateInfo shader_stages[2] = {
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = vertex->vk.handle,
+            .module = desc.vs->vk.handle,
             .pName = "main"
         },
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = pixel->vk.handle,
+            .module = desc.ps->vk.handle,
             .pName = "main"
         }
     };
 
-    if (lua_getfield(L, arg, "layout") != LUA_TTABLE)
-        return luaL_error(L, "invalid layout field");
-    NEW_UDATA(selene_RenderPipeline, pipe);
-    if (lua_getfield(L, -2, "stride") == LUA_TNUMBER)
-        pipe->layout.vertex_stride = lua_tointeger(L, -1);
-    lua_pop(L, 1);
-    int len = lua_rawlen(L, -2);
-    pipe->layout.count = len;
-    for (int i = 0; i < len; i++) {
-        lua_rawgeti(L, -2, i + 1);
-        lua_getfield(L, -1, "name");
-        const char *name = luaL_checkstring(L, -1);
-        // pipe->layout.attributes[i].binding = glGetAttribLocation(program, name);
-        pipe->layout.attributes[i].binding = 0;
-
-        lua_pop(L, 1);
-        lua_getfield(L, -1, "offset");
-        pipe->layout.attributes[i].offset = lua_tointeger(L, -1);
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "size");
-        const int size = lua_tointeger(L, -1);
-        pipe->layout.attributes[i].size = size;
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "type");
-        int opt = luaL_checkoption(L, -1, NULL, type_name_options);
-        pipe->layout.attributes[i].type = opt;
-        lua_pop(L, 1);
-        DEBUG_LOG("name: %s, offset: %d, size: %d, type: %d\n", name,
-                pipe->layout.attributes[i].offset, size,
-                pipe->layout.attributes[i].type);
-        switch (opt) {
-        case 0:
-        case 1:
-            pipe->layout.attributes[i].stride = size;
-            break;
-        case 2:
-        case 3:
-            pipe->layout.attributes[i].stride = size * 2;
-            break;
-        default:
-            pipe->layout.attributes[i].stride = size * 4;
-        }
-        lua_pop(L, 1);
-    }
-
+    int len = desc.layout.count;
     VkVertexInputBindingDescription binding_desc = {
         .binding = 0,
-        .stride = pipe->layout.vertex_stride,
+        .stride = (uint32_t)desc.layout.vertex_stride,
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX};
 
     VkVertexInputAttributeDescription attrs_descs[8] = {0};
-    int offset_sum = 0;
     for (int i = 0; i < len; i++) {
         VkVertexInputAttributeDescription *attr = attrs_descs + i;
-        int binding = pipe->layout.attributes[i].binding;
-        int offset = pipe->layout.attributes[i].offset;
-        int size = pipe->layout.attributes[i].size;
-        int type = pipe->layout.attributes[i].type;
-        int stride = pipe->layout.vertex_stride;
+        int size = desc.layout.attributes[i].size;
+        int type = desc.layout.attributes[i].type;
         switch (type) {
             case SELENE_FLOAT: {
-                if (size == 1)
-                  attr->format = VK_FORMAT_R32_SFLOAT;
-                else if (size == 2)
-                  attr->format = VK_FORMAT_R32G32_SFLOAT;
-                else if (size == 3)
-                  attr->format = VK_FORMAT_R32G32B32_SFLOAT;
-                else if (size == 4)
-                  attr->format = VK_FORMAT_R32G32B32A32_SFLOAT;
+                if (size == 1) attr->format = VK_FORMAT_R32_SFLOAT;
+                else if (size == 2) attr->format = VK_FORMAT_R32G32_SFLOAT;
+                else if (size == 3) attr->format = VK_FORMAT_R32G32B32_SFLOAT;
+                else attr->format = VK_FORMAT_R32G32B32A32_SFLOAT;
             } break;
+            default:
+                attr->format = VK_FORMAT_R32_SFLOAT;
+                break;
         }
-        attr->binding = binding;
-        attr->location = i;
-        attr->offset = offset_sum;
-        offset_sum += pipe->layout.attributes[i].stride;
+        attr->binding = 0;
+        attr->location = (uint32_t)i;
+        attr->offset = (uint32_t)desc.layout.attributes[i].offset;
+        DEBUG_LOG("name: %s, offset: %d, size: %d, type: %d\n",
+                  desc.layout.attributes[i].name,
+                  desc.layout.attributes[i].offset, size, type);
     }
 
     VkPipelineVertexInputStateCreateInfo vert_input_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 1,
         .pVertexBindingDescriptions = &binding_desc,
-        .vertexAttributeDescriptionCount = len,
+        .vertexAttributeDescriptionCount = (uint32_t)len,
         .pVertexAttributeDescriptions = attrs_descs};
 
     VkPipelineViewportStateCreateInfo viewport_info = {
@@ -250,16 +243,19 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
     };
 
     VkDynamicState dyn_states[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-
     VkPipelineDynamicStateCreateInfo dyn_state_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = 2,
         .pDynamicStates = dyn_states
     };
 
+    VkPrimitiveTopology vk_topo = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    if (desc.topology == SELENE_TOPOLOGY_POINTS) vk_topo = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    else if (desc.topology == SELENE_TOPOLOGY_LINES) vk_topo = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
     VkPipelineInputAssemblyStateCreateInfo input_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .topology = vk_topo,
         .primitiveRestartEnable = VK_FALSE
     };
 
@@ -268,59 +264,26 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .depthClampEnable = VK_FALSE,
         .depthBiasEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL,
+        .polygonMode = (desc.raster.fill_mode == SELENE_POLYGON_LINE)
+            ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL,
         .cullMode = VK_CULL_MODE_NONE,
         .frontFace = VK_FRONT_FACE_CLOCKWISE,
         .depthBiasConstantFactor = VK_FALSE,
         .lineWidth = 1.f
     };
-
-    pipe->raster_state.cull_enabled = 0;
-    if (lua_getfield(L, arg, "cull") == LUA_TTABLE) {
-        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->raster_state.cull_enabled = lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, -1, "front_face") == LUA_TSTRING) {
-            int opt = luaL_checkoption(L, -1, "cw", front_face_options);
-            pipe->raster_state.cull_face = vk_front_face_values[opt];
-        }
-        lua_pop(L, 1);
-        if (lua_getfield(L, -1, "cull_face") == LUA_TSTRING) {
-            int opt = luaL_checkoption(L, -1, "back", cull_face_options);
-            pipe->raster_state.cull_face = vk_cull_face_values[opt];
-        }
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);
-    if (pipe->raster_state.cull_enabled) {
-        raster_info.cullMode = pipe->raster_state.cull_face;
-        raster_info.frontFace = pipe->raster_state.front_face;
+    if (desc.raster.cull_enabled) {
+        raster_info.cullMode = vk_cull_face_values[desc.raster.cull_face];
+        raster_info.frontFace = vk_front_face_values[desc.raster.front_face];
     }
 
     VkPipelineDepthStencilStateCreateInfo depth_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable = VK_FALSE,
-        .depthWriteEnable = VK_FALSE,
-        .depthCompareOp = VK_COMPARE_OP_LESS,
+        .depthTestEnable = desc.depth.depth_enabled ? VK_TRUE : VK_FALSE,
+        .depthWriteEnable = desc.depth.depth_write_mask ? VK_TRUE : VK_FALSE,
+        .depthCompareOp = vk_comparison_funcs[desc.depth.depth_func],
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE,
     };
-    if (lua_getfield(L, arg, "depth") == LUA_TTABLE) {
-        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->depth_stencil_state.depth_enabled = lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, -1, "func") == LUA_TSTRING) {
-            int opt = luaL_checkoption(L, -1, NULL, comparison_func_options);
-            pipe->depth_stencil_state.depth_func = vk_comparison_funcs[opt];
-        }
-        lua_pop(L, 1);
-    }
-
-    if (pipe->depth_stencil_state.depth_enabled) {
-        depth_info.depthTestEnable = pipe->depth_stencil_state.depth_enabled;
-        depth_info.depthWriteEnable = pipe->depth_stencil_state.depth_enabled;
-        depth_info.depthBoundsTestEnable = VK_FALSE;
-        depth_info.stencilTestEnable = VK_FALSE;
-        depth_info.depthCompareOp = pipe->depth_stencil_state.depth_func;
-    }
 
     VkPipelineMultisampleStateCreateInfo multisampling_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -328,34 +291,20 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
     };
 
-    pipe->blend_state.enabled = 0;
-    pipe->blend_state.src = VK_BLEND_FACTOR_SRC_ALPHA;
-    pipe->blend_state.dst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    pipe->blend_state.equation = VK_BLEND_OP_ADD;
-    if (lua_getfield(L, arg, "blend") == LUA_TTABLE) {
-        if (lua_getfield(L, -1, "enabled") == LUA_TBOOLEAN) pipe->blend_state.enabled = lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (lua_getfield(L, -1, "func") == LUA_TSTRING) {
-            const char* blendmode = luaL_optstring(L, -1, "alpha");
-            if (strcmp(blendmode, "alpha") == 0) {
-                pipe->blend_state.src = VK_BLEND_FACTOR_SRC_ALPHA;
-                pipe->blend_state.dst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-                pipe->blend_state.equation = VK_BLEND_OP_ADD;
-            }
-        }
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);
+    VkBlendFactor src_f = VK_BLEND_FACTOR_SRC_ALPHA;
+    VkBlendFactor dst_f = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    VkBlendOp blend_op = VK_BLEND_OP_ADD;
+    vk_blend_from_mode(desc.blend.mode, &src_f, &dst_f, &blend_op);
     VkPipelineColorBlendAttachmentState color_blend_attach = {
-        .blendEnable = pipe->blend_state.enabled,
+        .blendEnable = desc.blend.enabled ? VK_TRUE : VK_FALSE,
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-        .dstAlphaBlendFactor = pipe->blend_state.dst,
-        .srcAlphaBlendFactor = pipe->blend_state.src,
-        .dstColorBlendFactor = pipe->blend_state.dst,
-        .srcColorBlendFactor = pipe->blend_state.src,
-        .colorBlendOp = pipe->blend_state.equation,
-        .alphaBlendOp = pipe->blend_state.equation
+        .srcColorBlendFactor = src_f,
+        .dstColorBlendFactor = dst_f,
+        .srcAlphaBlendFactor = src_f,
+        .dstAlphaBlendFactor = dst_f,
+        .colorBlendOp = blend_op,
+        .alphaBlendOp = blend_op
     };
 
     VkPipelineColorBlendStateCreateInfo color_blend_info = {
@@ -364,140 +313,63 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
         .logicOp = VK_LOGIC_OP_COPY,
         .attachmentCount = 1,
         .pAttachments = &color_blend_attach,
-        .blendConstants[0] = 0.f,
-        .blendConstants[1] = 0.f,
-        .blendConstants[2] = 0.f,
-        .blendConstants[3] = 0.f,
+        .blendConstants = {0.f, 0.f, 0.f, 0.f},
     };
 
-    //VkDescriptorSetLayout descriptor_set_layouts[4] = { VK_NULL_HANDLE };
-    VkDescriptorSetLayoutBinding descriptor_bindings[16] = { 0 };
-    memset(descriptor_bindings, 0, sizeof(descriptor_bindings));
-    //memset(descriptor_set_layouts, VK_NULL_HANDLE, sizeof(descriptor_set_layouts));
-    uint32_t descriptor_set_layout_count = 0;
-    if (lua_getfield(L, arg, "descriptors") == LUA_TTABLE) {
-        int desc_count = lua_rawlen(L, -1);
-        descriptor_set_layout_count = desc_count;
-
-        for (int i = 0; i < desc_count; i++) {
-            lua_rawgeti(L, -1, i + 1);
-
-            // VkDescriptorSetLayoutBinding* bindings = NULL;
-            VkDescriptorSetLayoutBinding* binding = descriptor_bindings + i;
-            int binding_count = 0;
-            binding->binding = i;
-
-            if (lua_istable(L, -1)) {
-                if (lua_getfield(L, -1, "type") == LUA_TSTRING) {
-                    const char* type = lua_tostring(L, -1);
-                    if (strcmp(type, "uniform_buffer") == 0) {
-                        binding->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    }
-                    else if (strcmp(type, "combined_image_sampler") == 0) {
-                        binding->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                        DEBUG_LOG("descripton image sampler\n");
-                    }
-                    // Add more types as needed
-                }
-                lua_pop(L, 1);
-
-                if (lua_getfield(L, -1, "count") == LUA_TNUMBER) {
-                    binding->descriptorCount = lua_tointeger(L, -1);
-                }
-                else {
-                    binding->descriptorCount = 1;
-                }
-                lua_pop(L, 1);
-
-                if (lua_getfield(L, -1, "stage") == LUA_TSTRING) {
-                    const char* stage = lua_tostring(L, -1);
-                    if (strcmp(stage, "vertex") == 0) {
-                        binding->stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-                    }
-                    else if (strcmp(stage, "fragment") == 0) {
-                        binding->stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-                    }
-                }
-                lua_pop(L, 1);
-            }
-#if 0
-            VkDescriptorSetLayoutCreateInfo layout_info = {
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .bindingCount = binding_count,
-                .pBindings = bindings
-            };
-
-            if (vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_set_layouts[i]) != VK_SUCCESS) {
-                free(bindings);
-                return luaL_error(L, "failed to create descriptor set layout");
-            }
-
-            free(bindings);
-#endif
-            lua_pop(L, 1);
+    VkDescriptorSetLayoutBinding descriptor_bindings[SELENE_PIPELINE_MAX_BINDINGS] = {0};
+    uint32_t descriptor_count = (uint32_t)desc.binding_count;
+    for (uint32_t i = 0; i < descriptor_count; i++) {
+        VkDescriptorSetLayoutBinding* binding = descriptor_bindings + i;
+        binding->binding = i;
+        binding->descriptorCount = desc.bindings[i].count > 0 ? (uint32_t)desc.bindings[i].count : 1;
+        binding->stageFlags = vk_stage_flags(desc.bindings[i].stage_flags);
+        switch (desc.bindings[i].type) {
+            case SELENE_BINDING_UNIFORM:
+                binding->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                break;
+            case SELENE_BINDING_STORAGE:
+                binding->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                break;
+            default:
+                binding->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                break;
         }
     }
-    lua_pop(L, 1);
 
     VkDescriptorSetLayoutCreateInfo layout_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = descriptor_set_layout_count,
+        .bindingCount = descriptor_count,
         .pBindings = descriptor_bindings
     };
 
-    VkDescriptorSetLayout descriptor_set_layout;
-    VkDescriptorSetLayout* layouts;
-    VkDescriptorSet* descriptor_set = VK_NULL_HANDLE;
-    if (descriptor_set_layout_count > 0) {
-        result = vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_set_layout);
-        if (result != VK_SUCCESS) {
-            //free(bindings);
-            return luaL_error(L, "failed to create descriptor set layout, error: 0x%d", result);
-        }
-
-        layouts = malloc(sizeof(VkDescriptorSetLayout) * MAX_FRAMES_);
-        memcpy(layouts, &descriptor_set_layout, sizeof(VkDescriptorSetLayout));
-        memcpy(layouts+1, &descriptor_set_layout, sizeof(VkDescriptorSetLayout));
+    VkDescriptorSetLayout descriptor_layout = VK_NULL_HANDLE;
+    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+    if (descriptor_count > 0) {
+        result = vkCreateDescriptorSetLayout(self->vk.device, &layout_info, NULL, &descriptor_layout);
+        if (result != VK_SUCCESS)
+            return luaL_error(L, "failed to create descriptor set layout, error: 0x%8x", result);
 
         VkDescriptorSetAllocateInfo allocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = self->vk.descriptor_pool,
-            .descriptorSetCount = MAX_FRAMES_,
-            .pSetLayouts = layouts
+            .descriptorSetCount = 1,
+            .pSetLayouts = &descriptor_layout
         };
-
-        descriptor_set = malloc(sizeof(VkDescriptorSet) * MAX_FRAMES_);
-        result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, descriptor_set);
-        DEBUG_LOG("descriptor set: %p\n", descriptor_set);
-        if (result != VK_SUCCESS) {
-            //free(bindings);
-            free(descriptor_set);
-            return luaL_error(L, "failed to alloc descriptor set, error: 0x%d", result);
-        }
+        result = vkAllocateDescriptorSets(self->vk.device, &allocInfo, &descriptorSet);
+        if (result != VK_SUCCESS || descriptorSet == VK_NULL_HANDLE)
+            return luaL_error(L, "failed to alloc descriptor set, error: 0x%x", result);
     }
 
     VkPipelineLayoutCreateInfo pipeline_layout_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pushConstantRangeCount = 0,
-#if 0
-        .setLayoutCount = descriptor_set_layout_count > 0 ? descriptor_set_layout_count : 0,
-        .pSetLayouts = descriptor_layout ? &descriptor_layout : NULL
-#else
-        .setLayoutCount = 0,
-        .pSetLayouts = NULL
-#endif
+        .setLayoutCount = descriptor_count > 0 ? 1 : 0,
+        .pSetLayouts = descriptor_count > 0 ? &descriptor_layout : NULL
     };
-#if 1
-    if (descriptor_set_layout_count > 0) {
-        pipeline_layout_info.setLayoutCount = descriptor_set_layout_count;
-        pipeline_layout_info.pSetLayouts = layouts;
-    }
-#endif
 
     VkPipelineLayout pipeline_layout;
-    if (vkCreatePipelineLayout(self->vk.device, &pipeline_layout_info, NULL, &pipeline_layout) != VK_FALSE) {
+    if (vkCreatePipelineLayout(self->vk.device, &pipeline_layout_info, NULL, &pipeline_layout) != VK_SUCCESS)
         return luaL_error(L, "failed to create Vulkan pipeline layout");
-    }
 
     VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -520,24 +392,21 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
 
     VkPipeline handle;
     result = vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &handle);
-    if (result != VK_SUCCESS) {
-        vkDestroyDescriptorSetLayout(self->vk.device, descriptor_set_layout, NULL);
+    if (result != VK_SUCCESS || handle == VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
-        return luaL_error(L, "failed to create Vulkan pipeline, error: %d", result);
-    }
-    if (handle == VK_NULL_HANDLE) {
-        vkDestroyDescriptorSetLayout(self->vk.device, descriptor_set_layout, NULL);
-        vkDestroyPipelineLayout(self->vk.device, pipeline_layout, NULL);
-        return luaL_error(L, "failed to create Vulkan pipeline, NULL handle");
+        if (descriptor_layout) vkDestroyDescriptorSetLayout(self->vk.device, descriptor_layout, NULL);
+        return luaL_error(L, "failed to create Vulkan pipeline, error: 0x%8x", result);
     }
 
     NEW_UDATA(selene_RenderPipeline, pipeline);
+    memset(pipeline, 0, sizeof(*pipeline));
+    renderer_apply_pipeline_desc(pipeline, &desc);
+    pipeline->id = next_pipeline_id++;
     pipeline->vk.handle = handle;
     pipeline->vk.layout = pipeline_layout;
-    pipeline->vk.descriptor_layout = descriptor_set_layout;
-    pipeline->vk.descriptor_set = descriptor_set;
-    //memcpy((pipeline->vk.descriptor_layout), descriptor_set_layouts, sizeof(descriptor_set_layouts));
-    DEBUG_LOG("pipeline %p, handle %p\n", pipeline, handle);
+    pipeline->vk.descriptor_layout = descriptor_layout;
+    pipeline->vk.descriptor_set = descriptorSet;
+    fprintf(stderr, "pipeline %p, handle: %p\n", (void*)pipeline, (void*)handle);
     return 1;
 }
 
@@ -598,6 +467,7 @@ int l_VK_Renderer__create_buffer(lua_State *L) {
     NEW_UDATA(selene_GpuBuffer, buffer);
     buffer->type = opt;
     buffer->size = size;
+    buffer->index_type = (opt == SELENE_BUFFER_INDEX) ? SELENE_INDEX_UINT32 : 0;
     buffer->vk.handle = handle;
     buffer->vk.mem = buff_memory;
     return 1;
@@ -843,6 +713,62 @@ int l_VK_Renderer__destroy_shader(lua_State *L) {
  * Draw and Flush
  */
 
+static void vk_write_texture_descriptor(selene_Renderer* self, selene_RenderPipeline* pipe, int slot, selene_Texture2D* tex) {
+    if (!pipe || !pipe->vk.descriptor_set || !tex) return;
+    int binding = renderer_pipeline_binding_index(pipe, SELENE_BINDING_TEXTURE, slot);
+    VkDescriptorImageInfo image_info = {
+        .imageView = tex->vk.view,
+        .sampler = tex->vk.sampler,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = pipe->vk.descriptor_set,
+        .dstBinding = (uint32_t)binding,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImageInfo = &image_info,
+        .descriptorCount = 1,
+        .dstArrayElement = 0,
+    };
+    vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
+}
+
+static void vk_write_uniform_descriptor(selene_Renderer* self, selene_RenderPipeline* pipe, int slot, selene_GpuBuffer* buf) {
+    if (!pipe || !pipe->vk.descriptor_set || !buf) return;
+    int binding = renderer_pipeline_binding_index(pipe, SELENE_BINDING_UNIFORM, slot);
+    VkDescriptorBufferInfo buffer_info = {
+        .buffer = buf->vk.handle,
+        .offset = 0,
+        .range = buf->size > 0 ? (VkDeviceSize)buf->size : VK_WHOLE_SIZE
+    };
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = pipe->vk.descriptor_set,
+        .dstBinding = (uint32_t)binding,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .pBufferInfo = &buffer_info,
+        .descriptorCount = 1,
+        .dstArrayElement = 0,
+    };
+    vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
+}
+
+static void vk_update_descriptors_from_commands(selene_Renderer* self) {
+    selene_RenderPipeline* pipe = NULL;
+    for (int i = 0; i < self->command_offset; i++) {
+        struct RenderCommand* rc = self->command_pool + i;
+        if (rc->type == RENDER_COMMAND_SET_PIPELINE)
+            pipe = rc->pipeline;
+        else if (rc->type == RENDER_COMMAND_SET_TEXTURE)
+            vk_write_texture_descriptor(self, pipe, rc->texture.slot, (selene_Texture2D*)rc->texture.ptr);
+        else if (rc->type == RENDER_COMMAND_SET_UNIFORM_BUFFER)
+            vk_write_uniform_descriptor(self, pipe, rc->buffer.slot, rc->buffer.ptr);
+    }
+}
+
+int l_VK_Renderer__begin_frame(lua_State *L);
+int l_VK_Renderer__end_frame(lua_State *L);
+
 int l_VK_Renderer__flush(lua_State *L) {
     CHECK_META(selene_Renderer);
     // DEBUG_LOG("Render flush\n");
@@ -858,13 +784,26 @@ int l_VK_Renderer__flush(lua_State *L) {
     memset(&state, 0, sizeof(state));
     state.stride = sizeof(Vertex2D);
     state.target = &self->default_target;
+
+    vk_update_descriptors_from_commands(self);
+
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         .pNext = NULL
     };
     if (vkBeginCommandBuffer(self->vk.command_buffer, &begin_info) != VK_SUCCESS) {
         return luaL_error(L, "failed to begin the Vulkan command buffer");
+    }
+    VkClearValue clear_value = {.color = {{0.f, 0.f, 0.f, 1.f}}};
+    if (self->command_offset > 0 &&
+        self->command_pool[0].type == RENDER_COMMAND_BEGIN_PASS &&
+        self->command_pool[0].pass.clear_color) {
+        float* c = self->command_pool[0].pass.color;
+        clear_value.color.float32[0] = c[0];
+        clear_value.color.float32[1] = c[1];
+        clear_value.color.float32[2] = c[2];
+        clear_value.color.float32[3] = c[3];
     }
     VkRenderPassBeginInfo render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -876,16 +815,13 @@ int l_VK_Renderer__flush(lua_State *L) {
                 .extent = self->vk.swapchain.extent,
             },
         .clearValueCount = 1,
-        .pClearValues = &(VkClearValue){.color = {0.5, 0.5, 0.5, 1}},
+        .pClearValues = &clear_value,
     };
     vkCmdBeginRenderPass(self->vk.command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport view;
-    view.x = 0;
-    view.y = 0;
-    view.width = self->vk.swapchain.extent.width;
-    view.height = self->vk.swapchain.extent.height;
-    view.minDepth = 0.f;
-    view.maxDepth = 1.f;
+    vk_apply_viewport(&view, 0, 0,
+                      (int)self->vk.swapchain.extent.width,
+                      (int)self->vk.swapchain.extent.height);
     VkRect2D scissor;
     scissor.extent = self->vk.swapchain.extent;
     scissor.offset = (VkOffset2D){0, 0};
@@ -894,6 +830,44 @@ int l_VK_Renderer__flush(lua_State *L) {
     for (int i = 0; i < self->command_offset; i++) {
         struct RenderCommand *rc = self->command_pool + i;
     switch (rc->type) {
+        case RENDER_COMMAND_BEGIN_PASS: {
+            if (rc->pass.has_viewport) {
+                VkViewport pass_view;
+                vk_apply_viewport(&pass_view,
+                                  rc->pass.viewport.x, rc->pass.viewport.y,
+                                  rc->pass.viewport.width, rc->pass.viewport.height);
+                vkCmdSetViewport(self->vk.command_buffer, 0, 1, &pass_view);
+            }
+            if (rc->pass.has_scissor) {
+                VkRect2D pass_scissor;
+                if (!rc->pass.scissor.enabled) {
+                    pass_scissor.offset = (VkOffset2D){0, 0};
+                    pass_scissor.extent = self->vk.swapchain.extent;
+                } else {
+                    pass_scissor.offset.x = rc->pass.scissor.x;
+                    pass_scissor.offset.y = rc->pass.scissor.y;
+                    pass_scissor.extent.width = (uint32_t)rc->pass.scissor.width;
+                    pass_scissor.extent.height = (uint32_t)rc->pass.scissor.height;
+                }
+                vkCmdSetScissor(self->vk.command_buffer, 0, 1, &pass_scissor);
+            }
+            if (rc->pass.clear_color) {
+                float *c = rc->pass.color;
+                VkClearAttachment clear_attachment = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .colorAttachment = 0,
+                    .clearValue = {.color = {{c[0], c[1], c[2], c[3]}}},
+                };
+                VkClearRect clear_rect = {
+                    .rect = {.offset = {0, 0}, .extent = self->vk.swapchain.extent},
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                };
+                vkCmdClearAttachments(self->vk.command_buffer, 1, &clear_attachment, 1, &clear_rect);
+            }
+        } break;
+        case RENDER_COMMAND_END_PASS:
+            break;
         case RENDER_COMMAND_CLEAR_COLOR: {
             float *c = rc->clear.color;
             // fprintf(stdout, "Clear Color command\n");
@@ -916,114 +890,68 @@ int l_VK_Renderer__flush(lua_State *L) {
             vkCmdClearAttachments(self->vk.command_buffer, 1, &clear_attachment, 1, &clear_rect);
         } break;
         case RENDER_COMMAND_SET_PIPELINE: {
-            // DEBUG_LOG("Set pipeline\n");
-            if (state.uniform) {
-                selene_GpuBuffer* buf = state.uniform->ptr;
-                VkDescriptorBufferInfo buffer_info = {
-                    .buffer = buf->vk.handle,
-                    .offset = 0,
-                    .range = buf->size
-                };
-                VkWriteDescriptorSet write = {
-                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .dstSet = rc->pipeline->vk.descriptor_set[0],
-                    .dstBinding = state.uniform->binding,
-                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                    .pBufferInfo = &buffer_info,
-                    .descriptorCount = 1,
-                    .dstArrayElement = 0,
-                };
-                vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
-            }
+            if (!rc->pipeline) break;
             vkCmdBindPipeline(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.handle);
-            vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rc->pipeline->vk.layout, 0, 1, &(rc->pipeline->vk.descriptor_set[0]), 0, NULL);
+            if (rc->pipeline->vk.descriptor_set) {
+                vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    rc->pipeline->vk.layout, 0, 1, &rc->pipeline->vk.descriptor_set, 0, NULL);
+            }
             state.pipe = rc->pipeline;
-        } break;
+        } break; 
         case RENDER_COMMAND_SET_VERTEX_BUFFER: {
             selene_GpuBuffer* buf = rc->buffer.ptr;
             VkBuffer buffers[] = {buf->vk.handle};
-            VkDeviceSize offsets[1] = {0};
-            vkCmdBindVertexBuffers(self->vk.command_buffer, 0, 1, buffers, offsets);
+            VkDeviceSize offsets[1] = {(VkDeviceSize)rc->buffer.offset};
+            vkCmdBindVertexBuffers(self->vk.command_buffer, (uint32_t)rc->buffer.slot, 1, buffers, offsets);
         } break;
         case RENDER_COMMAND_SET_INDEX_BUFFER: {
             selene_GpuBuffer* buf = rc->buffer.ptr;
-            vkCmdBindIndexBuffer(self->vk.command_buffer, buf->vk.handle, 0, VK_INDEX_TYPE_UINT32);
+            VkIndexType itype = (buf->index_type == SELENE_INDEX_UINT16)
+                ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+            vkCmdBindIndexBuffer(self->vk.command_buffer, buf->vk.handle, (VkDeviceSize)rc->buffer.offset, itype);
         } break;
-        case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
-            selene_GpuBuffer* buf = rc->buffer.ptr;
-            state.uniform = &rc->buffer;
-            VkDescriptorBufferInfo buffer_info = {
-                .buffer = buf->vk.handle,
-                .offset = 0,
-                .range = buf->size
-            };
-            // DEBUG_LOG("Update uniform buffer\n");
-            if (state.pipe) {
-                VkWriteDescriptorSet write = {
-                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .dstSet = state.pipe->vk.descriptor_set[0],
-                    .dstBinding = rc->buffer.binding,
-                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                    .pBufferInfo = &buffer_info,
-                    .descriptorCount = 1,
-                    .dstArrayElement = 0,
-                };
-                vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
-            }
-
+        case RENDER_COMMAND_DRAW: {
+            uint32_t instances = rc->draw.instance_count < 1 ? 1u : (uint32_t)rc->draw.instance_count;
+            vkCmdDraw(self->vk.command_buffer, (uint32_t)rc->draw.count, instances, (uint32_t)rc->draw.start, 0);
         } break;
-        case RENDER_COMMAND_DRAW_VERTEX: {
-            // DEBUG_LOG("Draw vertex\n");
-            vkCmdDraw(self->vk.command_buffer, rc->draw.count, 1, rc->draw.start, 0);
+        case RENDER_COMMAND_DRAW_INDEXED: {
+            uint32_t instances = rc->draw.instance_count < 1 ? 1u : (uint32_t)rc->draw.instance_count;
+            vkCmdDrawIndexed(self->vk.command_buffer, (uint32_t)rc->draw.count, instances,
+                             (uint32_t)rc->draw.start, rc->draw.base_vertex, 0);
         } break;
         case RENDER_COMMAND_SET_TEXTURE: {
-            if (!state.pipe) break;
-            selene_Texture2D* tex = rc->texture.ptr;
-            VkDescriptorImageInfo new_image_info = {
-                .imageView = tex->vk.view,  // Different texture
-                .sampler = tex->vk.sampler,
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-            };
-            if (state.pipe) {
-                VkWriteDescriptorSet write = {
-                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .dstSet = state.pipe->vk.descriptor_set[0],
-                    .dstBinding = rc->texture.binding,
-                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                    .pImageInfo = &new_image_info,
-                    .descriptorCount = 1,
-                    .dstArrayElement = 0,
-                };
-
-                vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
+            state.texture = (selene_Texture2D*)rc->texture.ptr;
+            if (state.pipe && state.pipe->vk.descriptor_set) {
+                vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    state.pipe->vk.layout, 0, 1, &state.pipe->vk.descriptor_set, 0, NULL);
             }
         } break;
-        case RENDER_COMMAND_SET_RENDER_TARGET: {
-            selene_RenderTarget* t = rc->target.ptr;
+        case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
+            state.uniform = rc->buffer.ptr;
+            if (state.pipe && state.pipe->vk.descriptor_set) {
+                vkCmdBindDescriptorSets(self->vk.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    state.pipe->vk.layout, 0, 1, &state.pipe->vk.descriptor_set, 0, NULL);
+            }
         } break;
         case RENDER_COMMAND_SET_VIEWPORT: {
             VkViewport view;
-            view.x = rc->viewport.x;
-            view.y = rc->viewport.y;
-            view.width = rc->viewport.width;
-            view.height = rc->viewport.height;
-            view.maxDepth = 1;
-            view.minDepth = 0;
+            vk_apply_viewport(&view, rc->viewport.x, rc->viewport.y,
+                              rc->viewport.width, rc->viewport.height);
             vkCmdSetViewport(self->vk.command_buffer, 0, 1, &view);
         } break;
         case RENDER_COMMAND_SET_SCISSOR: {
-            VkRect2D scissor;
+            VkRect2D scissor_rect;
             if (!rc->scissor.enabled) {
-                scissor.extent = self->vk.swapchain.extent;
-                scissor.offset = (VkOffset2D){ 0, 0 };
+                scissor_rect.extent = self->vk.swapchain.extent;
+                scissor_rect.offset = (VkOffset2D){ 0, 0 };
             }
             else {
-                scissor.extent.width = rc->scissor.width;
-                scissor.extent.height = rc->scissor.height;
-                scissor.offset.x = rc->scissor.x;
-                scissor.offset.y = rc->scissor.y;
+                scissor_rect.extent.width = (uint32_t)rc->scissor.width;
+                scissor_rect.extent.height = (uint32_t)rc->scissor.height;
+                scissor_rect.offset.x = rc->scissor.x;
+                scissor_rect.offset.y = rc->scissor.y;
             }
-            vkCmdSetScissor(self->vk.command_buffer, 0, 1, &scissor);
+            vkCmdSetScissor(self->vk.command_buffer, 0, 1, &scissor_rect);
         } break;
         default:
             break;
@@ -1038,51 +966,83 @@ int l_VK_Renderer__flush(lua_State *L) {
     return 0;
 }
 
-int l_VK_Renderer__present(lua_State *L) {
+int l_VK_Renderer__begin_frame(lua_State *L) {
     CHECK_META(selene_Renderer);
-    vkWaitForFences(self->vk.device, 1, &(self->vk.fence), VK_TRUE, UINT64_MAX);
-    vkResetFences(self->vk.device, 1, &(self->vk.fence));
+    if (self->in_frame) return 0;
 
-    uint32_t image_index;
-    vkAcquireNextImageKHR(self->vk.device, self->vk.swapchain.handle, UINT64_MAX,
-                            self->vk.image_semaphore,
-                            NULL, &image_index);
-    self->vk.current_framebuffer = image_index;
+    vkWaitForFences(self->vk.device, 1, &self->vk.fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(self->vk.device, 1, &self->vk.fence);
+
+    uint32_t image_index = 0;
+    VkResult res = vkAcquireNextImageKHR(self->vk.device, self->vk.swapchain.handle, UINT64_MAX,
+                                         self->vk.image_semaphore, VK_NULL_HANDLE, &image_index);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR)
+        return luaL_error(L, "Vulkan swapchain out of date (resize not implemented yet)");
+    if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
+        return luaL_error(L, "failed to acquire Vulkan swapchain image: 0x%x", res);
+
+    self->vk.current_framebuffer = (int)image_index;
     vkResetCommandBuffer(self->vk.command_buffer, 0);
-    l_VK_Renderer__flush(L);
+    self->in_frame = 1;
+    return 0;
+}
+
+int l_VK_Renderer__end_frame(lua_State *L) {
+    CHECK_META(selene_Renderer);
+    if (!self->in_frame) return 0;
+
+    int rec = l_VK_Renderer__flush(L);
+    if (rec != 0) return rec;
+
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkSemaphore wait_sem[] = {self->vk.image_semaphore};
+    VkSemaphore signal_sem[] = {self->vk.render_semaphore};
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .commandBufferCount = 1,
         .pCommandBuffers = &self->vk.command_buffer,
-        .pNext = NULL
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = wait_sem,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = signal_sem,
+        .pWaitDstStageMask = wait_stages,
     };
+    VkResult res = vkQueueSubmit(self->vk.graphics_queue, 1, &submit_info, self->vk.fence);
+    if (res != VK_SUCCESS)
+        return luaL_error(L, "failed to submit Vulkan queue: 0x%x", res);
 
-    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    submit_info.pWaitDstStageMask = wait_stages;
+    self->in_frame = 0;
+    self->in_pass = 0;
+    return 0;
+}
 
-    VkSemaphore wait_sem[] = {self->vk.image_semaphore};
-    submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = wait_sem;
+int l_VK_Renderer__present(lua_State *L) {
+    CHECK_META(selene_Renderer);
+    if (self->in_frame || self->command_offset > 0) {
+        if (!self->in_frame) {
+            int rec = l_VK_Renderer__begin_frame(L);
+            if (rec != 0) return rec;
+        }
+        int rec = l_VK_Renderer__end_frame(L);
+        if (rec != 0) return rec;
+    }
 
+    uint32_t image_index = (uint32_t)self->vk.current_framebuffer;
     VkSemaphore signal_sem[] = {self->vk.render_semaphore};
-    submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = signal_sem;
-
-    vkQueueSubmit(self->vk.graphics_queue, 1, &submit_info, self->vk.fence);
-    // vkQueueWaitIdle(self->vk.graphics_queue); // Wait for GPU to finish (simplified)
-
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .swapchainCount = 1,
         .pSwapchains = &self->vk.swapchain.handle,
-        .pImageIndices = &self->vk.current_framebuffer,
+        .pImageIndices = &image_index,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = signal_sem,
-        .pNext = NULL
     };
-    vkQueuePresentKHR(self->vk.present_queue, &present_info);
-
-  return 0;
+    VkResult res = vkQueuePresentKHR(self->vk.present_queue, &present_info);
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
+        DEBUG_LOG("Vulkan present suboptimal/out of date: 0x%x\n", res);
+    else if (res != VK_SUCCESS)
+        return luaL_error(L, "failed to present Vulkan swapchain: 0x%x", res);
+    return 0;
 }
 
 int l_VK_Renderer_create(lua_State *L) {
@@ -1146,28 +1106,50 @@ int l_VK_Renderer_create(lua_State *L) {
 
     VkPhysicalDeviceProperties pdev_props;
     vkGetPhysicalDeviceProperties(phys, &pdev_props);
-
-    VkPhysicalDeviceFeatures pdev_features;
-    vkGetPhysicalDeviceFeatures(phys, &pdev_features);
+    fprintf(stdout, "Vulkan device: %s\n", pdev_props.deviceName);
 
     struct QueueFamilyIndices indices = find_queue_families(phys, surface);
+    if (indices.graphics_family < 0 || indices.present_family < 0) {
+        vkDestroySurfaceKHR(instance, surface, NULL);
+        vkDestroyInstance(instance, NULL);
+        return luaL_error(L, "no suitable Vulkan queue families");
+    }
 
     float queue_priority = 1.f;
-    VkDeviceQueueCreateInfo queue_crt_info = {
+    VkDeviceQueueCreateInfo queue_infos[2];
+    uint32_t queue_info_count = 1;
+    queue_infos[0] = (VkDeviceQueueCreateInfo){
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = indices.graphics_family,
+        .queueFamilyIndex = (uint32_t)indices.graphics_family,
         .queueCount = 1,
         .pQueuePriorities = &queue_priority
     };
+    if (indices.graphics_family != indices.present_family) {
+        queue_infos[1] = (VkDeviceQueueCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = (uint32_t)indices.present_family,
+            .queueCount = 1,
+            .pQueuePriorities = &queue_priority
+        };
+        queue_info_count = 2;
+    }
 
-    const char *device_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    const char *device_extensions[] = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE1_EXTENSION_NAME
+    };
+    VkPhysicalDeviceFeatures available_features;
+    vkGetPhysicalDeviceFeatures(phys, &available_features);
+    VkPhysicalDeviceFeatures enabled_features;
+    memset(&enabled_features, 0, sizeof(enabled_features));
+    enabled_features.samplerAnisotropy = available_features.samplerAnisotropy;
 
     VkDeviceCreateInfo dev_crt_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pQueueCreateInfos = &queue_crt_info,
-        .queueCreateInfoCount = 1,
-        .pEnabledFeatures = &pdev_features,
-        .enabledExtensionCount = 1,
+        .pQueueCreateInfos = queue_infos,
+        .queueCreateInfoCount = queue_info_count,
+        .pEnabledFeatures = &enabled_features,
+        .enabledExtensionCount = 2,
         .ppEnabledExtensionNames = device_extensions,
         .enabledLayerCount = 0
     };
@@ -1283,13 +1265,14 @@ int l_VK_Renderer_create(lua_State *L) {
     VkDescriptorPoolSize descriptor_pool_size[] = {
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64 },
     };
 
     const int max_sets_count = 10;
     VkDescriptorPoolCreateInfo descriptor_pool_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = MAX_FRAMES_ * max_sets_count,
-        .poolSizeCount = 2,
+        .maxSets = 100,
+        .poolSizeCount = 3,
         .pPoolSizes = descriptor_pool_size
     };
     result = vkCreateDescriptorPool(device, &descriptor_pool_info, NULL, &descriptor_pool);
@@ -1343,13 +1326,20 @@ int l_VK_Renderer_create(lua_State *L) {
     lua_pushvalue(L, 1);
     ren->l_window_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    ren->command_offset = 0;
-    ren->command_count = 512;
-    ren->command_pool = (struct RenderCommand *)malloc(sizeof(struct RenderCommand) * ren->command_count);
+    ren->width = width;
+    ren->height = height;
+    ren->in_frame = 0;
+    ren->in_pass = 0;
+    if (!renderer_init_command_pool(ren, 512))
+        return luaL_error(L, "failed to alloc renderer command pool");
 
     ren->backend = SELENE_RENDERER_VULKAN;
 
     ren->destroy = l_VK_Renderer__destroy;
+    ren->begin_frame = l_VK_Renderer__begin_frame;
+    ren->end_frame = l_VK_Renderer__end_frame;
+    ren->begin_pass = NULL;
+    ren->end_pass = NULL;
     ren->flush = l_VK_Renderer__flush;
     ren->present = l_VK_Renderer__present;
 
@@ -1464,11 +1454,9 @@ VkResult vk_create_swapchain(VkPhysicalDevice physical_device, VkDevice device,
     }
     DEBUG_LOG("created Vulkan swapchain\n");
 
-    // uint32_t image_count;
-    // vkGetSwapchainImagesKHR(device, swapchain, &image_count, NULL);
+    vkGetSwapchainImagesKHR(device, swapchain, &image_count, NULL);
     outSwapchain->images = malloc(image_count * sizeof(VkImage));
-    vkGetSwapchainImagesKHR(device, swapchain, &image_count,
-                            outSwapchain->images);
+    vkGetSwapchainImagesKHR(device, swapchain, &image_count, outSwapchain->images);
 
     outSwapchain->handle = swapchain;
     outSwapchain->views = malloc(image_count * sizeof(VkImageView));
@@ -1602,6 +1590,8 @@ VkResult vk_create_texture(VkDevice device, VkPhysicalDevice physicalDevice,
 VkResult vk_create_sampler(selene_Renderer* self, VkFilter filter, VkSampler *out) {
     VkPhysicalDeviceProperties properties = {0};
     vkGetPhysicalDeviceProperties(self->vk.phys_device, &properties);
+    VkPhysicalDeviceFeatures features = {0};
+    vkGetPhysicalDeviceFeatures(self->vk.phys_device, &features);
 
     VkSamplerCreateInfo samplerInfo = {0};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1610,8 +1600,8 @@ VkResult vk_create_sampler(selene_Renderer* self, VkFilter filter, VkSampler *ou
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.anisotropyEnable = VK_TRUE;
-    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.anisotropyEnable = features.samplerAnisotropy;
+    samplerInfo.maxAnisotropy = features.samplerAnisotropy ? properties.limits.maxSamplerAnisotropy : 1.f;
     samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.compareEnable = VK_FALSE;

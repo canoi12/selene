@@ -1,3 +1,5 @@
+#include "SDL_stdinc.h"
+#include "lua.h"
 #include "selene.h"
 #include "lua_helper.h"
 
@@ -28,31 +30,50 @@
 #define SELENE_BATCH2D_PROJECTION_FAR 1000
 #endif
 
+#ifndef SELENE_PROJECTION_MATRIX_NAME
+#define SELENE_PROJECTION_MATRIX_NAME "m_projection"
+#endif
+
+#ifndef SELENE_VIEW_MATRIX_NAME
+#define SELENE_VIEW_MATRIX_NAME "m_view"
+#endif
+
+#ifndef SELENE_MODEL_MATRIX_NAME
+#define SELENE_MODEL_MATRIX_NAME "m_model"
+#endif
+
+#ifndef SELENE_MATRICES_UNIFORM_NAME
+#define SELENE_MATRICES_UNIFORM_NAME "Matrices"
+#endif
+
 #if defined(__cplusplus)
 #define EXTERN extern "C"
 #else
 #define EXTERN extern
 #endif
+/* String tables for luaL_checkoption — indices match the enums below. */
 EXTERN const char* pixel_formats[];
-EXTERN const int pixel_formats_values[];
-
 EXTERN const char* texture_filters[];
-EXTERN const int texture_filters_values[];
-
 EXTERN const char* draw_modes[];
-EXTERN const int draw_modes_values[];
-
 EXTERN const char* shader_type_options[];
-
 EXTERN const char* buffer_target_options[];
-
 EXTERN const char* texture_target_options[];
 EXTERN const char* front_face_options[];
 EXTERN const char* cull_face_options[];
-
 EXTERN const char* polygon_mode_options[];
+EXTERN const char* type_name_options[];
+EXTERN const char* comparison_func_options[];
+EXTERN const char* vertex_format_options[];
+EXTERN const char* renderer_backend_options[];
+EXTERN const char* blend_mode_options[];
+EXTERN const char* index_type_options[];
+EXTERN const char* pipeline_binding_options[];
 
-enum {
+/**
+ * Backend-agnostic GPU enums.
+ * Drivers translate these to GL / Vulkan / D3D / Metal / AGC / GNM.
+ */
+enum selene_GpuValueType {
     SELENE_BYTE = 0,
     SELENE_UBYTE,
     SELENE_SHORT,
@@ -62,13 +83,121 @@ enum {
     SELENE_FLOAT,
     SELENE_DOUBLE
 };
-EXTERN const char* type_name_options[];
-EXTERN const char* comparison_func_options[];
-EXTERN const char* vertex_format_options[];
 
-EXTERN const char* renderer_backend_options[];
+enum selene_GpuBufferTarget {
+    SELENE_BUFFER_VERTEX = 0,
+    SELENE_BUFFER_INDEX,
+    SELENE_BUFFER_UNIFORM,
+    SELENE_BUFFER_STORAGE
+};
+
+enum selene_ShaderStage {
+    SELENE_SHADER_VERTEX = 0,
+    SELENE_SHADER_PIXEL,
+    SELENE_SHADER_COMPUTE
+};
+
+enum selene_DrawTopology {
+    SELENE_TOPOLOGY_POINTS = 0,
+    SELENE_TOPOLOGY_LINES,
+    SELENE_TOPOLOGY_TRIANGLES
+};
+
+enum selene_CompareFunc {
+    SELENE_COMPARE_NEVER = 0,
+    SELENE_COMPARE_LESS,
+    SELENE_COMPARE_EQUAL,
+    SELENE_COMPARE_LESS_EQUAL,
+    SELENE_COMPARE_GREATER,
+    SELENE_COMPARE_NOT_EQUAL,
+    SELENE_COMPARE_GREATER_EQUAL,
+    SELENE_COMPARE_ALWAYS
+};
+
+enum selene_TextureFilter {
+    SELENE_FILTER_NEAREST = 0,
+    SELENE_FILTER_LINEAR
+};
+
+enum selene_TextureType {
+    SELENE_TEXTURE_2D = 0,
+    SELENE_TEXTURE_3D,
+    SELENE_TEXTURE_CUBE
+};
+
+enum selene_FrontFace {
+    SELENE_FRONT_CW = 0,
+    SELENE_FRONT_CCW
+};
+
+enum selene_CullFace {
+    SELENE_CULL_NONE = 0,
+    SELENE_CULL_FRONT,
+    SELENE_CULL_BACK,
+    SELENE_CULL_BOTH
+};
+
+enum selene_BlendMode {
+    SELENE_BLEND_ALPHA = 0,
+    SELENE_BLEND_ADDITIVE,
+    SELENE_BLEND_SUBTRACT,
+    SELENE_BLEND_MULTIPLY
+};
+
+enum selene_GpuPixelFormat {
+    SELENE_FORMAT_RGB = 0,
+    SELENE_FORMAT_RGBA,
+    SELENE_FORMAT_DEPTH,
+    SELENE_FORMAT_BGRA
+};
+
+enum selene_IndexType {
+    SELENE_INDEX_UINT16 = 0,
+    SELENE_INDEX_UINT32
+};
+
+enum selene_PolygonMode {
+    SELENE_POLYGON_FILL = 0,
+    SELENE_POLYGON_LINE
+};
+
+enum selene_PipelineBindingType {
+    SELENE_BINDING_UNIFORM = 0,
+    SELENE_BINDING_TEXTURE,
+    SELENE_BINDING_STORAGE
+};
+
+enum {
+    SELENE_STAGE_VERTEX = 1 << 0,
+    SELENE_STAGE_PIXEL  = 1 << 1,
+    SELENE_STAGE_COMPUTE = 1 << 2
+};
+
+#ifndef SELENE_PIPELINE_MAX_BINDINGS
+#define SELENE_PIPELINE_MAX_BINDINGS 16
+#endif
 
 #undef EXTERN
+
+/**
+ * Renderer Datas
+ */
+typedef struct {
+    mat4 projection;
+    mat4 view;
+
+    float screen_width;
+    float screen_height;
+    float time;
+    float delta_time;
+} selene_FrameData;
+
+typedef struct {
+    mat4 model;
+    vec4 tint_color;
+    vec2 tiling;
+    vec2 offset;
+} SpriteData;
 
 /**
  * Vertex Types
@@ -158,6 +287,7 @@ typedef struct _GpuBuffer selene_GpuBuffer;
 struct _GpuBuffer {
     int type, usage;
     Uint32 stride, size;
+    int index_type; /* SELENE_INDEX_* when type is SELENE_BUFFER_INDEX */
     union {
 #ifndef SELENE_NO_OPENGL
         struct { int type; GLuint handle; } gl;
@@ -198,6 +328,7 @@ struct DX11Texture {
 
 typedef struct _Texture2D selene_Texture2D;
 struct _Texture2D {
+    int id;
     union {
 #ifndef SELENE_NO_OPENGL
         struct GLTexture gl;
@@ -325,6 +456,7 @@ struct DX12Shader {
 
 typedef struct _Shader selene_Shader;
 struct _Shader {
+    int id;
     Uint32 type;
     union {
 #ifndef SELENE_NO_OPENGL
@@ -446,8 +578,7 @@ struct DX12Pipeline {
 
 struct _BlendState {
     int enabled;
-    int src, dst;
-    int equation;
+    int mode; /* SELENE_BLEND_* */
     void* handle;
 };
 
@@ -466,14 +597,39 @@ struct _RasterState {
     void* handle;
 };
 
+struct selene_PipelineBinding {
+    int slot;        /* Lua slot: set_texture(slot) / set_uniform_buffer(slot) */
+    int type;        /* SELENE_BINDING_* */
+    int stage_flags; /* SELENE_STAGE_* bits */
+    int count;
+};
+
+/* CPU-side pipeline description. Drivers only translate this to native PSOs.
+ * Viewport/scissor/clip convention: top-left origin, Y-down, Z in [0, 1]. */
+struct selene_PipelineDesc {
+    selene_Shader* vs;
+    selene_Shader* ps;
+    int topology; /* SELENE_TOPOLOGY_* */
+    struct selene_InputLayout layout;
+    struct _BlendState blend;
+    struct _DepthStencilState depth;
+    struct _RasterState raster;
+    int binding_count;
+    struct selene_PipelineBinding bindings[SELENE_PIPELINE_MAX_BINDINGS];
+};
+
 typedef struct _RenderPipeline selene_RenderPipeline;
 struct _RenderPipeline {
+    int id;
+    int topology; /* SELENE_TOPOLOGY_* — baked into PSO on VK/D3D12/Metal/AGC */
     struct selene_InputLayout layout;
     selene_Shader* vs;
     selene_Shader* ps;
     struct _BlendState blend_state;
     struct _DepthStencilState depth_stencil_state;
     struct _RasterState raster_state;
+    int binding_count;
+    struct selene_PipelineBinding bindings[SELENE_PIPELINE_MAX_BINDINGS];
     union {
 #ifndef SELENE_NO_OPENGL
         struct GLPipeline gl;
@@ -507,26 +663,24 @@ struct _RenderPipeline {
  */
 
 enum RenderCommandType {
-    RENDER_COMMAND_CLEAR = 0,
+    RENDER_COMMAND_BEGIN_PASS = 0,
+    RENDER_COMMAND_END_PASS,
+
     RENDER_COMMAND_CLEAR_COLOR,
     RENDER_COMMAND_CLEAR_DEPTH,
 
-    RENDER_COMMAND_SET_PROJECTION,
-    RENDER_COMMAND_SET_VIEW,
-
     RENDER_COMMAND_SET_PIPELINE,
-    // Buffers
     RENDER_COMMAND_SET_VERTEX_BUFFER,
     RENDER_COMMAND_SET_INDEX_BUFFER,
     RENDER_COMMAND_SET_UNIFORM_BUFFER,
-    // Shader (OpenGL and DX11)
-    RENDER_COMMAND_SET_SHADER,
-    // Texture
     RENDER_COMMAND_SET_TEXTURE,
-    // Render Target
     RENDER_COMMAND_SET_RENDER_TARGET,
 
     RENDER_COMMAND_SET_SCISSOR,
+    RENDER_COMMAND_SET_VIEWPORT,
+
+    /* GL / D3D11 leftovers — explicit APIs ignore these (state lives in the PSO). */
+    RENDER_COMMAND_SET_SHADER,
     RENDER_COMMAND_SET_BLEND_MODE,
     RENDER_COMMAND_SET_CULL_FACE,
     RENDER_COMMAND_SET_VIEWPORT,
@@ -535,16 +689,15 @@ enum RenderCommandType {
 
     RENDER_COMMAND_INTEGER_UNIFORM,
     RENDER_COMMAND_FLOAT_UNIFORM,
-
     RENDER_COMMAND_MATRIX_UNIFORM,
+    RENDER_COMMAND_SET_PROJECTION,
+    RENDER_COMMAND_SET_VIEW,
 
-    RENDER_COMMAND_DRAW_VERTEX,
-    RENDER_COMMAND_DRAW_INDEX,
-    RENDER_COMMAND_DRAW_VERTEX_INSTANCED,
-    RENDER_COMMAND_DRAW_INDEX_INSTANCED,
+    RENDER_COMMAND_DRAW,
+    RENDER_COMMAND_DRAW_INDEXED,
 
+    RENDER_COMMAND_PUSH_CONSTANTS,
     RENDER_COMMAND_CUSTOM,
-
     RENDER_COMMAND_COUNT
 };
 
@@ -582,61 +735,71 @@ struct RenderCommand {
     enum RenderCommandType type;
     union {
         struct {
-            selene_GpuBuffer* buffer;
-            int offset;
-            int size;
+            selene_RenderTarget* target; /* NULL = swapchain / default target */
+            int clear_color;
+            float color[4];
+            int clear_depth;
+            float depth;
+            int has_viewport;
+            struct { int x, y, width, height; } viewport;
+            int has_scissor;
+            struct { int enabled; int x, y, width, height; } scissor;
+        } pass;
+
+        struct {
             int location;
             int type;
             union {
-                // Sint8 c;
-                // Uint8 uc;
-                // Sint16 s;
-                // Uint16 us;
                 Sint32 i;
                 Uint32 ui;
                 float f;
-                double d;
-                ivec2 iv2;
-                ivec3 iv3;
-                ivec4 iv4;
                 vec2 v2;
                 vec3 v3;
                 vec4 v4;
                 mat4 m;
             };
         } uniform;
+
         union { float depth; float color[4]; } clear;
-        struct { int x, y, width, height; } clip;
 
-        struct { int width, height; } size;
+        struct {
+            int slot;
+            int offset;
+            int index_type;
+            selene_GpuBuffer* ptr;
+        } buffer;
 
-        //struct { Uint32 target; Uint32 binding; Uint32 handle; selene_GpuBuffer* ptr; } buffer;
-        SetBufferCommand buffer;
-        SetTextureCommand texture;
-        SetRenderTargetCommand target;
         struct { Uint32 handle; } program;
-        //struct { Uint32 binding; Uint32 slot; Uint32 target; Uint32 handle; void* ptr; } texture;
-        //struct { int depth; Uint32 target; Uint32 handle; selene_RenderTarget* ptr; } target;
+
+        struct {
+            int slot;
+            int target; /* SELENE_TEXTURE_* */
+            void* ptr;
+        } texture;
+
+        struct {
+            int depth;
+            selene_RenderTarget* ptr;
+        } target;
 
         struct { int x, y, width, height; } viewport;
         struct { int enabled; int x, y, width, height; } scissor;
-        struct {
-            int func0, func1;
-            int equation;
-        } blend;
+        struct { int func0, func1, equation; } blend;
 
         selene_RenderPipeline* pipeline;
 
         struct {
-            Uint32 mode;
+            int topology;       /* SELENE_TOPOLOGY_* */
             int start, count;
+            int instance_count; /* 1 = non-instanced */
+            int base_vertex;
         } draw;
 
         struct {
-            Uint32 mode;
-            int start, count;
-            int instance_count;
-        } instanced;
+            int stage_flags;
+            int offset, size;
+            void* data;
+        } push_constants;
     };
 };
 
@@ -658,7 +821,9 @@ enum _RendererBackend {
     SELENE_RENDERER_VULKAN,
     SELENE_RENDERER_DIRECTX11,
     SELENE_RENDERER_DIRECTX12,
-    SELENE_RENDERER_METAL
+    SELENE_RENDERER_METAL,
+    SELENE_RENDERER_AGC,
+    SELENE_RENDERER_GNM
 };
 
 #ifndef SELENE_NO_VULKAN
@@ -735,6 +900,8 @@ struct _Renderer {
     };
 
     int width, height;
+    int in_frame;
+    int in_pass;
     selene_RenderTarget default_target;
 
     int command_offset;
@@ -743,30 +910,64 @@ struct _Renderer {
 
     lua_CFunction destroy;
 
-    // pipeline
+    /* Frame / pass — explicit APIs (VK, D3D12, Metal, AGC, GNM) override these.
+     * Defaults record BEGIN/END_PASS commands for GL / D3D11. */
+    lua_CFunction begin_frame;
+    lua_CFunction end_frame;
+    lua_CFunction begin_pass;
+    lua_CFunction end_pass;
+
     lua_CFunction create_pipeline;
     lua_CFunction destroy_pipeline;
-    // buffers
     lua_CFunction create_buffer;
     lua_CFunction destroy_buffer;
     lua_CFunction send_buffer_data;
-    // texture
     lua_CFunction create_texture2d;
     lua_CFunction create_depth_texture;
     lua_CFunction destroy_texture;
-    // render target
     lua_CFunction create_render_target;
     lua_CFunction destroy_render_target;
-    // shader
     lua_CFunction create_shader;
     lua_CFunction destroy_shader;
-
-    lua_CFunction draw;
 
     lua_CFunction flush;
     lua_CFunction present;
 };
 
-#include "stb_image.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+void renderer_push_commands(selene_Renderer* r, int count, const struct RenderCommand* cmd);
+#define renderer_push_command(r, cmd) renderer_push_commands((r), 1, (cmd))
+int renderer_init_command_pool(selene_Renderer* r, int count);
+
+int renderer_parse_pipeline_desc(lua_State* L, int tbl, struct selene_PipelineDesc* desc);
+void renderer_apply_pipeline_desc(selene_RenderPipeline* pipe, const struct selene_PipelineDesc* desc);
+int renderer_attrib_byte_stride(int type, int size);
+int renderer_pipeline_binding_index(const selene_RenderPipeline* pipe, int binding_type, int slot);
+void renderer_clip_correct(const selene_Renderer* r, mat4 proj);
+void renderer_clip_ortho(const selene_Renderer* r,
+                         float left, float right, float bottom, float top,
+                         float zn, float zf, mat4 dest);
+#ifdef __cplusplus
+}
+#endif
+
+static inline void renderer_get_target_size(const selene_Renderer* r, const selene_RenderTarget* t, int* w, int* h) {
+    if (t && t->color) {
+        *w = t->color->width;
+        *h = t->color->height;
+    } else if (t && t->width > 0 && t->height > 0) {
+        *w = t->width;
+        *h = t->height;
+    } else {
+        *w = r->width;
+        *h = r->height;
+    }
+}
+
+extern int next_texture_id;
+extern int next_pipeline_id;
+extern int next_shader_id;
 
 #endif /* SELENE_RENDERER_H_ */

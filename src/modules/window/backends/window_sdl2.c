@@ -1,5 +1,8 @@
 #include "modules/window.h"
 #include "lua_helper.h"
+#ifndef SELENE_NO_VULKAN
+#include <SDL_vulkan.h>
+#endif
 #ifndef SELENE_USE_GLFW
 
 int l_create_SDL_window(lua_State* L) {
@@ -29,7 +32,7 @@ int l_create_SDL_window(lua_State* L) {
         if (lua_getfield(L, arg, "opengl") == LUA_TBOOLEAN) flags |= SDL_WINDOW_OPENGL * lua_toboolean(L, -1);
         lua_pop(L, 1);
         if (lua_getfield(L, arg, "vulkan") == LUA_TBOOLEAN) flags |= SDL_WINDOW_VULKAN * lua_toboolean(L, -1);
-        lua_pop(L, 2);
+        lua_pop(L, 1);
     }
     if (flags & SDL_WINDOW_OPENGL) {
 #if defined(OS_EMSCRIPTEN) || defined(OS_ANDROID)
@@ -44,6 +47,9 @@ int l_create_SDL_window(lua_State* L) {
     }
 #ifndef SELENE_NO_VULKAN
     if (flags & SDL_WINDOW_VULKAN) {
+        if (!SDL_WasInit(SDL_INIT_VIDEO) && SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
+            return luaL_error(L, "failed to init SDL video: %s", SDL_GetError());
+        }
         if (SDL_Vulkan_LoadLibrary(NULL) != 0) {
             return luaL_error(L, "failed to load Vulkan library: %s", SDL_GetError());
         }
