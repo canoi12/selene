@@ -449,7 +449,7 @@ static int l_Renderer__set_texture(lua_State* L) {
     cmd.type = RENDER_COMMAND_SET_TEXTURE;
     cmd.texture.target = SELENE_TEXTURE_2D;
     cmd.texture.ptr = (void*)tex;
-    cmd.texture.slot = slot;
+    cmd.texture.slot = binding;
     PUSH_COMMAND(self, &cmd);
     return 0;
 }
@@ -474,9 +474,9 @@ static int l_Renderer__set_render_target(lua_State* L) {
     struct RenderCommand cmd;
     memset(&cmd, 0, sizeof(cmd));
     cmd.type = RENDER_COMMAND_SET_RENDER_TARGET;
-    if (lua_type(L, arg) == LUA_TBOOLEAN) cmd.target.has_depth = lua_toboolean(L, arg++);
+    if (lua_type(L, arg) == LUA_TBOOLEAN) cmd.target.depth = lua_toboolean(L, arg++);
     if (!target) {
-        cmd.target.has_depth = self->default_target.depth != NULL;
+        cmd.target.depth = self->default_target.depth != NULL;
     }
     cmd.target.ptr = target;
     PUSH_COMMAND(self, &cmd);

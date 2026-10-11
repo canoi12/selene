@@ -64,7 +64,7 @@ int l_GL_Renderer__destroy(lua_State* L) {
     luaL_unref(L, LUA_REGISTRYINDEX, self->l_window_ref);
     if (aux_source) free(aux_source);
     free(self->command_pool);
-    SDL_GL_DeleteContext(self->gl);
+    SDL_GL_DeleteContext(self->gl.ctx);
     return 0;
 }
 
@@ -827,6 +827,94 @@ int l_GL_Renderer__present(lua_State* L) {
     return 0;
 }
 
+/**
+ * Runtime capability detection — replaces platform #ifdefs so any
+ * context (desktop GL or GLES, any version) is probed dynamically.
+ */
+static int gl_supports_extension(selene_Renderer* r, const char* name) {
+    const struct selene_GLCapabilities* caps = &r->gl.caps;
+#if defined(GLAD_GL_VERSION_3_0) || defined(GLAD_GL_ES_VERSION_3_0)
+    if (caps->major >= 3 && glad_glGetStringi) {
+        GLint num_extensions = 0;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+        for (GLint i = 0; i < num_extensions; i++) {
+            const char* ext = (const char*)glGetStringi(GL_EXTENSIONS, i);
+            if (ext && strcmp(ext, name) == 0) return 1;
+        }
+        return 0;
+    }
+#endif
+    const char* extensions = (const char*)glGetString(GL_EXTENSIONS);
+    if (!extensions) return 0;
+    size_t name_len = strlen(name);
+    const char* p = extensions;
+    while ((p = strstr(p, name)) != NULL) {
+        if ((p == extensions || p[-1] == ' ') &&
+            (p[name_len] == ' ' || p[name_len] == '\0'))
+            return 1;
+        p += name_len;
+    }
+    return 0;
+}
+
+static void gl_detect_capabilities(selene_Renderer* r) {
+    struct selene_GLCapabilities* caps = &r->gl.caps;
+    memset(caps, 0, sizeof(*caps));
+
+    const char* version = (const char*)glGetString(GL_VERSION);
+    if (!version) return;
+
+    const char* p = version;
+    if (strncmp(p, "OpenGL ES", 9) == 0) {
+        caps->is_gles = 1;
+        p += 9;
+    } else if (strncmp(p, "OpenGL", 6) == 0) {
+        p += 6;
+    }
+    while (*p == ' ') p++;
+    caps->major = (int)strtol(p, (char**)&p, 10);
+    if (*p == '.') {
+        p++;
+        caps->minor = (int)strtol(p, (char**)&p, 10);
+    }
+
+    /* VAO: core in GL 3.0+ / GLES 3.0+, extension otherwise */
+    caps->has_vao = caps->major >= 3 ||
+        gl_supports_extension(r, caps->is_gles ? "GL_OES_vertex_array_object"
+                                                : "GL_ARB_vertex_array_object");
+    /* Instancing: core in GL 3.0+ / GLES 3.0+ */
+    caps->has_instancing = caps->major >= 3 ||
+        gl_supports_extension(r, "GL_ANGLE_instanced_arrays") ||
+        gl_supports_extension(r, "GL_EXT_draw_instanced") ||
+        gl_supports_extension(r, "GL_ARB_draw_instanced");
+    /* UBO: core in GL 3.1+ / GLES 3.0+ */
+    caps->has_ubo = (caps->is_gles && caps->major >= 3) ||
+        (!caps->is_gles && (caps->major > 3 ||
+                            (caps->major == 3 && caps->minor >= 1))) ||
+        gl_supports_extension(r, "GL_ARB_uniform_buffer_object");
+    /* glBlendEquation: core in GL 1.4+ / GLES 3.0+ */
+    caps->has_blend_equation = !caps->is_gles || caps->major >= 3 ||
+        gl_supports_extension(r, "GL_EXT_blend_subtract") ||
+        gl_supports_extension(r, "GL_EXT_blend_minmax");
+    /* Depth textures */
+    caps->has_depth_texture = caps->major >= 3 ||
+        gl_supports_extension(r, caps->is_gles ? "GL_OES_depth_texture"
+                                                : "GL_ARB_depth_texture");
+    /* BGRA format: desktop core / GLES extension */
+    caps->has_bgra = !caps->is_gles ||
+        gl_supports_extension(r, "GL_EXT_texture_format_BGRA8888");
+    /* GL_UNPACK_FLIP_Y: desktop extension, not available on GLES */
+    caps->has_unpack_flip_y = !caps->is_gles &&
+        gl_supports_extension(r, "GL_EXT_unpack_subimage");
+
+    DEBUG_LOG("[renderer] GL capabilities: %s %d.%d vao=%d instancing=%d "
+              "ubo=%d blend_eq=%d depth_tex=%d bgra=%d flip_y=%d\n",
+              caps->is_gles ? "GLES" : "GL", caps->major, caps->minor,
+              caps->has_vao, caps->has_instancing, caps->has_ubo,
+              caps->has_blend_equation, caps->has_depth_texture,
+              caps->has_bgra, caps->has_unpack_flip_y);
+}
+
 int l_GL_Renderer_create(lua_State* L) {
 #ifndef NDEBUG
     fprintf(stdout, "[renderer] creating OpenGL Renderer\n");
@@ -848,7 +936,7 @@ int l_GL_Renderer_create(lua_State* L) {
     r->window_ptr = win;
     int width, height;
     SDL_GetWindowSize(win->handle, &width, &height);
-    r->gl = ctx;
+    r->gl.ctx = ctx;
     SDL_GL_MakeCurrent(win->handle, ctx);
 #if !defined(OS_ANDROID) && !defined(OS_EMSCRIPTEN)
     if (gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress) == 0)
@@ -857,8 +945,8 @@ int l_GL_Renderer_create(lua_State* L) {
 #ifndef NDEBUG
     fprintf(stdout, "[renderer] modern OpenGL loaded\n");
 #endif
-    const unsigned char* version = glGetString(GL_VERSION);
-    fprintf(stdout, "[renderer] OpenGL Version: %s\n", version);
+    gl_detect_capabilities(r);
+
     r->width = width;
     r->height = height;
     r->in_frame = 0;

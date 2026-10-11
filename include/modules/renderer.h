@@ -683,7 +683,6 @@ enum RenderCommandType {
     RENDER_COMMAND_SET_SHADER,
     RENDER_COMMAND_SET_BLEND_MODE,
     RENDER_COMMAND_SET_CULL_FACE,
-    RENDER_COMMAND_SET_VIEWPORT,
 
     RENDER_COMMAND_UPDATE_UNIFORM_BUFFER,
 
@@ -747,6 +746,9 @@ struct RenderCommand {
         } pass;
 
         struct {
+            selene_GpuBuffer* buffer; /* RENDER_COMMAND_UPDATE_UNIFORM_BUFFER */
+            int offset;
+            int size;
             int location;
             int type;
             union {
@@ -849,6 +851,18 @@ struct VulkanSwapchain {
 };
 #endif
 
+struct selene_GLCapabilities {
+    int is_gles;         /* OpenGL ES context */
+    int major, minor;    /* context version */
+    int has_vao;         /* GL 3.0+ / GLES 3.0+ / OES_vertex_array_object */
+    int has_instancing;  /* GL 3.0+ / GLES 3.0+ / ANGLE_instanced_arrays */
+    int has_ubo;         /* GL 3.1+ / GLES 3.0+ */
+    int has_blend_equation; /* GL 1.4+ / GLES 3.0+ / EXT_blend_subtract */
+    int has_depth_texture;  /* GL_ARB_depth_texture / OES_depth_texture */
+    int has_bgra;        /* desktop / EXT_texture_format_BGRA8888 */
+    int has_unpack_flip_y; /* desktop / EXT_unpack_subimage */
+};
+
 struct _Renderer {
     enum _RendererBackend backend;
     LuaReference l_window_ref;
@@ -870,7 +884,10 @@ struct _Renderer {
 #endif
 #endif
 #ifndef SELENE_NO_OPENGL
-        SDL_GLContext gl;
+        struct {
+            SDL_GLContext ctx;
+            struct selene_GLCapabilities caps;
+        } gl;
 #endif
 #ifndef SELENE_NO_VULKAN
         struct {
