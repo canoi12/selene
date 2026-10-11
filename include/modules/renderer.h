@@ -759,6 +759,7 @@ struct RenderCommand {
                 vec3 v3;
                 vec4 v4;
                 mat4 m;
+                selene_FrameData frame;
             };
         } uniform;
 

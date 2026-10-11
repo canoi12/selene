@@ -191,7 +191,7 @@ int l_Renderer__end_pass(lua_State* L) {
 int l_Renderer__create_frame_data(lua_State* L) {
     CHECK_META(selene_Renderer);
     selene_FrameData* frame_data = lua_newuserdata(L, sizeof(selene_FrameData));
-    luaL_setmetatable(L, "selene_FrameData");
+    luaL_setmetatable(L, selene_FrameData_METANAME);
     glm_mat4_identity(frame_data->projection);
     glm_mat4_identity(frame_data->view);
     frame_data->time = 0.f;
@@ -263,6 +263,25 @@ int l_FrameData__screen_height(lua_State* L) {
     CHECK_META(selene_FrameData);
     CHECK_NUMBER(int, screen_height);
     self->screen_height = screen_height;
+    return 0;
+}
+
+int l_FrameData_meta(lua_State* L) {
+    luaL_newmetatable(L, selene_FrameData_METANAME);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "__index");
+    const luaL_Reg _reg[] = {
+        {"ortho", l_FrameData__ortho},
+        {"perspective", l_FrameData__perspective},
+        {"lookat", l_FrameData__lookat},
+        {"time", l_FrameData__time},
+        {"delta_time", l_FrameData__delta_time},
+        {"screen_width", l_FrameData__screen_width},
+        {"screen_height", l_FrameData__screen_height},
+        {NULL, NULL}
+    };
+    luaL_setfuncs(L, _reg, 0);
+    lua_pop(L, 1);
     return 0;
 }
 
@@ -624,6 +643,21 @@ int l_Renderer__update_uniform_ortho(lua_State* L) {
     return 0;
 }
 
+int l_Renderer__update_frame_data(lua_State* L) {
+    CHECK_META(selene_Renderer);
+    CHECK_UDATA(selene_GpuBuffer, buffer);
+    CHECK_UDATA(selene_FrameData, frame);
+    struct RenderCommand cmd;
+    memset(&cmd, 0, sizeof(cmd));
+    cmd.type = RENDER_COMMAND_UPDATE_UNIFORM_BUFFER;
+    cmd.uniform.buffer = buffer;
+    cmd.uniform.offset = 0;
+    cmd.uniform.size = sizeof(selene_FrameData);
+    memcpy(&cmd.uniform.frame, frame, sizeof(selene_FrameData));
+    PUSH_COMMAND(self, &cmd);
+    return 0;
+}
+
 /**
  * Draw and flush
  */
@@ -752,6 +786,9 @@ int l_Renderer_meta(lua_State* L) {
         REG_META_FIELD(Renderer, load_shader),
         REG_META_FIELD(Renderer, destroy_shader),
         REG_META_FIELD(Renderer, update_uniform_ortho),
+        // Frame data
+        REG_META_FIELD(Renderer, create_frame_data),
+        REG_META_FIELD(Renderer, update_frame_data),
         {NULL, NULL}
     };
     luaL_setfuncs(L, _reg, 0);

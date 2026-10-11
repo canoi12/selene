@@ -800,6 +800,21 @@ int l_GL_Renderer__flush(lua_State* L) {
                 state.index = b;
             }
                 break;
+            case RENDER_COMMAND_UPDATE_UNIFORM_BUFFER: {
+                selene_GpuBuffer* b = rc->uniform.buffer;
+                if (b) {
+                    GLenum target = gl_buffer_target_types_values[b->type];
+                    glBindBuffer(target, b->gl.handle);
+                    if (rc->uniform.offset + rc->uniform.size > b->size) {
+                        b->size = rc->uniform.offset + rc->uniform.size;
+                        glBufferData(target, b->size, &rc->uniform.frame, GL_DYNAMIC_DRAW);
+                    } else {
+                        glBufferSubData(target, rc->uniform.offset, rc->uniform.size, &rc->uniform.frame);
+                    }
+                    glBindBuffer(target, 0);
+                }
+            }
+                break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
 #ifndef SELENE_NO_UBO

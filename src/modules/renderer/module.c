@@ -63,6 +63,7 @@ int l_renderer_create(lua_State* L) {
 }
 
 extern int l_Renderer_meta(lua_State* L);
+extern int l_FrameData_meta(lua_State* L);
 extern int l_VertexBatch_meta(lua_State* L);
 extern int l_VertexBatch_create(lua_State* L);
 
@@ -70,6 +71,9 @@ int luaopen_renderer(lua_State* L) {
     lua_newtable(L);
     l_Renderer_meta(L);
     lua_setfield(L, -2, "Renderer");
+
+    l_FrameData_meta(L);
+    luaL_ref(L, LUA_REGISTRYINDEX);
 
     luaL_newmetatable(L, selene_Font_METANAME);
     lua_setfield(L, -2, "Font");
