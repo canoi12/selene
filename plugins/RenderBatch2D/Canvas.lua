@@ -24,8 +24,8 @@ function Canvas:destroy(batch)
     self.target = nil
 end
 
-function Canvas:draw(batch, x, y)
-    batch.batch:push_sprite(self.texture, x, y, 0, 1, 1, nil, self.flip)
+function Canvas:draw(batch, x, y, angle, sx, sy)
+    batch.batch:push_sprite(self.texture, x, y, angle or 0, sx or 1, sy or 1, nil, self.flip)
 end
 
 return Canvas

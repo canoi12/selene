@@ -1,4 +1,4 @@
-local backend = 'vulkan'
+local backend = 'opengl'
 
 local opengl = false
 local vulkan = false
