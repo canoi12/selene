@@ -207,9 +207,9 @@ int l_FrameData__ortho(lua_State* L) {
     CHECK_NUMBER(float, right);
     CHECK_NUMBER(float, bottom);
     CHECK_NUMBER(float, top);
-    CHECK_NUMBER(float, near);
-    CHECK_NUMBER(float, far);
-    glm_ortho(left, right, bottom, top, near, far, self->projection);
+    CHECK_NUMBER(float, near_plane);
+    CHECK_NUMBER(float, far_plane);
+    glm_ortho(left, right, bottom, top, near_plane, far_plane, self->projection);
     return 0;
 }
 
@@ -217,9 +217,9 @@ int l_FrameData__perspective(lua_State* L) {
     CHECK_META(selene_FrameData);
     CHECK_NUMBER(float, fovy);
     CHECK_NUMBER(float, aspect);
-    CHECK_NUMBER(float, near);
-    CHECK_NUMBER(float, far);
-    glm_perspective(fovy, aspect, near, far, self->projection);
+    CHECK_NUMBER(float, near_plane);
+    CHECK_NUMBER(float, far_plane);
+    glm_perspective(fovy, aspect, near_plane, far_plane, self->projection);
     return 0;
 }
 
@@ -611,9 +611,9 @@ int l_Renderer__update_uniform_ortho(lua_State* L) {
     CHECK_NUMBER(float, right);
     CHECK_NUMBER(float, bottom);
     CHECK_NUMBER(float, top);
-    CHECK_NUMBER(float, near);
-    CHECK_NUMBER(float, far);
-    glm_ortho(left, right, bottom, top, near, far, m);
+    CHECK_NUMBER(float, near_plane);
+    CHECK_NUMBER(float, far_plane);
+    glm_ortho(left, right, bottom, top, near_plane, far_plane, m);
     struct RenderCommand cmd;
     cmd.type = RENDER_COMMAND_UPDATE_UNIFORM_BUFFER;
     cmd.uniform.buffer = buffer;

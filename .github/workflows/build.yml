@@ -26,19 +26,19 @@ jobs:
             build/dist/*.tar.gz
 
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # windows-latest now ships Visual Studio 2026; the preinstalled CMake
-      # (4.x) knows its generator, unlike the old 3.26 MSI previously pinned
-      # here, which fell back to NMake / could not find any VS instance.
+      # windows-2022 keeps Visual Studio 2022; the preinstalled CMake knows
+      # its generator, unlike the old 3.26 MSI previously pinned here, which
+      # fell back to NMake / could not find any VS instance.
 
       - name: Build project
         run: |
           cmake -P cmake/scripts/DownloadSDL2.cmake
-          cmake -S . -B build -G "Visual Studio 18 2026" -A x64 -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCPACK_PACKAGE_DIRECTORY=dist/ -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target package --config Release
 
       - name: Upload artifacts
