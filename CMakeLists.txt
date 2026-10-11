@@ -189,6 +189,7 @@ else()
     set(SELENE_USE_SDL3 OFF)
     #find_package(SDL2 REQUIRED)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -sUSE_SDL=2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
 endif ()
 include(CheckLua)
 
