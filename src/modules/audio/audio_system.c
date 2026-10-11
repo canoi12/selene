@@ -394,7 +394,7 @@ MODULE_FUNCTION(AudioSystem, meta) {
         REG_FIELD(AudioSystem, set_loop),
         REG_FIELD(AudioSystem, close),
     END_REG()
-    luaL_newmetatable(L, "AudioSystem");
+    luaL_newmetatable(L, selene_AudioSystem_METANAME);
     luaL_setfuncs(L, reg, 0);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");

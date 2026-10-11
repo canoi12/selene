@@ -1,6 +1,15 @@
 #include "modules/audio.h"
+#include "modules/filesystem.h"
 #ifndef SELENE_NO_AUDIO
 int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDecoder* out) {
+    // Resolve virtual paths (e.g., root://, user://, exec://)
+    get_virt_path(L, path);
+    const char* resolved_path = lua_tostring(L, -1);
+    lua_pop(L, 1);
+    
+    path = resolved_path;
+    len = strlen(path);
+    
     char* p = (char*)path + len;
     while (*p != '.')
         p--;
