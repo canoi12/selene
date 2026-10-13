@@ -965,6 +965,14 @@ void renderer_clip_correct(const selene_Renderer* r, mat4 proj);
 void renderer_clip_ortho(const selene_Renderer* r,
                          float left, float right, float bottom, float top,
                          float zn, float zf, mat4 dest);
+
+/* Id counters shared by the renderer drivers. They are defined in the C
+ * translation unit renderer_meta.c, so they need C linkage here as well:
+ * MSVC mangles C++ globals (e.g. ?next_pipeline_id@@3HA) while the definition
+ * keeps the unmangled C name, which fails at link time with LNK2019. */
+extern int next_texture_id;
+extern int next_pipeline_id;
+extern int next_shader_id;
 #ifdef __cplusplus
 }
 #endif
@@ -981,9 +989,5 @@ static inline void renderer_get_target_size(const selene_Renderer* r, const sele
         *h = r->height;
     }
 }
-
-extern int next_texture_id;
-extern int next_pipeline_id;
-extern int next_shader_id;
 
 #endif /* SELENE_RENDERER_H_ */
