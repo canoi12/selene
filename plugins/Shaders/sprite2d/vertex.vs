@@ -2,7 +2,7 @@
 
 // Selene canonical source — sprite2d vertex stage.
 // Compiled to SPIR-V (Vulkan / D3D12) and transpiled to HLSL (D3D11) or GLSL ES
-// by misc/shaders/build_shaders.py. Keep attribute locations and bindings stable:
+// by plugins/Shaders/build_shaders.py. Keep attribute locations and bindings stable:
 // the engine derives the vertex layout and resource bindings from SPIR-V reflection.
 
 layout(location = 0) in vec3 a_position;

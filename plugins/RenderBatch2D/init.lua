@@ -41,10 +41,10 @@ function RenderBatch2D.create(win, backend)
     r.font = Font.create8x8(r)
     r.white_texture = r.handle:create_texture2d(1, 1, 'rgba', '\255\255\255\255')
 
-    -- Shaders come entirely from the tool-generated *_data.lua files. The
-    -- helper picks the right backend variant (glsl / hlsl / spirv) for the
-    -- active renderer, so no per-backend branching is needed here.
-    local shader_lib = require('plugins.RenderBatch2D.shaders')
+    -- Shaders come from plugins.Shaders. The helper picks the right backend
+    -- variant (glsl / hlsl / spirv) for the active renderer, so no per-backend
+    -- branching is needed here.
+    local shader_lib = require('plugins.Shaders')
     local shaders = {
         ['SPRITE2D'] = {
             vertex = shader_lib.get(r.handle, 'sprite2d', 'vertex'),

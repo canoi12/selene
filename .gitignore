@@ -7,3 +7,6 @@ src/third/SDL2/
 .tmp/
 .temp/
 .idea/
+.aider*
+plugins/Shaders/_work/
+__pycache__/
