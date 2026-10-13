@@ -1,5 +1,3 @@
-#include "SDL_stdinc.h"
-#include "lua.h"
 #include "selene.h"
 #include "lua_helper.h"
 
