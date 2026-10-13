@@ -41,14 +41,21 @@ function RenderBatch2D.create(win, backend)
     r.font = Font.create8x8(r)
     r.white_texture = r.handle:create_texture2d(1, 1, 'rgba', '\255\255\255\255')
 
-    if backend == 'opengl' then
-        r.shader_list = require('plugins.RenderBatch2D.gl_shaders').compile_all(r.handle)
-    elseif backend == 'd3d11' then
-        r.shader_list = require('plugins.RenderBatch2D.dx_shaders').compile_all(r.handle)
-    elseif backend == 'vulkan' then
-        r.shader_list = require('plugins.RenderBatch2D.spirv_shaders').compile_all(r.handle)
-    end
-    local shaders = r.shader_list
+    -- Shaders come entirely from the tool-generated *_data.lua files. The
+    -- helper picks the right backend variant (glsl / hlsl / spirv) for the
+    -- active renderer, so no per-backend branching is needed here.
+    local shader_lib = require('plugins.RenderBatch2D.shaders')
+    local shaders = {
+        ['SPRITE2D'] = {
+            vertex = shader_lib.get(r.handle, 'sprite2d', 'vertex'),
+            pixel = shader_lib.get(r.handle, 'sprite2d', 'pixel'),
+        },
+        ['PRIMITIVE2D'] = {
+            vertex = shader_lib.get(r.handle, 'primitive2d', 'vertex'),
+            pixel = shader_lib.get(r.handle, 'primitive2d', 'pixel'),
+        },
+    }
+    r.shader_list = shaders
 
     r.pipelines = {
         ['SPRITE2D'] = r.handle:create_pipeline {
