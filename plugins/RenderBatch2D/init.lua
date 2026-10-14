@@ -237,7 +237,9 @@ function RenderBatch2D:end_pass()
         elseif cmd.type == 'sphere' then
             self.batch:push_fill_sphere(table.unpack(cmd.args))
         elseif cmd.type == 'text' then
-            self.font:draw(cmd.texture, table.unpack(cmd.args))
+            local font = cmd.font
+            self.batch:push_text(font.texture, font.glyphs, table.unpack(cmd.args))
+            -- self.font:draw(cmd.texture, table.unpack(cmd.args))
         elseif cmd.type == 'draw' then
             cmd.drawable:draw(self, table.unpack(cmd.args))
         end
