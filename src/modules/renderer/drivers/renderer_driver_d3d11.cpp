@@ -37,6 +37,14 @@ const DXGI_FORMAT dx11_pixel_formats_values[] = {
     DXGI_FORMAT_B8G8R8A8_UNORM
 };
 
+/* luaL_error/lua_pushfstring do not support %x/%X/%08X (only %s, %d, %f, %p,
+ * %c and %%), so format HRESULTs with snprintf first. */
+static int dx11_lua_error_hr(lua_State* L, const char* what, HRESULT hr) {
+    char msg[160];
+    snprintf(msg, sizeof(msg), "%s: 0x%08X", what, (unsigned)hr);
+    return luaL_error(L, "%s", msg);
+}
+
 int l_DX11_Renderer__destroy(lua_State* L) {
     CHECK_META(selene_Renderer);
     luaL_unref(L, LUA_REGISTRYINDEX, self->l_window_ref);
@@ -101,12 +109,17 @@ int l_DX11_Renderer__create_pipeline(lua_State* L) {
     int len = desc.layout.count;
     D3D11_INPUT_ELEMENT_DESC layout_desc[8];
     memset(layout_desc, 0, sizeof(layout_desc));
+    /* spirv-cross emits vertex inputs as `TEXCOORD{location}`, which D3D parses
+     * as SemanticName "TEXCOORD" with SemanticIndex = location. D3D11 matches
+     * the input layout to the vertex shader by (SemanticName, SemanticIndex),
+     * so mirror that here. The parser stores 'location' in attributes[i].binding
+     * (falling back to the attribute index). */
     for (int i = 0; i < len; i++) {
         D3D11_INPUT_ELEMENT_DESC* l = layout_desc + i;
         int size = desc.layout.attributes[i].size;
         int type = desc.layout.attributes[i].type;
-        l->SemanticName = pipe->layout.attributes[i].name;
-        l->SemanticIndex = 0;
+        l->SemanticName = "TEXCOORD";
+        l->SemanticIndex = (UINT)desc.layout.attributes[i].binding;
         switch (type) {
             case SELENE_FLOAT: {
                 if (size == 1) l->Format = DXGI_FORMAT_R32_FLOAT;
@@ -124,12 +137,14 @@ int l_DX11_Renderer__create_pipeline(lua_State* L) {
         l->InstanceDataStepRate = 0;
     }
     ID3D11InputLayout* layout = NULL;
-    self->dx11.device->CreateInputLayout(
+    HRESULT hrLayout = self->dx11.device->CreateInputLayout(
             layout_desc,
             len,
             desc.vs->dx11.blob->GetBufferPointer(),
             desc.vs->dx11.blob->GetBufferSize(),
             &layout);
+    if (FAILED(hrLayout))
+        return dx11_lua_error_hr(L, "failed to create D3D11 input layout", hrLayout);
     pipe->dx11.input_layout = layout;
 
     D3D11_BLEND_DESC blendDesc = {};
@@ -145,9 +160,12 @@ int l_DX11_Renderer__create_pipeline(lua_State* L) {
     depthDesc.DepthFunc = dx11_comparison_funcs[desc.depth.depth_func];
     depthDesc.DepthWriteMask = desc.depth.depth_write_mask
         ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+    /* Always create the state, even when depth is disabled: OMSetDepthStencilState
+     * with NULL restores the D3D11 default (depth ENABLED), which wrongly
+     * depth-tests pipelines that asked for no depth (sprites / 2D) against an
+     * uncleared depth buffer and ends up drawing nothing. */
     pipe->dx11.depth_stencil_state = NULL;
-    if (depthDesc.DepthEnable)
-        self->dx11.device->CreateDepthStencilState(&depthDesc, &pipe->dx11.depth_stencil_state);
+    self->dx11.device->CreateDepthStencilState(&depthDesc, &pipe->dx11.depth_stencil_state);
 
     D3D11_RASTERIZER_DESC rasterDesc = {};
     rasterDesc.DepthClipEnable = FALSE;
@@ -473,7 +491,7 @@ int l_DX11_Renderer__create_texture2d(lua_State* L) {
     ID3D11Texture2D* handle = nullptr;
     HRESULT hr = self->dx11.device->CreateTexture2D(&desc, data ? &subResource : nullptr, &handle);
     if (FAILED(hr)) {
-        return luaL_error(L, "Failed to create texture: 0x%08X", hr);
+        return dx11_lua_error_hr(L, "failed to create texture", hr);
     }
 
     // Create shader resource view
@@ -481,7 +499,7 @@ int l_DX11_Renderer__create_texture2d(lua_State* L) {
     hr = self->dx11.device->CreateShaderResourceView(handle, nullptr, &srv);
     if (FAILED(hr)) {
         handle->Release();
-        return luaL_error(L, "Failed to create shader resource view: 0x%08X", hr);
+        return dx11_lua_error_hr(L, "failed to create shader resource view", hr);
     }
 
     NEW_UDATA(selene_Texture2D, tex);
@@ -584,7 +602,7 @@ int l_DX11_Renderer__create_render_target(lua_State* L) {
     ID3D11RenderTargetView* rtv = nullptr;
     HRESULT hr = self->dx11.device->CreateRenderTargetView(color->dx11.tex2d, nullptr, &rtv);
     if (FAILED(hr)) {
-        return luaL_error(L, "Failed to create render target view: 0x%08X", hr);
+        return dx11_lua_error_hr(L, "failed to create render target view", hr);
     }
 
     // Create shader resource view
@@ -592,7 +610,7 @@ int l_DX11_Renderer__create_render_target(lua_State* L) {
     hr = self->dx11.device->CreateShaderResourceView(color->dx11.tex2d, nullptr, &srv);
     if (FAILED(hr)) {
         rtv->Release();
-        return luaL_error(L, "Failed to create shader resource view: 0x%08X", hr);
+        return dx11_lua_error_hr(L, "failed to create shader resource view", hr);
     }
 
     ID3D11DepthStencilView* dsv = NULL;
@@ -616,6 +634,11 @@ int l_DX11_Renderer__create_render_target(lua_State* L) {
     target->dx11.dsv = dsv;
     target->depth = depth;
     target->dx11.srv = srv;
+    /* width/height are read back from Lua (render target metatable) to size the
+     * viewport in RenderBatch2D.begin_pass; leaving them uninitialised yields a
+     * garbage/zero viewport and nothing renders into the target. */
+    target->width = color->width;
+    target->height = color->height;
     return 1;
 }
 
@@ -905,6 +928,23 @@ int l_DX11_Renderer__flush(lua_State* L) {
                 state.index = b;
             }
                 break;
+            case RENDER_COMMAND_UPDATE_UNIFORM_BUFFER: {
+                /* Upload CPU data into a constant buffer. update_frame_data sends
+                 * the selene_FrameData (projection/view); the D3D11 driver used
+                 * to ignore this command, leaving the buffer zeroed so the vertex
+                 * shader transformed every vertex to the origin. */
+                selene_GpuBuffer* b = rc->uniform.buffer;
+                if (b) {
+                    D3D11_MAPPED_SUBRESOURCE mapped;
+                    if (SUCCEEDED(self->dx11.context->Map(
+                            b->dx11.handle, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+                        memcpy((char*)mapped.pData + rc->uniform.offset,
+                               &rc->uniform.frame, rc->uniform.size);
+                        self->dx11.context->Unmap(b->dx11.handle, 0);
+                    }
+                }
+            }
+                break;
             case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
                 selene_GpuBuffer* b = rc->buffer.ptr;
                 UINT slot = (UINT)rc->buffer.slot;
@@ -990,7 +1030,28 @@ int l_DX11_Renderer__present(lua_State* L) {
     CHECK_META(selene_Renderer);
     l_DX11_Renderer__flush(L);
     //SDL_GL_SwapWindow(self->window_ptr);
-    self->dx11.swap_chain->Present(0, 0);
+    HRESULT hrPresent = self->dx11.swap_chain->Present(0, 0);
+    if (FAILED(hrPresent))
+        fprintf(stdout, "[dx11] Present failed: 0x%08X\n", (unsigned)hrPresent);
+    /* Flip-model swap chains (DXGI_SWAP_EFFECT_FLIP_DISCARD) rotate the back
+     * buffer on Present, so the default render target view must be re-created
+     * from the current back buffer every frame. Otherwise every frame after the
+     * first draws into a stale buffer that is never presented (black window). */
+    ID3D11Texture2D* backBuffer = NULL;
+    HRESULT hrGet = self->dx11.swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+    if (FAILED(hrGet)) {
+        fprintf(stdout, "[dx11] GetBuffer failed: 0x%08X\n", (unsigned)hrGet);
+    } else {
+        ID3D11RenderTargetView* newRtv = NULL;
+        HRESULT hrRtv = self->dx11.device->CreateRenderTargetView(backBuffer, NULL, &newRtv);
+        if (FAILED(hrRtv)) {
+            fprintf(stdout, "[dx11] CreateRenderTargetView failed: 0x%08X\n", (unsigned)hrRtv);
+        } else {
+            if (self->default_target.dx11.rtv) self->default_target.dx11.rtv->Release();
+            self->default_target.dx11.rtv = newRtv;
+        }
+        backBuffer->Release();
+    }
     return 0;
 }
 
@@ -1059,7 +1120,7 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     // sd.OutputWindow = hwnd;
     sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    sd.Flags = DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY;
+    sd.Flags = 0;
 
     // Create swap chain
     result = dxgiFactory->CreateSwapChainForHwnd(
@@ -1165,7 +1226,7 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
     sd.OutputWindow = hwnd;
     sd.Windowed = TRUE;
     sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    sd.Flags = DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY;
+    sd.Flags = 0;
     HRESULT result = D3D11CreateDeviceAndSwapChain(
         NULL,                    // Adapter
         D3D_DRIVER_TYPE_HARDWARE,// Driver type
@@ -1220,6 +1281,8 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
     self->default_target.dx11.dsv = dsv;
     self->default_target.depth = (selene_Texture2D*)malloc(sizeof(selene_Texture2D));
     self->default_target.depth->dx11.tex2d = depthStencilBuffer;
+    self->default_target.width = width;
+    self->default_target.height = height;
 
     self->width = width;
     self->height = height;
