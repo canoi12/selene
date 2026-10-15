@@ -616,6 +616,11 @@ struct selene_PipelineDesc {
     struct selene_PipelineBinding bindings[SELENE_PIPELINE_MAX_BINDINGS];
 };
 
+#define SELENE_VK_MAX_FRAMES 2
+#define SELENE_VK_MAX_SUBMITS 8
+#define SELENE_VK_UBO_RANGE 4096
+#define SELENE_VK_UPLOAD_CAPACITY (256 * 1024)
+
 typedef struct _RenderPipeline selene_RenderPipeline;
 struct _RenderPipeline {
     int id;
@@ -637,7 +642,8 @@ struct _RenderPipeline {
             VkPipeline handle;
             VkPipelineLayout layout;
             VkDescriptorSetLayout descriptor_layout;
-            VkDescriptorSet descriptor_set;
+            VkDescriptorSet descriptor_sets[SELENE_VK_MAX_FRAMES];
+            VkDescriptorSet descriptor_set; /* frame 0, kept for callers that don't index */
             VkShaderModule vs;
             VkShaderModule ps;
             // Cache
@@ -898,7 +904,6 @@ struct _Renderer {
             VkRenderPass render_pass;
             VkRenderPass target_render_pass; /* offscreen: ends in shader-read */
             VkCommandPool command_pool;
-            VkCommandBuffer command_buffer;
             VkFramebuffer* framebuffers;
             unsigned int current_framebuffer;
             VkDescriptorSetLayout descriptor_set_layout;
@@ -908,12 +913,29 @@ struct _Renderer {
             VkQueue graphics_queue;
             VkQueue present_queue;
             struct VulkanSwapchain swapchain;
-            // Sync
-            VkSemaphore image_semaphore;
-            VkSemaphore render_semaphore;
-            VkFence fence;
-            int image_sem_pending;  /* acquire done; next swapchain submit waits */
-            int render_sem_pending; /* last submit signaled render_semaphore */
+            int graphics_family;
+            int present_family;
+            int frame_index;
+            int swapchain_dirty;
+            VkDeviceSize uniform_align;
+            VkDeviceSize ubo_stride;
+            VkFence* images_in_flight;
+            struct {
+                VkCommandBuffer cmd[SELENE_VK_MAX_SUBMITS];
+                int submit_count;
+                int closed;
+                VkFence fence;
+                VkSemaphore image_acquired;
+                VkSemaphore submit_sem[SELENE_VK_MAX_SUBMITS];
+                VkSemaphore present_sem;
+                VkBuffer upload;
+                VkDeviceMemory upload_mem;
+                void* upload_ptr;
+                VkDeviceSize upload_used;
+                int image_sem_pending;
+            } frames[SELENE_VK_MAX_FRAMES];
+            /* Command buffer currently being recorded. Points at frames[frame].cmd[n]. */
+            VkCommandBuffer command_buffer;
         } vk;
 #endif
     };
