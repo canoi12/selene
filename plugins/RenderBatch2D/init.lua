@@ -225,6 +225,7 @@ function RenderBatch2D:end_pass()
             end
         end
         if cmd.type == 'sprite' then
+            self.handle:set_texture(cmd.texture)
             self.batch:push_sprite(cmd.texture, table.unpack(cmd.args))
         elseif cmd.type == 'triangle' then
             self.batch:push_fill_triangle(table.unpack(cmd.args))
@@ -238,9 +239,11 @@ function RenderBatch2D:end_pass()
             self.batch:push_fill_sphere(table.unpack(cmd.args))
         elseif cmd.type == 'text' then
             local font = cmd.font
+            self.handle:set_texture(font.texture)
             self.batch:push_text(font.texture, font.glyphs, table.unpack(cmd.args))
             -- self.font:draw(cmd.texture, table.unpack(cmd.args))
         elseif cmd.type == 'draw' then
+            self.handle:set_texture(cmd.texture)
             cmd.drawable:draw(self, table.unpack(cmd.args))
         end
     end
