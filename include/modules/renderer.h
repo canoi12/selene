@@ -834,6 +834,21 @@ enum _RendererBackend {
 };
 
 #ifndef SELENE_NO_VULKAN
+struct VulkanFrame {
+    VkCommandBuffer cmd[SELENE_VK_MAX_SUBMITS];
+    int submit_count;
+    int closed;
+    VkFence fence;
+    VkSemaphore image_acquired;
+    VkSemaphore submit_sem[SELENE_VK_MAX_SUBMITS];
+    VkSemaphore present_sem;
+    VkBuffer upload;
+    VkDeviceMemory upload_mem;
+    void* upload_ptr;
+    VkDeviceSize upload_used;
+    int image_sem_pending;
+};
+
 struct VulkanContext {
     VkInstance instance;
     VkSurfaceKHR surface;
@@ -880,6 +895,8 @@ struct _Renderer {
             ID3D11Device* device;
             ID3D11DeviceContext* context;
             IDXGISwapChain* swap_chain;
+            /* PS SRVs bound per slot; detached before setting a render target to avoid D3D11 hazards. */
+            ID3D11ShaderResourceView* bound_ps_srvs[SELENE_PIPELINE_MAX_BINDINGS];
         } dx11;
 #endif
 #ifndef SELENE_NO_D3D12
@@ -920,20 +937,7 @@ struct _Renderer {
             VkDeviceSize uniform_align;
             VkDeviceSize ubo_stride;
             VkFence* images_in_flight;
-            struct {
-                VkCommandBuffer cmd[SELENE_VK_MAX_SUBMITS];
-                int submit_count;
-                int closed;
-                VkFence fence;
-                VkSemaphore image_acquired;
-                VkSemaphore submit_sem[SELENE_VK_MAX_SUBMITS];
-                VkSemaphore present_sem;
-                VkBuffer upload;
-                VkDeviceMemory upload_mem;
-                void* upload_ptr;
-                VkDeviceSize upload_used;
-                int image_sem_pending;
-            } frames[SELENE_VK_MAX_FRAMES];
+            struct VulkanFrame frames[SELENE_VK_MAX_FRAMES];
             /* Command buffer currently being recorded. Points at frames[frame].cmd[n]. */
             VkCommandBuffer command_buffer;
         } vk;

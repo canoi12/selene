@@ -868,7 +868,7 @@ static int vk_snapshot(selene_Renderer* self, selene_GpuBuffer* buf,
                        VkDeviceSize bytes, VkDeviceSize align,
                        VkBuffer* out_buf, VkDeviceSize* out_off) {
     if (!buf || !buf->vk.mem || buf->size <= 0) return -1;
-    typeof(self->vk.frames[0])* fr = &self->vk.frames[self->vk.frame_index];
+    struct VulkanFrame* fr = &self->vk.frames[self->vk.frame_index];
     if (!fr->upload_ptr) return -1;
     if (align < 1) align = 1;
     VkDeviceSize off = (fr->upload_used + align - 1) & ~(align - 1);
@@ -1002,7 +1002,7 @@ int l_VK_Renderer__flush(lua_State *L) {
     uint32_t ubo_dyn[SELENE_PIPELINE_MAX_BINDINGS];
     memset(ubo_dyn, 0, sizeof(ubo_dyn));
 
-    typeof(self->vk.frames[0])* fr = &self->vk.frames[self->vk.frame_index];
+    struct VulkanFrame* fr = &self->vk.frames[self->vk.frame_index];
     if (!fr->cmd[0]) {
         return luaL_error(L, "Vulkan command buffer not initialized");
     }
@@ -1322,7 +1322,7 @@ static int vk_init_frames(selene_Renderer* self) {
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
     for (int f = 0; f < SELENE_VK_MAX_FRAMES; f++) {
-        typeof(self->vk.frames[0])* fr = &self->vk.frames[f];
+        struct VulkanFrame* fr = &self->vk.frames[f];
         VkCommandBufferAllocateInfo alloc_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .commandPool = self->vk.command_pool,
@@ -1395,7 +1395,7 @@ static int vk_recreate_swapchain(selene_Renderer* self) {
 }
 
 static int vk_close_frame(selene_Renderer* self) {
-    typeof(self->vk.frames[0])* fr = &self->vk.frames[self->vk.frame_index];
+    struct VulkanFrame* fr = &self->vk.frames[self->vk.frame_index];
     if (fr->closed) return 0;
 
     VkSemaphore waits[1];
@@ -1439,7 +1439,7 @@ int l_VK_Renderer__begin_frame(lua_State *L) {
             return luaL_error(L, "failed to recreate Vulkan swapchain");
     }
 
-    typeof(self->vk.frames[0])* fr = &self->vk.frames[self->vk.frame_index];
+    struct VulkanFrame* fr = &self->vk.frames[self->vk.frame_index];
     if (fr->fence) {
         vkWaitForFences(self->vk.device, 1, &fr->fence, VK_TRUE, UINT64_MAX);
         vkResetFences(self->vk.device, 1, &fr->fence);
@@ -1512,7 +1512,7 @@ int l_VK_Renderer__present(lua_State *L) {
         if (rec != 0) return rec;
     }
 
-    typeof(self->vk.frames[0])* fr = &self->vk.frames[self->vk.frame_index];
+    struct VulkanFrame* fr = &self->vk.frames[self->vk.frame_index];
     if (self->vk.present_queue && fr->present_sem) {
         uint32_t image_index = (uint32_t)self->vk.current_framebuffer;
         VkSemaphore signal_sem[] = {fr->present_sem};
