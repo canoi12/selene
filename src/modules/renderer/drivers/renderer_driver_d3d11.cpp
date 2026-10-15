@@ -45,6 +45,24 @@ static int dx11_lua_error_hr(lua_State* L, const char* what, HRESULT hr) {
     return luaL_error(L, "%s", msg);
 }
 
+static void dx11_unbind_ps_srv(selene_Renderer* self, ID3D11ShaderResourceView* srv) {
+    if (!srv) return;
+    ID3D11ShaderResourceView* null_srv = NULL;
+    for (UINT i = 0; i < SELENE_PIPELINE_MAX_BINDINGS; i++) {
+        if (self->dx11.bound_ps_srvs[i] == srv) {
+            self->dx11.context->PSSetShaderResources(i, 1, &null_srv);
+            self->dx11.bound_ps_srvs[i] = NULL;
+        }
+    }
+}
+
+static void dx11_unbind_target_inputs(selene_Renderer* self, selene_RenderTarget* t) {
+    if (!t) return;
+    if (t->color) dx11_unbind_ps_srv(self, t->color->dx11.srv);
+    dx11_unbind_ps_srv(self, t->dx11.srv);
+    if (t->depth) dx11_unbind_ps_srv(self, t->depth->dx11.srv);
+}
+
 int l_DX11_Renderer__destroy(lua_State* L) {
     CHECK_META(selene_Renderer);
     luaL_unref(L, LUA_REGISTRYINDEX, self->l_window_ref);
@@ -564,6 +582,7 @@ int l_DX11_Renderer__create_depth_texture(lua_State* L) {
 int l_DX11_Renderer__destroy_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_Texture2D, tex);
+    dx11_unbind_ps_srv(self, tex->dx11.srv);
     if (tex->dx11.srv) tex->dx11.srv->Release();
     if (tex->dx11.sampler) tex->dx11.sampler->Release();
     if (tex->dx11.tex2d) tex->dx11.tex2d->Release();
@@ -645,6 +664,7 @@ int l_DX11_Renderer__create_render_target(lua_State* L) {
 int l_DX11_Renderer__destroy_render_target(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_RenderTarget, target);
+    dx11_unbind_ps_srv(self, target->dx11.srv);
     if (target->dx11.srv) target->dx11.srv->Release();
     if (target->dx11.rtv) target->dx11.rtv->Release();
     if (target->dx11.dsv) target->dx11.dsv->Release();
@@ -791,6 +811,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
         switch (rc->type) {
             case RENDER_COMMAND_BEGIN_PASS: {
                 selene_RenderTarget* t = rc->pass.target ? rc->pass.target : &self->default_target;
+                dx11_unbind_target_inputs(self, t);
                 self->dx11.context->OMSetRenderTargets(1, &t->dx11.rtv, t->dx11.dsv);
                 state.target = t;
                 if (rc->pass.clear_color)
@@ -959,6 +980,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
                     UINT slot = (UINT)renderer_pipeline_binding_index(
                         state.pipe, SELENE_BINDING_TEXTURE, rc->texture.slot);
                     self->dx11.context->PSSetShaderResources(slot, 1, &t->dx11.srv);
+                    if (slot < SELENE_PIPELINE_MAX_BINDINGS) self->dx11.bound_ps_srvs[slot] = t->dx11.srv;
                     ID3D11SamplerState* sampler = t->dx11.sampler;
                     self->dx11.context->PSSetSamplers(slot, 1, &sampler);
                 }
@@ -970,6 +992,7 @@ int l_DX11_Renderer__flush(lua_State* L) {
                 break;
             case RENDER_COMMAND_SET_RENDER_TARGET: {
                 selene_RenderTarget* t = rc->target.ptr ? rc->target.ptr : &(self->default_target);
+                dx11_unbind_target_inputs(self, t);
                 if (rc->target.depth) self->dx11.context->OMSetRenderTargets(1, &(t->dx11.rtv), t->dx11.dsv);
                 else self->dx11.context->OMSetRenderTargets(1, &(t->dx11.rtv), NULL);
                 state.target = t;
@@ -1278,10 +1301,12 @@ extern "C" int l_DX11_Renderer_create(lua_State * L) {
     self->dx11.device = pD3DDevice;
     self->dx11.context = pD3DContext;
     self->dx11.swap_chain = swap_chain;
+    memset(self->dx11.bound_ps_srvs, 0, sizeof(self->dx11.bound_ps_srvs));
+    memset(&self->default_target, 0, sizeof(self->default_target));
 
     self->default_target.dx11.rtv = rtv;
     self->default_target.dx11.dsv = dsv;
-    self->default_target.depth = (selene_Texture2D*)malloc(sizeof(selene_Texture2D));
+    self->default_target.depth = (selene_Texture2D*)calloc(1, sizeof(selene_Texture2D));
     self->default_target.depth->dx11.tex2d = depthStencilBuffer;
     self->default_target.width = width;
     self->default_target.height = height;
