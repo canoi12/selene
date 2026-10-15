@@ -637,7 +637,7 @@ struct _RenderPipeline {
             VkPipeline handle;
             VkPipelineLayout layout;
             VkDescriptorSetLayout descriptor_layout;
-            VkDescriptorSet* descriptor_set;
+            VkDescriptorSet descriptor_set;
             VkShaderModule vs;
             VkShaderModule ps;
             // Cache
@@ -896,6 +896,7 @@ struct _Renderer {
             VkPhysicalDevice phys_device;
             VkDevice device;
             VkRenderPass render_pass;
+            VkRenderPass target_render_pass; /* offscreen: ends in shader-read */
             VkCommandPool command_pool;
             VkCommandBuffer command_buffer;
             VkFramebuffer* framebuffers;
@@ -911,6 +912,8 @@ struct _Renderer {
             VkSemaphore image_semaphore;
             VkSemaphore render_semaphore;
             VkFence fence;
+            int image_sem_pending;  /* acquire done; next swapchain submit waits */
+            int render_sem_pending; /* last submit signaled render_semaphore */
         } vk;
 #endif
     };
@@ -922,6 +925,7 @@ struct _Renderer {
 
     int command_offset;
     int command_count;
+    int commands_submitted;
     struct RenderCommand* command_pool;
 
     lua_CFunction destroy;

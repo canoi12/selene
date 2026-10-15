@@ -11,11 +11,11 @@ return {
         },
         d3d11 = {
             enc = "text",
-            data = "cbuffer Matrices : register(b0)\r\n{\r\n    row_major float4x4 _19_projection : packoffset(c0);\r\n    row_major float4x4 _19_view : packoffset(c4);\r\n};\r\n\r\n\r\nstatic float4 gl_Position;\r\nstatic float3 a_position;\r\nstatic float4 v_color;\r\nstatic float4 a_color;\r\n\r\nstruct SPIRV_Cross_Input\r\n{\r\n    float3 a_position : TEXCOORD0;\r\n    float4 a_color : TEXCOORD1;\r\n};\r\n\r\nstruct SPIRV_Cross_Output\r\n{\r\n    float4 v_color : TEXCOORD0;\r\n    float4 gl_Position : SV_Position;\r\n};\r\n\r\nvoid vert_main()\r\n{\r\n    gl_Position = mul(float4(a_position, 1.0f), mul(_19_view, _19_projection));\r\n    v_color = a_color;\r\n}\r\n\r\nSPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)\r\n{\r\n    a_position = stage_input.a_position;\r\n    a_color = stage_input.a_color;\r\n    vert_main();\r\n    SPIRV_Cross_Output stage_output;\r\n    stage_output.gl_Position = gl_Position;\r\n    stage_output.v_color = v_color;\r\n    return stage_output;\r\n}\r\n",
+            data = "cbuffer Matrices : register(b0)\n{\n    row_major float4x4 _19_projection : packoffset(c0);\n    row_major float4x4 _19_view : packoffset(c4);\n};\n\n\nstatic float4 gl_Position;\nstatic float3 a_position;\nstatic float4 v_color;\nstatic float4 a_color;\n\nstruct SPIRV_Cross_Input\n{\n    float3 a_position : TEXCOORD0;\n    float4 a_color : TEXCOORD1;\n};\n\nstruct SPIRV_Cross_Output\n{\n    float4 v_color : TEXCOORD0;\n    float4 gl_Position : SV_Position;\n};\n\nvoid vert_main()\n{\n    gl_Position = mul(float4(a_position, 1.0f), mul(_19_view, _19_projection));\n    v_color = a_color;\n}\n\nSPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)\n{\n    a_position = stage_input.a_position;\n    a_color = stage_input.a_color;\n    vert_main();\n    SPIRV_Cross_Output stage_output;\n    stage_output.gl_Position = gl_Position;\n    stage_output.v_color = v_color;\n    return stage_output;\n}\n",
         },
         opengles = {
             enc = "text",
-            data = "#version 310 es\r\n\r\nlayout(binding = 0, std140) uniform Matrices\r\n{\r\n    mat4 projection;\r\n    mat4 view;\r\n} _19;\r\n\r\nlayout(location = 0) in vec3 a_position;\r\nlayout(location = 0) out vec4 v_color;\r\nlayout(location = 1) in vec4 a_color;\r\n\r\nvoid main()\r\n{\r\n    gl_Position = (_19.projection * _19.view) * vec4(a_position, 1.0);\r\n    v_color = a_color;\r\n}\r\n\r\n",
+            data = "#version 310 es\n\nlayout(binding = 0, std140) uniform Matrices\n{\n    mat4 projection;\n    mat4 view;\n} _19;\n\nlayout(location = 0) in vec3 a_position;\nlayout(location = 0) out vec4 v_color;\nlayout(location = 1) in vec4 a_color;\n\nvoid main()\n{\n    gl_Position = (_19.projection * _19.view) * vec4(a_position, 1.0);\n    v_color = a_color;\n}\n\n",
         },
         opengl = {
             enc = "text",
@@ -29,11 +29,11 @@ return {
         },
         d3d11 = {
             enc = "text",
-            data = "static float4 FragColor;\r\nstatic float4 v_color;\r\n\r\nstruct SPIRV_Cross_Input\r\n{\r\n    float4 v_color : TEXCOORD0;\r\n};\r\n\r\nstruct SPIRV_Cross_Output\r\n{\r\n    float4 FragColor : SV_Target0;\r\n};\r\n\r\nvoid frag_main()\r\n{\r\n    FragColor = v_color;\r\n}\r\n\r\nSPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)\r\n{\r\n    v_color = stage_input.v_color;\r\n    frag_main();\r\n    SPIRV_Cross_Output stage_output;\r\n    stage_output.FragColor = FragColor;\r\n    return stage_output;\r\n}\r\n",
+            data = "static float4 FragColor;\nstatic float4 v_color;\n\nstruct SPIRV_Cross_Input\n{\n    float4 v_color : TEXCOORD0;\n};\n\nstruct SPIRV_Cross_Output\n{\n    float4 FragColor : SV_Target0;\n};\n\nvoid frag_main()\n{\n    FragColor = v_color;\n}\n\nSPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)\n{\n    v_color = stage_input.v_color;\n    frag_main();\n    SPIRV_Cross_Output stage_output;\n    stage_output.FragColor = FragColor;\n    return stage_output;\n}\n",
         },
         opengles = {
             enc = "text",
-            data = "#version 310 es\r\nprecision mediump float;\r\nprecision highp int;\r\n\r\nlayout(location = 0) out highp vec4 FragColor;\r\nlayout(location = 0) in highp vec4 v_color;\r\n\r\nvoid main()\r\n{\r\n    FragColor = v_color;\r\n}\r\n\r\n",
+            data = "#version 310 es\nprecision mediump float;\nprecision highp int;\n\nlayout(location = 0) out highp vec4 FragColor;\nlayout(location = 0) in highp vec4 v_color;\n\nvoid main()\n{\n    FragColor = v_color;\n}\n\n",
         },
         opengl = {
             enc = "text",

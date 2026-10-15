@@ -123,6 +123,8 @@ int l_VK_Renderer__destroy(lua_State *L) {
                             &(self->vk.command_buffer));
     if (self->vk.command_pool)
         vkDestroyCommandPool(self->vk.device, self->vk.command_pool, NULL);
+    if (self->vk.target_render_pass)
+        vkDestroyRenderPass(self->vk.device, self->vk.target_render_pass, NULL);
     if (self->vk.render_pass)
         vkDestroyRenderPass(self->vk.device, self->vk.render_pass, NULL);
     if (self->vk.device)
@@ -140,6 +142,7 @@ int l_VK_Renderer__destroy(lua_State *L) {
     self->vk.command_buffer = VK_NULL_HANDLE;
     self->vk.command_pool = VK_NULL_HANDLE;
     self->vk.render_pass = VK_NULL_HANDLE;
+    self->vk.target_render_pass = VK_NULL_HANDLE;
 
     self->command_pool = NULL;
     return 0;
@@ -368,6 +371,9 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
             vkDestroyDescriptorSetLayout(self->vk.device, descriptor_layout, NULL);
             return luaL_error(L, "failed to alloc descriptor set, error: 0x%x", result);
         }
+    } else {
+        // Initialize descriptorSet to NULL when there are no bindings
+        descriptorSet = VK_NULL_HANDLE;
     }
 
     VkPipelineLayoutCreateInfo pipeline_layout_info = {
@@ -423,6 +429,7 @@ int l_VK_Renderer__create_pipeline(lua_State *L) {
 static int l_VK_Renderer__destroy_pipeline(lua_State *L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_RenderPipeline, pipeline);
+    vkDeviceWaitIdle(self->vk.device); /* the last submit may still use it */
     if (pipeline->vk.descriptor_layout)
         vkDestroyDescriptorSetLayout(self->vk.device, pipeline->vk.descriptor_layout, NULL);
     if (pipeline->vk.layout)
@@ -485,6 +492,7 @@ int l_VK_Renderer__create_buffer(lua_State *L) {
 int l_VK_Renderer__destroy_buffer(lua_State *L) {
     CHECK_META(selene_Renderer);
     CHECK_UDATA(selene_GpuBuffer, buffer);
+    vkDeviceWaitIdle(self->vk.device); /* the last submit may still use it */
     if (buffer->vk.handle)
         vkDestroyBuffer(self->vk.device, buffer->vk.handle, NULL);
     if (buffer->vk.mem)
@@ -525,6 +533,10 @@ int l_VK_Renderer__create_texture2d(lua_State *L) {
     if (lua_isboolean(L, arg))
         target = lua_toboolean(L, arg++);
     VkFormat pixel_format = vk_pixel_formats_values[opt]; // Map to VkFormat
+    // Render targets are drawn with the swapchain render pass, so the
+    // attachment format must match it (VUID-VkFramebufferCreateInfo-pAttachments-00880).
+    if (target)
+        pixel_format = self->vk.swapchain.format;
 
     VkImageCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -646,10 +658,11 @@ int l_VK_Renderer__create_render_target(lua_State* L) {
     CHECK_UDATA(selene_Texture2D, color);
     TEST_UDATA(selene_Texture2D, depth);
 
-    VkFramebuffer handle = malloc(sizeof(VkFramebuffer));
+    VkFramebuffer handle = VK_NULL_HANDLE;
+    VkRenderPass rp = self->vk.target_render_pass ? self->vk.target_render_pass : self->vk.render_pass;
     VkFramebufferCreateInfo info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = self->vk.render_pass,
+        .renderPass = rp,
         .attachmentCount = 1,
         .pAttachments = &color->vk.view,
         .width = color->width,
@@ -661,8 +674,11 @@ int l_VK_Renderer__create_render_target(lua_State* L) {
     }
 
     NEW_UDATA(selene_RenderTarget, target);
+    memset(target, 0, sizeof(*target));
     target->color = color;
     target->depth = depth;
+    target->width = color->width;
+    target->height = color->height;
     target->vk.handle = handle;
 
     return 1;
@@ -725,8 +741,25 @@ int l_VK_Renderer__destroy_shader(lua_State *L) {
  */
 
 static void vk_write_texture_descriptor(selene_Renderer* self, selene_RenderPipeline* pipe, int slot, selene_Texture2D* tex) {
-    if (!pipe || !pipe->vk.descriptor_set || !tex) return;
+    if (!pipe || !tex) return;
+    // Additional check for valid device and descriptor set
+    if (!self || !self->vk.device) return;
+    if (!pipe->vk.descriptor_set) return;
+    
+    // Don't try to update descriptors if there are no bindings
+    if (pipe->binding_count <= 0) return;
+    
     int binding = renderer_pipeline_binding_index(pipe, SELENE_BINDING_TEXTURE, slot);
+    // The pipeline layout may not declare a texture binding (e.g. primitive2d):
+    // never write a combined image sampler over another descriptor type.
+    if (binding < 0 || binding >= pipe->binding_count ||
+        pipe->bindings[binding].type != SELENE_BINDING_TEXTURE) return;
+    
+    // Validate texture components before updating descriptors
+    if (tex->vk.view == VK_NULL_HANDLE || tex->vk.sampler == VK_NULL_HANDLE) {
+        return;
+    }
+    
     VkDescriptorImageInfo image_info = {
         .imageView = tex->vk.view,
         .sampler = tex->vk.sampler,
@@ -745,8 +778,17 @@ static void vk_write_texture_descriptor(selene_Renderer* self, selene_RenderPipe
 }
 
 static void vk_write_uniform_descriptor(selene_Renderer* self, selene_RenderPipeline* pipe, int slot, selene_GpuBuffer* buf) {
-    if (!pipe || !pipe->vk.descriptor_set || !buf) return;
+    if (!pipe || !buf) return;
+    // Additional check for valid device and descriptor set
+    if (!self || !self->vk.device) return;
+    if (!pipe->vk.descriptor_set) return;
+    
+    // Don't try to update descriptors if there are no bindings
+    if (pipe->binding_count <= 0) return;
+    
     int binding = renderer_pipeline_binding_index(pipe, SELENE_BINDING_UNIFORM, slot);
+    if (binding < 0 || binding >= pipe->binding_count ||
+        pipe->bindings[binding].type != SELENE_BINDING_UNIFORM) return;
     VkDescriptorBufferInfo buffer_info = {
         .buffer = buf->vk.handle,
         .offset = 0,
@@ -754,31 +796,134 @@ static void vk_write_uniform_descriptor(selene_Renderer* self, selene_RenderPipe
     };
     VkWriteDescriptorSet write = {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = pipe->vk.descriptor_set, // Fixed: Removed [0] indexing
+        .dstSet = pipe->vk.descriptor_set,
         .dstBinding = (uint32_t)binding,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .pBufferInfo = &buffer_info,
         .descriptorCount = 1,
         .dstArrayElement = 0,
     };
+    
+    // Validate the buffer handle before updating descriptors
+    if (buf->vk.handle == VK_NULL_HANDLE) {
+        return;
+    }
+    
     vkUpdateDescriptorSets(self->vk.device, 1, &write, 0, NULL);
 }
 
+/* Descriptor sets are host-written before recording. The plugin may bind
+ * textures/uniforms before set_pipeline, so remember the last resource per
+ * slot and re-apply it whenever the pipeline changes. */
 static void vk_update_descriptors_from_commands(selene_Renderer* self) {
     selene_RenderPipeline* pipe = NULL;
+    selene_Texture2D* textures[SELENE_PIPELINE_MAX_BINDINGS] = {0};
+    selene_GpuBuffer* uniforms[SELENE_PIPELINE_MAX_BINDINGS] = {0};
     for (int i = 0; i < self->command_offset; i++) {
         struct RenderCommand* rc = self->command_pool + i;
-        if (rc->type == RENDER_COMMAND_SET_PIPELINE)
+        if (rc->type == RENDER_COMMAND_SET_PIPELINE) {
             pipe = rc->pipeline;
-        else if (rc->type == RENDER_COMMAND_SET_TEXTURE)
-            vk_write_texture_descriptor(self, pipe, rc->texture.slot, (selene_Texture2D*)rc->texture.ptr);
-        else if (rc->type == RENDER_COMMAND_SET_UNIFORM_BUFFER)
-            vk_write_uniform_descriptor(self, pipe, rc->buffer.slot, rc->buffer.ptr);
+            if (!pipe) continue;
+            for (int b = 0; b < SELENE_PIPELINE_MAX_BINDINGS; b++) {
+                if (textures[b]) vk_write_texture_descriptor(self, pipe, b, textures[b]);
+                if (uniforms[b]) vk_write_uniform_descriptor(self, pipe, b, uniforms[b]);
+            }
+        } else if (rc->type == RENDER_COMMAND_SET_TEXTURE) {
+            int slot = rc->texture.slot;
+            if (slot < 0 || slot >= SELENE_PIPELINE_MAX_BINDINGS) slot = 0;
+            textures[slot] = (selene_Texture2D*)rc->texture.ptr;
+            vk_write_texture_descriptor(self, pipe, slot, textures[slot]);
+        } else if (rc->type == RENDER_COMMAND_SET_UNIFORM_BUFFER) {
+            int slot = rc->buffer.slot;
+            if (slot < 0 || slot >= SELENE_PIPELINE_MAX_BINDINGS) slot = 0;
+            uniforms[slot] = rc->buffer.ptr;
+            vk_write_uniform_descriptor(self, pipe, slot, uniforms[slot]);
+        }
     }
 }
 
 int l_VK_Renderer__begin_frame(lua_State *L);
 int l_VK_Renderer__end_frame(lua_State *L);
+
+/* Set while recording a flush: this command buffer renders to the swapchain. */
+static int s_recording_swapchain;
+
+static VkExtent2D vk_pass_extent(selene_Renderer* self, selene_RenderTarget* target) {
+    if (target && target->width > 0 && target->height > 0)
+        return (VkExtent2D){ (uint32_t)target->width, (uint32_t)target->height };
+    return self->vk.swapchain.extent;
+}
+
+/* Offscreen images are sampled in a later pass. The swapchain pass ends in
+ * PRESENT, which cannot be sampled, so targets use their own render pass. */
+static void vk_end_draw_pass(selene_Renderer* self, int* open, selene_RenderTarget* target) {
+    if (!*open) return;
+    vkCmdEndRenderPass(self->vk.command_buffer);
+    *open = 0;
+    /* finalLayout is already shader-read; this barrier publishes the color
+     * writes to the fragment shader that samples the canvas next. */
+    if (!target || !target->color || !target->color->vk.handle) return;
+    VkImageMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = target->color->vk.handle,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+    vkCmdPipelineBarrier(self->vk.command_buffer,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, NULL, 0, NULL, 1, &barrier);
+}
+
+static void vk_open_draw_pass(selene_Renderer* self, selene_RenderTarget* target,
+                              int* open, selene_RenderTarget** current, const float* clear_color) {
+    if (*open && *current == target) return;
+    vk_end_draw_pass(self, open, *current);
+
+    int offscreen = target && target->vk.handle;
+    VkRenderPass rp = offscreen && self->vk.target_render_pass
+        ? self->vk.target_render_pass : self->vk.render_pass;
+    VkFramebuffer fb = offscreen
+        ? target->vk.handle
+        : self->vk.framebuffers[self->vk.current_framebuffer];
+    VkExtent2D extent = vk_pass_extent(self, offscreen ? target : NULL);
+    float rgba[4] = {0.f, 0.f, 0.f, 1.f};
+    if (clear_color) {
+        rgba[0] = clear_color[0];
+        rgba[1] = clear_color[1];
+        rgba[2] = clear_color[2];
+        rgba[3] = clear_color[3];
+    }
+    VkClearValue clear_value = {.color = {{rgba[0], rgba[1], rgba[2], rgba[3]}}};
+    VkRenderPassBeginInfo info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = rp,
+        .framebuffer = fb,
+        .renderArea = {.offset = {0, 0}, .extent = extent},
+        .clearValueCount = 1,
+        .pClearValues = &clear_value,
+    };
+    vkCmdBeginRenderPass(self->vk.command_buffer, &info, VK_SUBPASS_CONTENTS_INLINE);
+    if (!offscreen) s_recording_swapchain = 1;
+    VkViewport view;
+    vk_apply_viewport(&view, 0, 0, (int)extent.width, (int)extent.height);
+    VkRect2D scissor = {.offset = {0, 0}, .extent = extent};
+    vkCmdSetViewport(self->vk.command_buffer, 0, 1, &view);
+    vkCmdSetScissor(self->vk.command_buffer, 0, 1, &scissor);
+    *open = 1;
+    *current = target;
+}
 
 int l_VK_Renderer__flush(lua_State *L) {
     CHECK_META(selene_Renderer);
@@ -800,7 +945,25 @@ int l_VK_Renderer__flush(lua_State *L) {
         return luaL_error(L, "Vulkan command buffer not initialized");
     }
 
+    /* Each flush submits only the commands added since the previous one.
+     * The plugin overwrites the vertex buffer every pass, so re-recording the
+     * whole frame at present time would replay earlier draws with the wrong
+     * vertices. */
+    if (!self->in_frame) {
+        int rec = l_VK_Renderer__begin_frame(L);
+        if (rec != 0) return rec;
+    }
+    if (self->commands_submitted >= self->command_offset)
+        return 0;
+
+    if (self->commands_submitted > 0 && self->vk.fence) {
+        vkWaitForFences(self->vk.device, 1, &self->vk.fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(self->vk.device, 1, &self->vk.fence);
+        vkResetCommandBuffer(self->vk.command_buffer, 0);
+    }
+
     vk_update_descriptors_from_commands(self);
+    s_recording_swapchain = 0;
 
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -810,56 +973,28 @@ int l_VK_Renderer__flush(lua_State *L) {
     if (vkBeginCommandBuffer(self->vk.command_buffer, &begin_info) != VK_SUCCESS) {
         return luaL_error(L, "failed to begin the Vulkan command buffer");
     }
-    
-    // Check if we have a valid framebuffer
-    if (self->vk.current_framebuffer >= self->vk.swapchain.image_count) {
-        vkEndCommandBuffer(self->vk.command_buffer);
-        return luaL_error(L, "invalid framebuffer index");
-    }
-    
-    VkClearValue clear_value = {.color = {{0.f, 0.f, 0.f, 1.f}}};
-    if (self->command_offset > 0 &&
-        self->command_pool[0].type == RENDER_COMMAND_BEGIN_PASS &&
-        self->command_pool[0].pass.clear_color) {
-        float* c = self->command_pool[0].pass.color;
-        clear_value.color.float32[0] = c[0];
-        clear_value.color.float32[1] = c[1];
-        clear_value.color.float32[2] = c[2];
-        clear_value.color.float32[3] = c[3];
-    }
-    
-    // Check if framebuffer is valid
-    if (!self->vk.framebuffers || !self->vk.framebuffers[self->vk.current_framebuffer]) {
+
+    if (self->vk.current_framebuffer >= self->vk.swapchain.image_count ||
+        !self->vk.framebuffers || !self->vk.framebuffers[self->vk.current_framebuffer]) {
         vkEndCommandBuffer(self->vk.command_buffer);
         return luaL_error(L, "invalid framebuffer");
     }
-    
-    VkRenderPassBeginInfo render_pass_info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = self->vk.render_pass,
-        .framebuffer = self->vk.framebuffers[self->vk.current_framebuffer],
-        .renderArea =
-            {
-                .offset = {0, 0},
-                .extent = self->vk.swapchain.extent,
-            },
-        .clearValueCount = 1,
-        .pClearValues = &clear_value,
-    };
-    vkCmdBeginRenderPass(self->vk.command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport view;
-    vk_apply_viewport(&view, 0, 0,
-                      (int)self->vk.swapchain.extent.width,
-                      (int)self->vk.swapchain.extent.height);
-    VkRect2D scissor;
-    scissor.extent = self->vk.swapchain.extent;
-    scissor.offset = (VkOffset2D){0, 0};
-    vkCmdSetViewport(self->vk.command_buffer, 0, 1, &view);
-    vkCmdSetScissor(self->vk.command_buffer, 0, 1, &scissor);
-    for (int i = 0; i < self->command_offset; i++) {
+
+    /* Passes may target the swapchain or an offscreen framebuffer. The pass
+     * opens on the first clear/draw and closes on end_pass or a target change
+     * so the canvas is in shader-read before a later pass samples it. */
+    int pass_open = 0;
+    selene_RenderTarget* draw_target = NULL;
+    for (int i = self->commands_submitted; i < self->command_offset; i++) {
         struct RenderCommand *rc = self->command_pool + i;
     switch (rc->type) {
         case RENDER_COMMAND_BEGIN_PASS: {
+            if (rc->pass.target != draw_target) {
+                vk_end_draw_pass(self, &pass_open, draw_target);
+                draw_target = rc->pass.target;
+            }
+            vk_open_draw_pass(self, draw_target, &pass_open, &draw_target,
+                              rc->pass.clear_color ? rc->pass.color : NULL);
             if (rc->pass.has_viewport) {
                 VkViewport pass_view;
                 vk_apply_viewport(&pass_view,
@@ -871,7 +1006,7 @@ int l_VK_Renderer__flush(lua_State *L) {
                 VkRect2D pass_scissor;
                 if (!rc->pass.scissor.enabled) {
                     pass_scissor.offset = (VkOffset2D){0, 0};
-                    pass_scissor.extent = self->vk.swapchain.extent;
+                    pass_scissor.extent = vk_pass_extent(self, draw_target);
                 } else {
                     pass_scissor.offset.x = rc->pass.scissor.x;
                     pass_scissor.offset.y = rc->pass.scissor.y;
@@ -888,7 +1023,7 @@ int l_VK_Renderer__flush(lua_State *L) {
                     .clearValue = {.color = {{c[0], c[1], c[2], c[3]}}},
                 };
                 VkClearRect clear_rect = {
-                    .rect = {.offset = {0, 0}, .extent = self->vk.swapchain.extent},
+                    .rect = {.offset = {0, 0}, .extent = vk_pass_extent(self, draw_target)},
                     .baseArrayLayer = 0,
                     .layerCount = 1,
                 };
@@ -896,8 +1031,10 @@ int l_VK_Renderer__flush(lua_State *L) {
             }
         } break;
         case RENDER_COMMAND_END_PASS:
+            vk_end_draw_pass(self, &pass_open, draw_target);
             break;
         case RENDER_COMMAND_CLEAR_COLOR: {
+            vk_open_draw_pass(self, draw_target, &pass_open, &draw_target, rc->clear.color);
             float *c = rc->clear.color;
             // fprintf(stdout, "Clear Color command\n");
             VkClearAttachment clear_attachment = {
@@ -910,7 +1047,7 @@ int l_VK_Renderer__flush(lua_State *L) {
                 .rect =
                     {
                         .offset = {0, 0},
-                        .extent = self->vk.swapchain.extent,
+                        .extent = vk_pass_extent(self, draw_target),
                     },
                 .baseArrayLayer = 0,
                 .layerCount = 1,
@@ -946,10 +1083,12 @@ int l_VK_Renderer__flush(lua_State *L) {
             }
         } break;
         case RENDER_COMMAND_DRAW: {
+            vk_open_draw_pass(self, draw_target, &pass_open, &draw_target, NULL);
             uint32_t instances = rc->draw.instance_count < 1 ? 1u : (uint32_t)rc->draw.instance_count;
             vkCmdDraw(self->vk.command_buffer, (uint32_t)rc->draw.count, instances, (uint32_t)rc->draw.start, 0);
         } break;
         case RENDER_COMMAND_DRAW_INDEXED: {
+            vk_open_draw_pass(self, draw_target, &pass_open, &draw_target, NULL);
             uint32_t instances = rc->draw.instance_count < 1 ? 1u : (uint32_t)rc->draw.instance_count;
             vkCmdDrawIndexed(self->vk.command_buffer, (uint32_t)rc->draw.count, instances,
                              (uint32_t)rc->draw.start, rc->draw.base_vertex, 0);
@@ -961,6 +1100,21 @@ int l_VK_Renderer__flush(lua_State *L) {
                     state.pipe->vk.layout, 0, 1, &state.pipe->vk.descriptor_set, 0, NULL);
             }
         } break;
+        case RENDER_COMMAND_UPDATE_UNIFORM_BUFFER: {
+            selene_GpuBuffer* b = rc->uniform.buffer;
+            if (b && b->vk.mem && rc->uniform.size > 0 && rc->uniform.offset >= 0 &&
+                rc->uniform.offset < b->size) {
+                int size = rc->uniform.size;
+                if (rc->uniform.offset + size > b->size)
+                    size = b->size - rc->uniform.offset;
+                void* out = NULL;
+                if (vkMapMemory(self->vk.device, b->vk.mem, (VkDeviceSize)rc->uniform.offset,
+                                (VkDeviceSize)size, 0, &out) == VK_SUCCESS) {
+                    memcpy(out, &rc->uniform.frame, (size_t)size);
+                    vkUnmapMemory(self->vk.device, b->vk.mem);
+                }
+            }
+        } break;
         case RENDER_COMMAND_SET_UNIFORM_BUFFER: {
             state.uniform = rc->buffer.ptr;
             if (state.pipe && state.pipe->vk.descriptor_set) {
@@ -968,16 +1122,24 @@ int l_VK_Renderer__flush(lua_State *L) {
                     state.pipe->vk.layout, 0, 1, &state.pipe->vk.descriptor_set, 0, NULL);
             }
         } break;
+        case RENDER_COMMAND_SET_RENDER_TARGET: {
+            if (rc->target.ptr != draw_target) {
+                vk_end_draw_pass(self, &pass_open, draw_target);
+                draw_target = rc->target.ptr;
+            }
+        } break;
         case RENDER_COMMAND_SET_VIEWPORT: {
+            if (!pass_open) break;
             VkViewport view;
             vk_apply_viewport(&view, rc->viewport.x, rc->viewport.y,
                               rc->viewport.width, rc->viewport.height);
             vkCmdSetViewport(self->vk.command_buffer, 0, 1, &view);
         } break;
         case RENDER_COMMAND_SET_SCISSOR: {
+            if (!pass_open) break;
             VkRect2D scissor_rect;
             if (!rc->scissor.enabled) {
-                scissor_rect.extent = self->vk.swapchain.extent;
+                scissor_rect.extent = vk_pass_extent(self, draw_target);
                 scissor_rect.offset = (VkOffset2D){ 0, 0 };
             }
             else {
@@ -992,12 +1154,47 @@ int l_VK_Renderer__flush(lua_State *L) {
             break;
         }
     }
-    self->command_offset = 0;
-    vkCmdEndRenderPass(self->vk.command_buffer);
+    vk_end_draw_pass(self, &pass_open, draw_target);
 
     if (vkEndCommandBuffer(self->vk.command_buffer) != VK_SUCCESS) {
         return luaL_error(L, "failed to record command buffer");
     }
+
+    VkSemaphore waits[2];
+    VkPipelineStageFlags stages[2];
+    uint32_t nwait = 0;
+    if (s_recording_swapchain && self->vk.image_sem_pending) {
+        waits[nwait] = self->vk.image_semaphore;
+        stages[nwait] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        nwait++;
+        self->vk.image_sem_pending = 0;
+    }
+    if (self->vk.render_sem_pending) {
+        waits[nwait] = self->vk.render_semaphore;
+        stages[nwait] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                      | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        nwait++;
+    }
+    VkSemaphore signal = self->vk.render_semaphore;
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .waitSemaphoreCount = nwait,
+        .pWaitSemaphores = nwait ? waits : NULL,
+        .pWaitDstStageMask = nwait ? stages : NULL,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &self->vk.command_buffer,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &signal,
+    };
+    VkResult res = vkQueueSubmit(self->vk.graphics_queue, 1, &submit_info, self->vk.fence);
+    if (res != VK_SUCCESS)
+        return luaL_error(L, "failed to submit Vulkan queue: 0x%x", res);
+    /* The next pass rewrites the same vertex buffer from offset 0. The GPU
+     * has to finish this submit before that write, or the draws just queued
+     * sample the next pass's vertices. */
+    vkWaitForFences(self->vk.device, 1, &self->vk.fence, VK_TRUE, UINT64_MAX);
+    self->vk.render_sem_pending = 1;
+    self->commands_submitted = self->command_offset;
     return 0;
 }
 
@@ -1019,10 +1216,12 @@ int l_VK_Renderer__begin_frame(lua_State *L) {
         return luaL_error(L, "failed to acquire Vulkan swapchain image: 0x%x", res);
 
     self->vk.current_framebuffer = (int)image_index;
+    self->vk.image_sem_pending = 1;
     if (self->vk.command_buffer) {
         vkResetCommandBuffer(self->vk.command_buffer, 0);
     }
     self->in_frame = 1;
+    self->commands_submitted = 0;
     return 0;
 }
 
@@ -1033,27 +1232,10 @@ int l_VK_Renderer__end_frame(lua_State *L) {
     int rec = l_VK_Renderer__flush(L);
     if (rec != 0) return rec;
 
-    if (self->vk.graphics_queue && self->vk.command_buffer) {
-        VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        VkSemaphore wait_sem[] = {self->vk.image_semaphore};
-        VkSemaphore signal_sem[] = {self->vk.render_semaphore};
-        VkSubmitInfo submit_info = {
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &self->vk.command_buffer,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = wait_sem,
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = signal_sem,
-            .pWaitDstStageMask = wait_stages,
-        };
-        VkResult res = vkQueueSubmit(self->vk.graphics_queue, 1, &submit_info, self->vk.fence);
-        if (res != VK_SUCCESS)
-            return luaL_error(L, "failed to submit Vulkan queue: 0x%x", res);
-    }
-
     self->in_frame = 0;
     self->in_pass = 0;
+    self->command_offset = 0;
+    self->commands_submitted = 0;
     return 0;
 }
 
@@ -1080,6 +1262,7 @@ int l_VK_Renderer__present(lua_State *L) {
             .pWaitSemaphores = signal_sem,
         };
         VkResult res = vkQueuePresentKHR(self->vk.present_queue, &present_info);
+        self->vk.render_sem_pending = 0;
         if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
             DEBUG_LOG("Vulkan present suboptimal/out of date: 0x%x\n", res);
         else if (res != VK_SUCCESS)
@@ -1262,6 +1445,19 @@ int l_VK_Renderer_create(lua_State *L) {
         return luaL_error(L, "failed to create Vulkan render pass");
     }
 
+    /* Same subpass and dependency as the swapchain pass so pipelines stay
+     * compatible. Only the final layout differs: shader-read, not present. */
+    VkAttachmentDescription target_attachment = color_attachment;
+    target_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    target_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkRenderPassCreateInfo target_pass_info = render_pass_info;
+    target_pass_info.pAttachments = &target_attachment;
+    VkRenderPass target_render_pass = VK_NULL_HANDLE;
+    result = vkCreateRenderPass(device, &target_pass_info, NULL, &target_render_pass);
+    if (result != VK_SUCCESS) {
+        return luaL_error(L, "failed to create Vulkan target render pass");
+    }
+
     VkCommandPool command_pool;
 
     VkCommandPoolCreateInfo pool_info = {
@@ -1369,6 +1565,7 @@ int l_VK_Renderer_create(lua_State *L) {
     ren->vk.surface = surface;
     ren->vk.phys_device = phys;
     ren->vk.render_pass = render_pass;
+    ren->vk.target_render_pass = target_render_pass;
     ren->vk.command_pool = command_pool;
     ren->vk.command_buffer = command_buffer;
     ren->vk.framebuffers = swapchain_framebuffers;
@@ -1885,6 +2082,13 @@ int transition_image_layout(selene_Renderer* self, VkImage image, VkFormat forma
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        /* empty textures / render targets: make them sampleable from the start */
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     } else {
         SDL_SetError("unsupported layout transition!");

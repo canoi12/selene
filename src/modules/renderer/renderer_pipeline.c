@@ -30,10 +30,13 @@ void renderer_apply_pipeline_desc(selene_RenderPipeline* pipe, const struct sele
 
 int renderer_pipeline_binding_index(const selene_RenderPipeline* pipe, int binding_type, int slot) {
     if (!pipe) return slot;
+    int fallback = -1;
     for (int i = 0; i < pipe->binding_count; i++) {
-        if (pipe->bindings[i].type == binding_type && pipe->bindings[i].slot == slot)
-            return i;
+        if (pipe->bindings[i].type != binding_type) continue;
+        if (pipe->bindings[i].slot == slot) return i;
+        if (fallback < 0) fallback = i;
     }
+    if (fallback >= 0) return fallback;
     /* Slot não encontrado no pipeline bindings — clamp ao binding count do layout. */
     if (slot >= pipe->binding_count) slot = pipe->binding_count > 0 ? pipe->binding_count - 1 : 0;
     return slot;

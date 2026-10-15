@@ -494,6 +494,8 @@ int l_Renderer__load_texture2d(lua_State* L) {
 
 int l_Renderer__create_depth_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
+    if (!self->create_depth_texture)
+        return luaL_error(L, "depth textures are not supported by this backend");
     return self->create_depth_texture(L);
 }
 
@@ -505,7 +507,7 @@ int l_Renderer__destroy_texture(lua_State* L) {
 static int l_Renderer__set_texture(lua_State* L) {
     CHECK_META(selene_Renderer);
     TEST_UDATA(selene_Texture2D, tex);
-    OPT_INTEGER(binding, self->backend == SELENE_RENDERER_VULKAN ? 1 : 0);
+    OPT_INTEGER(binding, 0);
     struct RenderCommand cmd;
     memset(&cmd, 0, sizeof(cmd));
     cmd.type = RENDER_COMMAND_SET_TEXTURE;

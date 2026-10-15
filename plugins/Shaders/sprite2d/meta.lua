@@ -104,7 +104,7 @@ return {
         samplers = {
             {
                 set = 0,
-                binding = 0,
+                binding = 1,
                 name = "u_texture",
                 glsl_type = "sampler2D",
             },

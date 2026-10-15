@@ -956,9 +956,11 @@ int l_DX11_Renderer__flush(lua_State* L) {
             case RENDER_COMMAND_SET_TEXTURE: {
                 selene_Texture2D* t = (selene_Texture2D*)rc->texture.ptr;
                 if (t) {
-                    self->dx11.context->PSSetShaderResources(0, 1, &t->dx11.srv);
+                    UINT slot = (UINT)renderer_pipeline_binding_index(
+                        state.pipe, SELENE_BINDING_TEXTURE, rc->texture.slot);
+                    self->dx11.context->PSSetShaderResources(slot, 1, &t->dx11.srv);
                     ID3D11SamplerState* sampler = t->dx11.sampler;
-                    self->dx11.context->PSSetSamplers(0, 1, &sampler);
+                    self->dx11.context->PSSetSamplers(slot, 1, &sampler);
                 }
                 state.texture = t;
             }

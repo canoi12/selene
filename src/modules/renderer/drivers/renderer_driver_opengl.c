@@ -836,7 +836,9 @@ int l_GL_Renderer__flush(lua_State* L) {
             case RENDER_COMMAND_SET_TEXTURE: {
                 selene_Texture2D* t = (selene_Texture2D*)rc->texture.ptr;
                 int tex_target = gl_texture_targets_values[rc->texture.target];
-                glActiveTexture(GL_TEXTURE0 + rc->texture.slot);
+                int unit = renderer_pipeline_binding_index(state.pipe, SELENE_BINDING_TEXTURE,
+                                                           rc->texture.slot);
+                glActiveTexture(GL_TEXTURE0 + unit);
                 glBindTexture(tex_target, t ? t->gl.handle : 0);
             }
                 break;
