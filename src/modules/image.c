@@ -1,6 +1,7 @@
 #ifndef SELENE_NO_IMAGE
 #include "selene.h"
 #include "lua_helper.h"
+#include "modules/filesystem.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -10,7 +11,11 @@ static MODULE_FUNCTION(image, from_file) {
     CHECK_STRING(filename);
     OPT_INTEGER(req_comp, 4);
     int w, h, comp;
-    stbi_uc* pixels = stbi_load(filename, &w, &h, &comp, req_comp);
+    size_t file_size = 0;
+    void* file_data = selene_fs_load(L, filename, &file_size);
+    if (file_data == NULL) return luaL_error(L, "[selene] failed to open image %s", filename);
+    stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)file_data, (int)file_size, &w, &h, &comp, req_comp);
+    SDL_free(file_data);
     if (pixels == NULL) return luaL_error(L, "[selene] failed to load image %s", filename);
     lua_newtable(L);
     const size_t size = w*h*req_comp;

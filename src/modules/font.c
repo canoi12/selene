@@ -1,6 +1,7 @@
 #ifndef SELENE_NO_FONT
 #include "selene.h"
 #include "lua_helper.h"
+#include "modules/filesystem.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
@@ -115,31 +116,15 @@ static MODULE_FUNCTION(font, from_ttf) {
     CHECK_STRING(path);
     OPT_INTEGER(font_size, 16);
     stbtt_fontinfo info;
-#if defined(SELENE_USE_SDL3)
-    SDL_IOStream* fp = SDL_IOFromFile(path, "rb");
-#else
-    SDL_RWops* fp = SDL_RWFromFile(path, "rb");
-#endif
-    if (!fp)
-        return luaL_error(L, "Failed to open font: %s", path);
-#if defined(SELENE_USE_SDL3)
-    size_t size = SDL_GetIOSize(fp);
-#else
-    size_t size = SDL_RWsize(fp);
-#endif
-    void* data = malloc(size);
+    size_t size = 0;
+    unsigned char* data = (unsigned char*)selene_fs_load(L, path, &size);
     if (!data)
-        return luaL_error(L, "Failed to alloc memory for font");
-#if defined(SELENE_USE_SDL3)
-    SDL_ReadIO(fp, data, size);
-    SDL_CloseIO(fp);
-#else
-    SDL_RWread(fp, data, 1, size);
-    SDL_RWclose(fp);
-#endif
+        return luaL_error(L, "Failed to open font: %s", path);
 
-    if (!stbtt_InitFont(&info, data, 0))
+    if (!stbtt_InitFont(&info, data, 0)) {
+        SDL_free(data);
         return luaL_error(L, "Failed to init font data");
+    }
 
     int ascent, descent, line_gap;
     float fsize = (float)font_size;
@@ -219,6 +204,7 @@ static MODULE_FUNCTION(font, from_ttf) {
 
         x += glyphs[i].bw;
     }
+    SDL_free(data);
     return 1;
 #else
     return 0;

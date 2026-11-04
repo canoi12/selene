@@ -455,31 +455,17 @@ int l_Renderer__create_texture2d(lua_State* L) {
 int l_Renderer__load_texture2d(lua_State* L) {
     CHECK_META(selene_Renderer);
     CHECK_STRING(filename);
-#if defined(SELENE_USE_SDL3)
-    SDL_IOStream *rw = SDL_IOFromFile(filename, "rb");
-    size_t size = SDL_GetIOSize(rw);
-    void* data = malloc(size);
-    SDL_ReadIO(rw, data, size);
-    SDL_CloseIO(rw);
-#else
-    int virt = get_virt_path(L, filename);
-    if (virt > 0) filename = lua_tostring(L, -1);
-    lua_pop(L, 1);
-    SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
-    if (!rw) {
+    size_t size = 0;
+    void* data = selene_fs_load(L, filename, &size);
+    if (!data) {
         lua_pushnil(L);
         lua_pushfstring(L, "failed to open file %s\n", filename);
         return 2;
     }
-    size_t size = SDL_RWsize(rw);
-    void* data = malloc(size);
-    SDL_RWread(rw, data, 1, size);
-    SDL_RWclose(rw);
-#endif
     int w, h, comp;
     int req_comp = STBI_rgb_alpha;
-    stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)data, size, &w, &h, &comp, req_comp);
-    free(data);
+    stbi_uc* pixels = stbi_load_from_memory((stbi_uc const*)data, (int)size, &w, &h, &comp, req_comp);
+    SDL_free(data);
 
     lua_pushcfunction(L, self->create_texture2d);
     lua_pushvalue(L, 1);
@@ -593,34 +579,19 @@ int l_Renderer__create_shader(lua_State* L) {
 int l_Renderer__load_shader(lua_State* L) {
     CHECK_META(selene_Renderer);
     const char* filename = luaL_checkstring(L, 3);
-#if defined(SELENE_USE_SDL3)
-    SDL_IOStream *rw = SDL_IOFromFile(filename, "rb");
-    size_t size = SDL_GetIOSize(rw);
-    char* data = malloc(size+1);
-    SDL_ReadIO(rw, data, size);
-    SDL_CloseIO(rw);
-#else
-    int virt = get_virt_path(L, filename);
-    if (virt > 0) filename = lua_tostring(L, -1);
-    lua_pop(L, 1);
-    SDL_RWops *rw = SDL_RWFromFile(filename, "rb");
-    if (!rw) {
+    size_t size = 0;
+    char* data = (char*)selene_fs_load(L, filename, &size);
+    if (!data) {
         DEBUG_ERROR("[renderer] failed to load shader: %s\n", filename);
         return luaL_error(L, "failed to load shader: %s", filename);
     }
-    size_t size = SDL_RWsize(rw);
-    char* data = malloc(size+1);
-    SDL_RWread(rw, data, 1, size);
-    SDL_RWclose(rw);
-#endif
-    data[size] = '\0';
 
     lua_pushcfunction(L, self->create_shader);
     lua_pushvalue(L, 1);
     lua_pushvalue(L, 2);
     lua_pushlstring(L, data, size);
     lua_call(L, 3, 1);
-    free(data);
+    SDL_free(data);
 
     return 1;
 }

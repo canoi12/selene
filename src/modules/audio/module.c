@@ -87,14 +87,15 @@ static MODULE_FUNCTION(audio, load_data) {
 #else
     int read = SDL_AudioStreamGet(stream, data->data, (int)size);
 #endif
-    if (read < 0) {
-        return luaL_error(L, "Failed to read audio stream: %s", SDL_GetError());
-    }
 #if defined(SELENE_USE_SDL3)
     SDL_DestroyAudioStream(stream);
 #else
     SDL_FreeAudioStream(stream);
 #endif
+    s_AudioDecoder_close(&dec);
+    if (read < 0) {
+        return luaL_error(L, "Failed to read audio stream: %s", SDL_GetError());
+    }
     return 1;
 }
 

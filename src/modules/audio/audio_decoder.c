@@ -2,18 +2,12 @@
 #include "modules/filesystem.h"
 #ifndef SELENE_NO_AUDIO
 int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDecoder* out) {
-    // Resolve virtual paths (e.g., root://, user://, exec://)
-    get_virt_path(L, path);
-    const char* resolved_path = lua_tostring(L, -1);
-    lua_pop(L, 1);
-    
-    path = resolved_path;
-    len = strlen(path);
-    
-    char* p = (char*)path + len;
-    while (*p != '.')
-        p--;
+    (void)len;
+    memset(out, 0, sizeof(*out));
+    const char* p = strrchr(path, '.');
     int format = SELENE_UNKNOWN_AUDIO_FORMAT;
+    if (!p)
+        return luaL_error(L, "Unsupported audio format: %s\n", path);
     if (!strcmp(p, ".ogg"))
         format = SELENE_OGG_FORMAT;
     else if (!strcmp(p ,".wav"))
@@ -25,24 +19,17 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDec
     else
         return luaL_error(L, "Unsupported audio format: %s\n", path);
     out->format = (char)format;
-#if defined(OS_ANDROID)
-    char* data = NULL;
-    size_t data_size;
-    SDL_RWops* fp = SDL_RWFromFile(path, "rb");
-    data_size = SDL_RWsize(fp);
-    data = (char*)malloc(data_size);
-    SDL_RWread(fp, data, 1, data_size);
-    SDL_RWclose(fp);
-#endif
+    /* Decoders stream from memory, so the buffer lives as long as the decoder */
+    size_t data_size = 0;
+    char* data = (char*)selene_fs_load(L, path, &data_size);
+    if (!data)
+        return luaL_error(L, "Failed to open audio file: %s\n", path);
+    out->audio_data = data;
     switch(format) {
         case SELENE_WAV_FORMAT: {
-#if !defined(OS_ANDROID)
-            int success = (int)drwav_init_file(&(out->wav), path, NULL);
-#else
             int success = drwav_init_memory(&(out->wav), (const void*)data, data_size, NULL);
-#endif
             if (!success)
-                return luaL_error(L, "Failed to load wav: %s\n", path);
+                { SDL_free(data); out->audio_data = NULL; return luaL_error(L, "Failed to load wav: %s\n", path); }
             out->info.bit_depth = out->wav.bitsPerSample;
             out->info.sample_rate = (int)out->wav.sampleRate;
             out->info.channels = out->wav.channels;
@@ -51,13 +38,9 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDec
         }
             break;
         case SELENE_OGG_FORMAT: {
-#if !defined(OS_ANDROID)
-            stb_vorbis* ogg = stb_vorbis_open_filename(path, NULL, NULL);
-#else
-            stb_vorbis* ogg = stb_vorbis_open_memory(data, data_size, NULL, NULL);
-#endif
+            stb_vorbis* ogg = stb_vorbis_open_memory((const unsigned char*)data, (int)data_size, NULL, NULL);
             if (ogg == NULL)
-                return luaL_error(L, "Failed to load ogg: %s\n", path);
+                { SDL_free(data); out->audio_data = NULL; return luaL_error(L, "Failed to load ogg: %s\n", path); }
             stb_vorbis_info info = stb_vorbis_get_info(ogg);
             out->info.sample_rate = (int)info.sample_rate;
             out->info.channels = info.channels;
@@ -65,13 +48,9 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDec
         }
             break;
         case SELENE_MP3_FORMAT: {
-#if !defined(OS_ANDROID)
-            int success = (int)drmp3_init_file(&(out->mp3), path, NULL);
-#else
             int success = drmp3_init_memory(&(out->mp3), data, data_size, NULL);
-#endif
             if (!success)
-                return luaL_error(L, "Failed to load mp3: %s\n", path);
+                { SDL_free(data); out->audio_data = NULL; return luaL_error(L, "Failed to load mp3: %s\n", path); }
             // out->info.bit_depth = out->mp3.bit;
             out->info.sample_rate = (int)out->mp3.sampleRate;
             out->info.channels = (int)out->mp3.channels;
@@ -80,13 +59,9 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDec
         }
             break;
         case SELENE_FLAC_FORMAT: {
-#if !defined(OS_ANDROID)
-            out->flac = drflac_open_file(path, NULL);
-#else
             out->flac = drflac_open_memory(data, data_size, NULL);
-#endif
             if (out->flac == NULL)
-                return luaL_error(L, "Failed to load flac: %s\n", path);
+                { SDL_free(data); out->audio_data = NULL; return luaL_error(L, "Failed to load flac: %s\n", path); }
             out->info.bit_depth = out->flac->bitsPerSample;
             out->info.sample_rate = (int)out->flac->sampleRate;
             out->info.channels = out->flac->channels;
@@ -96,9 +71,6 @@ int s_AudioDecoder_init(lua_State* L, const char* path, int len, selene_AudioDec
             break;
         default: break;
     }
-#if defined(OS_ANDROID)
-    out->audio_data = data;
-#endif
     return 1;
 }
 
@@ -123,6 +95,10 @@ int s_AudioDecoder_close(selene_AudioDecoder* self) {
             drflac_close(self->flac);
             break;
         default: break;
+    }
+    if (self->audio_data) {
+        SDL_free(self->audio_data);
+        self->audio_data = NULL;
     }
     return 0;
 }
@@ -153,6 +129,10 @@ int s_AudioDecoder_seek(selene_AudioDecoder* self, int index) {
             drflac_seek_to_pcm_frame(self->flac, index);
             break;
         default: break;
+    }
+    if (self->audio_data) {
+        SDL_free(self->audio_data);
+        self->audio_data = NULL;
     }
     return 0;
 }
