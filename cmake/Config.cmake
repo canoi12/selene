@@ -14,7 +14,6 @@ set(CACHE_DIR "${CMAKE_SOURCE_DIR}/.cache" CACHE STRING "Set the cache dir where
 set(BUILDS_DIR "${CMAKE_SOURCE_DIR}/builds" CACHE STRING "Set the dir where the builds will be installed")
 set(EXPORT_APPIMAGE OFF CACHE BOOL "Use this to export an AppImage for Linux")
 # set(EXPORT_ANDROIDAPK OFF CACHE BOOL "Use this to export an Android APK")
-# set(USE_SDL_SOURCE OFF CACHE BOOL "Force to compile with the SDL source")
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 set(SELENE_NO_VULKAN ON CACHE BOOL "Disable support for Vulkan")
 set(SELENE_NO_OPENGL OFF CACHE BOOL "Disable support for OpenGL")
@@ -26,8 +25,23 @@ set(SELENE_USE_GLES OFF CACHE BOOL "Use OpenGLES 3 instead of default OpenGL")
 set(SELENE_USE_LEGACY_OPENGL OFF CACHE BOOL "Use legacy OpenGL (3.0- or ES2)")
 
 set(SDL_VERSION "2.32.4")
+option(SELENE_BUILD_EDITOR "Build the selene-editor tool (desktop only)" ON)
 option(SDL_SHARED "Build SDL as shared library" ON)
-set (SDL_SOURCE_DIR "${CACHE_DIR}/SDL2-${SDL_VERSION}/source" CACHE STRING "Set SDL2 source dir")
+option(USE_SDL_SOURCE "Force building SDL from source" OFF)
+# Legacy fallback used by FindCustomSDL2 when SDL_DIR does not hold the source.
+set (SDL_SOURCE_DIR "${CACHE_DIR}/SDL2-${SDL_VERSION}/source" CACHE STRING "Fallback SDL2 source dir")
+
+# SDL_DIR replaces SDL_PRECOMP_DIR.  The platform default is computed by
+# cmake/FindCustomSDL2.cmake, because it needs the toolchain (MSVC/MinGW) to
+# be detected first.
+if (SDL_PRECOMP_DIR)
+    message(DEPRECATION
+        "SDL_PRECOMP_DIR is deprecated; use -DSDL_DIR=<path> instead.")
+    if (NOT SDL_DIR)
+        set(SDL_DIR "${SDL_PRECOMP_DIR}" CACHE PATH
+            "Root of an SDL2 installation, precompiled package or source tree")
+    endif ()
+endif ()
 
 set(EMSCRIPTEN_VERSION "latest" CACHE STRING "Emscripten version")
 set(EMSDK_DIR "${CACHE_DIR}/emsdk-${EMSCRIPTEN_VERSION}" CACHE STRING "Set the Emscripten SDK directory")

@@ -194,20 +194,63 @@ First you need to install [CMake](https://cmake.org/) on your system.
 
 I put the [premake5](https://premake.github.io/) scripts on the `misc/scripts/` folder, but I don't have plans to update it by now.
 
+### Presets (recommended)
+
+The repository ships a `CMakePresets.json` with per-platform presets. Each
+preset configures into its own `build/<preset>` directory, so different
+configurations never share a stale cache.
+
+```bash
+cmake --list-presets
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+ctest --preset linux-debug
+```
+
+| Preset | Platform | Notes |
+|--------|----------|-------|
+| `linux-debug` / `linux-release` | Linux | Ninja; uses the system SDL2 when available |
+| `linux-sdl-source` | Linux | Forces SDL2 from `.cache/SDL2-2.32.4/source` |
+| `windows-msvc-x64` / `windows-msvc-win32` | Windows | Visual Studio 2022 |
+| `mingw-x64` | Linux → Windows | MinGW cross toolchain |
+| `emscripten` | Web | Requires `EMSDK` |
+| `android-arm64` | Android | Requires `ANDROID_HOME` |
+
+The SDL2 paths used by the presets are repo-relative; they can always be
+overridden from the command line, for example
+`cmake --preset linux-debug -DSDL_DIR=/opt/sdl2`. Machine specific paths can
+live in a `CMakeUserPresets.json` (git-ignored) that inherits from the shipped
+presets.
+
 ### SDL2
 
-By default the CMake script checks for SDL dists in the `.cache/SDL2` folder.
+SDL2 is located by `cmake/FindCustomSDL2.cmake`, in this order:
 
-- MINGW
-- MSVC
-- source (for source code)
+1. `-DSDL2_DIR=<dir containing SDL2Config.cmake>` (highest priority);
+2. `-DSDL_DIR=<path>` — the root of a precompiled package (MSVC/MinGW devel
+   archives), an installation prefix, **or** the SDL2 source tree;
+3. the system SDL2 (`libsdl2-dev`, Homebrew, ...);
+4. building SDL2 from source (`-DUSE_SDL_SOURCE=ON` plus a source tree).
 
-But you can specify the paths with:
+When `SDL_DIR` is not provided it defaults, per platform, to
+`.cache/SDL2-2.32.4/{MSVC,MINGW,source}`. Keep that version in sync with
+`SDL_VERSION` in `cmake/Config.cmake` and with `CMakePresets.json`.
 
-- -DSDL_PRECOMP_DIR=\[Precompiled dir\] (SDL provides that for MINGW and MSVC)
-- -DSDL_SOURCE_DIR=\[SDL source directory\]
+`SDL2_DIR` always wins over `SDL_DIR`. Because it is a normal CMake cache
+entry, changing `SDL_DIR` on an already configured build directory may need
+`cmake --preset <preset> --fresh` (or simply use another preset, since each one
+has its own build directory).
 
-You can also download SDL2 using the script inside `scripts/download_sdl.sh`.
+`SDL_PRECOMP_DIR` is deprecated: it is still accepted as an alias of `SDL_DIR`
+and prints a deprecation warning.
+
+To download the SDL2 packages use:
+
+```bash
+cmake -P cmake/scripts/DownloadSDL2.cmake
+# force a specific package:
+cmake -P cmake/scripts/DownloadSDL2.cmake -DDOWNLOAD_SDL_MINGW=ON
+```
 
 ### Linux
 
@@ -219,25 +262,34 @@ In Debian you can install SDL2 with:
 sudo apt install libsdl2-dev
 ```
 
-And then run CMake:
+And then use the presets:
 
+```bash
+cmake --preset linux-debug
+cmake --build --preset linux-debug
 ```
+
+Without presets the equivalent is:
+
+```bash
 cmake -B build -DCMAKE_BUILD_TYPE=[Debug|Release]
-```
-
-It will generate the build files in the `build/` folder, then just run:
-
-```
 cmake --build build
 ```
 
+It will generate the build files in the `build/` folder.
+
 ### Windows
 
-For Windows, you will also need to download the [SDL2](https://libsdl.org/) package for development. Making that, simply run on a terminal:
+For Windows, you will also need to download the [SDL2](https://libsdl.org/)
+package for development (or let `cmake/scripts/DownloadSDL2.cmake` place it in
+`.cache/SDL2-2.32.4/MSVC`), and run:
 
+```bash
+cmake --preset windows-msvc-x64
+cmake --build --preset windows-msvc-x64-release
 ```
-cmake -B build -DSDL_PRECOMP_DIR=[Path to SDL2 MSVC dev dist, callbacks to .cache/SDL2/MSVC]
-```
+
+Without presets: `cmake -B build -G "Visual Studio 17 2022" -A x64 -DSDL_DIR=[Path to SDL2 MSVC devel package]`
 
 ### Cross Compiling
 
@@ -248,12 +300,14 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=[toolchain file]
 cmake --build build
 ```
 
+Or use a preset, for example `cmake --preset mingw-x64` (see `CMakePresets.json`).
+
 #### Toolchains
 
 You can find the toolchains in the `cmake/toolchains` folder, and you can edit them or create new ones as you need. To cross compile for MinGW, for example:
 
 ```
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/MinGW.cmake -DSDL_PRECOMP_DIR=[Path to SDL2 MinGW dev dist]
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/MinGW.cmake -DSDL_DIR=[Path to SDL2 MinGW dev package]
 cmake --build build
 ```
 

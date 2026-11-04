@@ -1,0 +1,204 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/dist/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "CMAKE_COLOR_DIAGNOSTICS": true,
+        "SELENE_NO_VULKAN": false
+      }
+    },
+    {
+      "name": "linux",
+      "hidden": true,
+      "inherits": "base",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "SDL_DIR": "${sourceDir}/.cache/SDL2-2.32.4/source"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug (Ninja)",
+      "description": "Uses the system SDL2 when available, otherwise builds the cached SDL2 source.",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release (Ninja)",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "linux-sdl-source",
+      "displayName": "Linux Debug, SDL2 built from source",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "USE_SDL_SOURCE": true
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "hidden": true,
+      "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "SDL_DIR": "${sourceDir}/.cache/SDL2-2.32.4/MSVC"
+      }
+    },
+    {
+      "name": "windows-msvc-x64",
+      "displayName": "Windows x64 (Visual Studio 2022)",
+      "inherits": "windows-msvc",
+      "architecture": "x64"
+    },
+    {
+      "name": "windows-msvc-win32",
+      "displayName": "Windows Win32 (Visual Studio 2022)",
+      "inherits": "windows-msvc",
+      "architecture": "Win32"
+    },
+    {
+      "name": "mingw-x64",
+      "displayName": "Windows x86_64 cross-compiled with MinGW",
+      "description": "Run 'cmake -P cmake/scripts/DownloadSDL2.cmake -DDOWNLOAD_SDL_MINGW=ON' first to populate .cache/SDL2-2.32.4/MINGW.",
+      "inherits": "base",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/MinGW.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SELENE_NO_D3D11": true,
+        "SDL_DIR": "${sourceDir}/.cache/SDL2-2.32.4/MINGW"
+      }
+    },
+    {
+      "name": "emscripten",
+      "displayName": "Emscripten (WebAssembly)",
+      "description": "Requires EMSDK_DIR (cmake/scripts/SetupEmscripten.cmake). SDL2 comes from -sUSE_SDL=2.",
+      "inherits": "base",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Emscripten.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EMSDK_DIR": "$env{EMSDK}"
+      }
+    },
+    {
+      "name": "android-arm64",
+      "displayName": "Android arm64-v8a",
+      "description": "Requires ANDROID_HOME. SDL2 is built from the cached source tree.",
+      "inherits": "base",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Android.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ANDROID_ABI": "arm64-v8a",
+        "CMAKE_ANDROID_NDK_VERSION": "25.2.9519653",
+        "SDL_DIR": "${sourceDir}/.cache/SDL2-2.32.4/source",
+        "USE_SDL_SOURCE": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-sdl-source",
+      "configurePreset": "linux-sdl-source"
+    },
+    {
+      "name": "windows-msvc-x64-debug",
+      "configurePreset": "windows-msvc-x64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-x64-release",
+      "configurePreset": "windows-msvc-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-win32-debug",
+      "configurePreset": "windows-msvc-win32",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-win32-release",
+      "configurePreset": "windows-msvc-win32",
+      "configuration": "Release"
+    },
+    {
+      "name": "mingw-x64",
+      "configurePreset": "mingw-x64"
+    },
+    {
+      "name": "emscripten",
+      "configurePreset": "emscripten"
+    },
+    {
+      "name": "android-arm64",
+      "configurePreset": "android-arm64"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-sdl-source",
+      "configurePreset": "linux-sdl-source",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc-x64-debug",
+      "configurePreset": "windows-msvc-x64",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

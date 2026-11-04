@@ -5,6 +5,15 @@ include(Config)
 
 project(${SELENE_NAME} VERSION ${SELENE_VERSION} LANGUAGES C CXX)
 
+# Single-config generators need a build type (otherwise CMAKE_BUILD_TYPE is
+# empty and the output directories become build//bin).  Multi-config
+# generators (Visual Studio) are left alone.
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        Debug Release RelWithDebInfo MinSizeRel)
+endif ()
+
 include(CheckLibraryExists)
 include(CheckCSourceCompiles)
 include(CMakePushCheckState)
@@ -104,6 +113,9 @@ endif ()
 
 if (DEFINED MINGW)
     add_definitions(-DMINGW)
+    if (${SELENE_NO_D3D11})
+        add_definitions(-DSELENE_NO_D3D11)
+    endif ()
 endif ()
 
 if (${LUA_VERSION} STREQUAL "jit")
@@ -118,14 +130,16 @@ file(GLOB WINDOW_SOURCES src/modules/window/*.c src/modules/window/backends/*.c)
 
 file(GLOB SELENE_SOURCES src/*.c src/modules/ljson.c src/core/*.c third/glad/src/glad.c)
 
-# file(GLOB SELENE_SOURCES 
+# file(GLOB SELENE_SOURCES
 #     src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c src/core/renderer/backends/*.cpp
 #     src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c third/glad/src/glad.c
 # )
 if (EMSCRIPTEN)
-list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/main.c)
-list(POP_BACK SELENE_SOURCES)
+    list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/main.c)
+    list(POP_BACK SELENE_SOURCES)
 endif()
+# main.c is the runtime front-end, it belongs to the executable only
+list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/main.c)
 # list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/modules/sdl2.c)
 
 include_directories(include/ third/ third/glad/include)
@@ -300,9 +314,13 @@ endif ()
 file(GLOB CGLM_FILES third/cglm/src/*.c)
 add_library(cglm STATIC ${CGLM_FILES})
 target_compile_definitions(cglm PRIVATE -DCGLM_STATIC)
-
-set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm)
 include_directories(third/cglm/include)
+
+file(GLOB MINIZ_FILES third/miniz/miniz.c)
+add_library(miniz STATIC ${MINIZ_FILES})
+set_target_properties(miniz PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm miniz)
 
 if (NOT SELENE_NO_VULKAN)
     if (WIN32)
@@ -317,8 +335,19 @@ if (NOT SELENE_NO_VULKAN)
             "$ENV{VULKAN_SDK}/Include"  # Windows Vulkan SDK
         )
     else()
-        find_library(VULKAN_LIBRARY NAMES vulkan vulkan-1)
-        find_path(VULKAN_INCLUDE_DIR NAMES vulkan/vulkan.h)
+        find_library(VULKAN_LIBRARY NAMES vulkan vulkan-1
+            PATHS
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib
+            /lib/x86_64-linux-gnu
+            /lib
+            NO_DEFAULT_PATH
+        )
+        find_path(VULKAN_INCLUDE_DIR NAMES vulkan/vulkan.h
+            PATHS
+            /usr/include
+            NO_DEFAULT_PATH
+        )
     endif()
 
     #message("Vulkan paths: ${VULKAN_LIBRARY} ${VULKAN_INCLUDE_DIR}")
@@ -374,12 +403,12 @@ if (NOT DEFINED EMSCRIPTEN)
         target_link_libraries(${PROJECT_NAME}Shared android log)
     endif ()
     set_target_properties(${PROJECT_NAME}Shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-if (MSVC)
-    source_group("Source Files\\audio" FILES ${AUDIO_SOURCES})
-    source_group("Source Files\\filesystem" FILES ${FS_SOURCES})
-    source_group("Source Files\\renderer" FILES ${RENDERER_SOURCES})
-    source_group("Source Files\\window" FILES ${WINDOW_SOURCES})
-endif ()
+    if (MSVC)
+        source_group("Source Files\\audio" FILES ${AUDIO_SOURCES})
+        source_group("Source Files\\filesystem" FILES ${FS_SOURCES})
+        source_group("Source Files\\renderer" FILES ${RENDERER_SOURCES})
+        source_group("Source Files\\window" FILES ${WINDOW_SOURCES})
+    endif ()
 endif ()
 
 if (TARGET ${PROJECT_NAME}Shared)
@@ -420,6 +449,27 @@ else ()
     set_target_properties(${PROJECT_NAME}Bin PROPERTIES OUTPUT_NAME main)
     target_link_libraries(${PROJECT_NAME}Bin "${PROJECT_NAME}Lib" ${LIBRARIES})
     target_link_libraries(${PROJECT_NAME}Bin android log)
+endif ()
+
+## Editor (desktop only): run / pack / edit front-end over the runtime
+if (SELENE_BUILD_EDITOR AND NOT DEFINED ANDROID AND NOT DEFINED EMSCRIPTEN)
+    file(GLOB EDITOR_SOURCES src/editor/*.cpp src/editor/*.c)
+    add_executable(${PROJECT_NAME}Editor ${EDITOR_SOURCES})
+    target_link_libraries(${PROJECT_NAME}Editor "${PROJECT_NAME}Lib" ${LIBRARIES})
+    target_compile_features(${PROJECT_NAME}Editor PRIVATE cxx_std_17)
+    set_target_properties(${PROJECT_NAME}Editor PROPERTIES OUTPUT_NAME ${PROJECT_NAME}-editor)
+    if (MSVC)
+        target_compile_definitions(${PROJECT_NAME}Editor PRIVATE -DSELENE_IMPORT_DLL)
+    endif ()
+    if (${HAS_LUA51})
+        target_link_libraries(${PROJECT_NAME}Editor lua51)
+    endif ()
+    if (WIN32)
+        target_sources(${PROJECT_NAME}Editor PRIVATE "${CMAKE_SOURCE_DIR}/misc/cross/windres/ICON.rc")
+    endif ()
+    if (DEFINED MINGW)
+        target_link_libraries(${PROJECT_NAME}Editor mingw32 opengl32 glu32)
+    endif ()
 endif ()
 
 include(Install)
