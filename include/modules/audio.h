@@ -32,9 +32,7 @@ struct _AudioDecoder {
         stb_vorbis* ogg;
     };
     
-#if defined(OS_ANDROID)
-    void* audio_data;
-#endif
+    void* audio_data; /* encoded file contents, decoders stream from it */
 };
 
 #if defined(__cplusplus)

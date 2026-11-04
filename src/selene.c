@@ -65,6 +65,19 @@ static int l_selene__call(lua_State *L) {
         }
         lua_pop(L, 1);
     }
+    if (strcmp(org, "selene") == 0 && strcmp(name, "app") == 0) {
+        /* no meta given: use the project file (selene.project.org / .name) */
+        lua_getfield(L, 1, "project");
+        if (lua_istable(L, -1)) {
+            lua_getfield(L, -1, "org");
+            if (lua_isstring(L, -1)) org = lua_tostring(L, -1);
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "name");
+            if (lua_isstring(L, -1)) name = lua_tostring(L, -1);
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1); /* project table stays referenced by selene, strings stay alive */
+    }
 
     if (SDL_Init(flags) < 0) {
         return luaL_error(L, "failed to initialize SDL: %s", SDL_GetError());
@@ -323,18 +336,8 @@ int luaopen_selene(lua_State *L) {
     }
 
 #if defined(OS_ANDROID)
-    /* Setup SDL_RWops loader */
-    lua_getglobal(L, "package");
-#if SELENE_USE_JIT
-    lua_getfield(L, -1, "loaders");
-#else
-    lua_getfield(L, -1, "searchers");
-#endif
-    //lua_pushcfunction(L, l_load_from_sdl_rwops);
-    lua_pushcfunction(L, lua_android_require);
-    //lua_rawseti(L, -2, (lua_Integer)lua_rawlen(L, -2) + 1);
-    lua_rawseti(L, -2, 2);
-    lua_pop(L, 2);
+    /* Asset loader runs after preload and the game archive searcher */
+    selene_fs_insert_searcher(L, lua_android_require, 3);
 #endif
 
     /* Setup extended libs */

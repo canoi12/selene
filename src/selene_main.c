@@ -1,5 +1,4 @@
-#include "lua/lua5.4/source/src/lua.h"
-#include "selene.h"
+#include "selene_runtime.h"
 //#include "lua_helper.h"
 
 // #include "modules/renderer.h"
@@ -12,14 +11,103 @@ extern int s_default_step_callback(lua_State* L);
 extern int s_default_event_callback(lua_State* L);
 extern void s_default_quit_callback(lua_State* L, int status);
 
+/*
+ * Boot: locate the game, read its project file (selene.json) into
+ * `selene.project` and run the entry script (`project.main`).
+ *
+ * Game lookup, first match wins:
+ *   1. -d <dir> | -z <file.zip> | first argument being a directory,
+ *      a .zip/.selene archive or a project .json file
+ *   2. zip fused into the executable
+ *   3. exec://game.zip | exec://game.selene
+ *   4. current directory (selene.json or main.lua)
+ *   5. executable directory (selene.json or main.lua)
+ *   6. game.zip readable by SDL (Android APK assets)
+ *
+ * -f <file.lua> overrides the entry script.
+ * Without a project file the defaults are { main = "main.lua" }.
+ */
 static const char* s_boot_script =
-"local status, err = pcall(function() require('main') end)\n"
-"if not status then\n"
-"   selene.set_running(false)\n"
-"   error(err)\n"
-"else\n"
-"   selene.set_running(true)\n"
-"end";
+"local fs = filesystem\n"
+"local args = selene.args\n"
+"local PROJECT = 'selene.json'\n"
+"\n"
+"local function use_dir(path)\n"
+"   path = path:gsub('[/\\\\]+$', '')\n"
+"   if path == '' then path = '/' end\n"
+"   assert(fs.mount(path))\n"
+"   package.path = path .. '/?.lua;' .. path .. '/?/init.lua;' .. package.path\n"
+"end\n"
+"local function use_zip(path, offset, size)\n"
+"   local ok, err = fs.mount(path, offset, size)\n"
+"   if not ok then error('failed to mount game archive ' .. err, 0) end\n"
+"end\n"
+"local function is_archive(path)\n"
+"   return path:match('%.zip$') or path:match('%.selene$')\n"
+"end\n"
+"local function has_game(prefix)\n"
+"   return fs.stat(fs.resolve(prefix .. PROJECT)) or fs.stat(fs.resolve(prefix .. 'main.lua'))\n"
+"end\n"
+"\n"
+"local game, entry, project_file\n"
+"local i = 1\n"
+"while i <= #args do\n"
+"   local a = args[i]\n"
+"   if a == '-d' or a == '-z' then\n"
+"       i = i + 1\n"
+"       game = args[i]\n"
+"   elseif a == '-f' then\n"
+"       i = i + 1\n"
+"       entry = args[i]\n"
+"   elseif i == 1 and a:sub(1, 1) ~= '-' then\n"
+"       local st = fs.stat(a)\n"
+"       if st and (st.type == 'directory' or is_archive(a) or a:match('%.json$')) then game = a end\n"
+"   end\n"
+"   i = i + 1\n"
+"end\n"
+"\n"
+"local function locate()\n"
+"   if game then\n"
+"       local st = fs.stat(game)\n"
+"       if not st then error('game not found: ' .. game, 0) end\n"
+"       if st.type == 'directory' then return use_dir(game) end\n"
+"       if game:match('%.json$') then\n"
+"           project_file = game\n"
+"           return use_dir(game:match('^(.*)[/\\\\][^/\\\\]*$') or '.')\n"
+"       end\n"
+"       return use_zip(game)\n"
+"   end\n"
+"   if entry then return end\n"
+"   local exe = fs.exe_path()\n"
+"   if exe then\n"
+"       local offset, size = fs.fused_info(exe)\n"
+"       if offset then return use_zip(exe, offset, size) end\n"
+"   end\n"
+"   for _, name in ipairs({'game.zip', 'game.selene'}) do\n"
+"       local path = fs.resolve('exec://' .. name)\n"
+"       if fs.stat(path) then return use_zip(path) end\n"
+"   end\n"
+"   if has_game('') then return end\n"
+"   if has_game('exec://') then return use_dir(fs.resolve('exec://')) end\n"
+"   fs.mount('game.zip')\n"
+"end\n"
+"locate()\n"
+"\n"
+"local project = {}\n"
+"local source = fs.read(project_file or ('root://' .. PROJECT))\n"
+"if source then\n"
+"   local ok, res = pcall(json.decode, source)\n"
+"   if not ok then error((project_file or PROJECT) .. ': ' .. tostring(res), 0) end\n"
+"   if type(res) ~= 'table' then error((project_file or PROJECT) .. ': project must be a JSON object', 0) end\n"
+"   project = res\n"
+"end\n"
+"project.main = entry or project.main or 'main.lua'\n"
+"selene.project = project\n"
+"\n"
+"local main, err = fs.load(entry or ('root://' .. project.main))\n"
+"if not main then error(\"cannot load entry '\" .. project.main .. \"': \" .. tostring(err), 0) end\n"
+"main()\n"
+"selene.set_running(true)\n";
 
 int selene_init(void** userdata, int argc, char** argv) {
     lua_State* L = (lua_State*)*userdata;
@@ -72,46 +160,22 @@ int selene_init(void** userdata, int argc, char** argv) {
     DEBUG_LOG("[selene] set up the package.path paths\n");
 #endif
 
-    const char* handle_args =
-    "local args = selene.args\n"
-    "--print('exec://', filesystem.resolve('exec://'))\n"
-    "--print('root://', filesystem.resolve('root://'))\n"
-    "--print('user://', filesystem.resolve('user://'))\n"
-    "for i=1,#args do\n"
-    "   if args[i] == '-d' then\n"
-    "       i = i + 1\n"
-    "       local path = args[i]\n"
-    "       filesystem.set_path('root://', path)\n"
-    "       package.path = path .. '/?.lua;' .. path .. '/?/init.lua;' .. package.path\n"
-    "   elseif args[i] == '-f' then\n"
-    "       i = i + 1\n"
-    "       package.preload['boot'] = loadfile(args[i])\n"
-    "   end\n"
-    "end";
-
-    if (luaL_dostring(L, handle_args) != LUA_OK) {
-        const char* msg = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] failed to handle arguments: %s\n", msg);
-        return SELENE_APP_FAILURE;
-    }
-    lua_pop(L, 1);
-    DEBUG_LOG("[selene] set up the exec parameters\n");
-
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "preload");
-    lua_getfield(L, -1, "boot");
-    if (lua_isnil(L, -1)) {
-        lua_pop(L, 1);
-        luaL_loadbuffer(L, s_boot_script, strlen(s_boot_script), "boot.lua");
-        lua_setfield(L, -2, "boot");
-    } else lua_pop(L, 1);
-    lua_pop(L, 2);
-    DEBUG_LOG("[selene] set up boot package\n");
-    if (luaL_dostring(L, "require('boot')") != LUA_OK) {
+    /* Boot with a traceback so errors in the game point to their origin */
+    lua_pop(L, 1); /* selene module, left by luaL_requiref */
+    lua_getglobal(L, "debug");
+    lua_getfield(L, -1, "traceback");
+    lua_remove(L, -2);
+    int handler = lua_gettop(L);
+    if (luaL_loadbuffer(L, s_boot_script, strlen(s_boot_script), "=boot") != LUA_OK ||
+        lua_pcall(L, 0, 0, handler) != LUA_OK) {
         const char* error = lua_tostring(L, -1);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] Failed to load boot.lua: %s\n", error);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "[selene] boot failed: %s\n", error ? error : "unknown error");
+        lua_settop(L, handler - 1);
+        g_selene_context.is_running = 0;
         return SELENE_APP_FAILURE;
     }
+    lua_settop(L, handler - 1);
+    DEBUG_LOG("[selene] game booted\n");
     return SELENE_APP_CONTINUE;
 }
 
