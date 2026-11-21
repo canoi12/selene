@@ -75,6 +75,8 @@ static int l_os_arch(lua_State *L) {
     lua_pushstring(L, "x86");
 #elif defined(ARCH_X64)
     lua_pushstring(L, "x64");
+#elif defined(ARCH_ARM64)
+    lua_pushstring(L, "arm64");
 #elif defined(ARCH_ARM)
     lua_pushstring(L, "arm");
 #else

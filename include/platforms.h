@@ -19,8 +19,8 @@
 #define OS_UNIX 1
 #elif defined(__3DS__) // Nintendo 3DS
 #define OS_3DS 1
-#elif defined(__NS64) // Nintendo Switch 64
-#define OS_NS64 1
+#elif defined(__SWITCH__) || defined(__NS64) // Nintendo Switch
+#define OS_NSWITCH 1
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) // BSD
 #define OS_BSD 1
 #elif defined(__unix__) // Unix
@@ -31,6 +31,8 @@
 #define ARCH_X86 1
 #elif defined(__amd64__) || defined(_M_X64)
 #define ARCH_X64 1
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define ARCH_ARM64 1
 #elif defined(__arm__) || defined(__ARM__) || defined(ARM) || defined(__ARM) || defined(__arm)
 #define ARCH_ARM 1
 #else

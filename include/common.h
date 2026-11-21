@@ -45,7 +45,7 @@ extern "C" {
 #include <cglm/affine2d.h>
 
 #ifndef SELENE_NO_OPENGL
-#if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_APPLE)
+#if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_APPLE) || defined(OS_NSWITCH)
 #include <glad/glad.h>
 #endif
 #endif
