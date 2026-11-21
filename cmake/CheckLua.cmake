@@ -17,7 +17,9 @@ endif ()
 
 if (NOT LUA_LIBRARY)
     message("Compiling Lua from source")
-    add_subdirectory(${LUA_PROJECT_DIR})
+    # Explicit binary dir: this module is included from src/, so the Lua
+    # source tree is out-of-tree relative to CMAKE_CURRENT_SOURCE_DIR.
+    add_subdirectory(${LUA_PROJECT_DIR} "${CMAKE_BINARY_DIR}/third/lua/lua${LUA_VERSION}")
 elseif (LUA_LIBRARY AND NOT ${LUA_TARGET_NAME})
     add_library(${LUA_TARGET_NAME} ${LUA_LIB_TYPE} IMPORTED)
     set_target_properties(

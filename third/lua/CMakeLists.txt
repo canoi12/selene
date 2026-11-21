@@ -9,7 +9,9 @@ endif ()
 
 if (NOT DEFINED MSVC)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wall -Wextra")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
+    if (NOT DEFINED NINTENDO_SWITCH)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
+    endif ()
 endif ()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LUA_COMPAT}")
 
@@ -23,13 +25,15 @@ endif ()
 
 add_library(${PROJECT_NAME}Static STATIC ${LUA_SOURCES})
 set_target_properties(${PROJECT_NAME}Static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-if (NOT DEFINED MSVC)
+if (NOT DEFINED MSVC AND NOT DEFINED NINTENDO_SWITCH)
     target_link_libraries(${PROJECT_NAME}Static m)
 endif ()
 
-if (NOT DEFINED EMSCRIPTEN)
+# Shared Lua: same rule as selene — no shared objects on Emscripten or the
+# Nintendo Switch (static-only targets).
+if (NOT DEFINED EMSCRIPTEN AND NOT DEFINED NINTENDO_SWITCH)
     add_library(${PROJECT_NAME}Shared SHARED ${LUA_SOURCES})
-    if (NOT DEFINED MSVC)
+    if (NOT DEFINED MSVC AND NOT DEFINED NINTENDO_SWITCH)
         target_link_libraries(${PROJECT_NAME}Shared m)
     endif ()
     set_target_properties(${PROJECT_NAME}Shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})

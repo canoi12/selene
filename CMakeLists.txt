@@ -1,4 +1,13 @@
+# ---------------------------------------------------------------------------
+# selene — top level.  Only project setup and subprojects live here:
+#   * cmake/Config.cmake         version + options + cache variables
+#   * cmake/CheckPlatform.cmake  platform/triple detection
+#   * cmake/SeleneSettings.cmake global flags and output directories
+#   * third/                     bundled dependencies (cglm, miniz, glad)
+#   * src/                       runtime library, modules and front-ends
+# ---------------------------------------------------------------------------
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 
 include(Config)
@@ -14,69 +23,16 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         Debug Release RelWithDebInfo MinSizeRel)
 endif ()
 
-include(CheckLibraryExists)
-include(CheckCSourceCompiles)
-include(CMakePushCheckState)
-include(CheckIncludeFile)
-include(CheckPlatform)
-include(CheckTriple)
-
 if (MSVC)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 endif ()
 
-set (SELENE_USE_SDL3 OFF CACHE BOOL "Use SDL3 instead of SDL2")
+# Platform / architecture / triple detection.
+include(CheckPlatform)
+include(CheckTriple)
+
 if (ANDROID)
     set(ANDROID_HOME "$ENV{ANDROID_HOME}" CACHE STRING "Set Android SDK home path")
-endif ()
-
-
-configure_file("${CMAKE_SOURCE_DIR}/include/selene_config.h.in" "${CMAKE_SOURCE_DIR}/include/selene_config.h")
-if (NOT MSVC)
-    if (CMAKE_BUILD_TYPE MATCHES Debug)
-        add_definitions(-DDEBUG)
-    else ()
-        add_definitions(-DNDEBUG)
-    endif ()
-endif ()
-# if (DEFINED MSVC AND DEFINED CMAKE_GENERATOR_PLATFORM)
-#     message("GENERATOR: ${CMAKE_GENERATOR_PLATFORM}")
-#     if ("${CMAKE_GENERATOR_PLATFORM}" STREQUAL "")
-#         if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "AMD64")
-#             set(CMAKE_SYSTEM_PROCESSOR "x64")
-#         else ()
-#             set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_HOST_SYSTEM_PROCESSOR}")
-#         endif ()
-#     elseif ("${CMAKE_GENERATOR_PLATFORM}" STREQUAL "Win32")
-#         set(CMAKE_SYSTEM_PROCESSOR "x86")
-#     else ()
-#         set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_GENERATOR_PLATFORM}")
-#     endif()
-# elseif (NOT DEFINED MSVC)
-#     if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
-#         add_definitions(-DNDEBUG)
-#     else ()
-#         add_definitions(-DDEBUG)
-#     endif ()
-# endif ()
-
-# message("Build Type: ${CMAKE_BUILD_TYPE}")
-# message("Host System Name: ${CMAKE_HOST_SYSTEM_NAME}")
-# message("Host System Architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
-# message("Building for ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR} target")
-# message("WIN32: ${WIN32}")
-# message("MSVC: ${MSVC}")
-# message("MINGW: ${MINGW}")
-# message("LINUX: ${LINUX}")
-# message("DARWIN: ${DARWIN}")
-# message("ANDROID: ${ANDROID}")
-# message("EMSCRIPTEN: ${EMSCRIPTEN}")
-# message("CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
-
-# message("Static: ${CMAKE_STATIC_LIBRARY_SUFFIX} Shared: ${CMAKE_SHARED_LIBRARY_SUFFIX}")
-# message("Using SDL3: ${SELENE_USE_SDL3}")
-
-if (${ANDROID})
     message("Android ABI: ${ANDROID_ABI}")
     message("Android Platform: ${ANDROID_PLATFORM}")
 endif ()
@@ -85,394 +41,20 @@ if (WIN32)
     ENABLE_LANGUAGE(RC)
 endif ()
 
-if (NOT DEFINED MSVC)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
-else ()
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-endif ()
+# Generated configuration header (SELENE_VERSION, module metanames, ...).
+configure_file("${CMAKE_SOURCE_DIR}/include/selene_config.h.in"
+               "${CMAKE_SOURCE_DIR}/include/selene_config.h")
 
-if (DEFINED EMSCRIPTEN)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sWASM=1")
-endif ()
+# Global build settings shared by every target.
+include(SeleneSettings)
 
-if (NOT DEFINED LIB_PLATFORM)
-    if (${ANDROID})
-    set(LIB_PLATFORM "/${ANDROID_PLATFORM}")
-    elseif (DEFINED MSVC)
-    set(LIB_PLATFORM "/v143")
-    else()
-    set(LIB_PLATFORM "")
-    endif ()
-endif ()
+# --- Subprojects -----------------------------------------------------------
+add_subdirectory(third)
+add_subdirectory(src)
 
-if (DEFINED MINGW)
-    add_definitions(-DMINGW)
-    if (${SELENE_NO_D3D11})
-        add_definitions(-DSELENE_NO_D3D11)
-    endif ()
-endif ()
-
-if (${LUA_VERSION} STREQUAL "jit")
-    message("Using Lua JIT")
-    add_definitions(-DSELENE_USE_JIT)
-endif ()
-
-file(GLOB AUDIO_SOURCES src/modules/audio/*.c)
-file(GLOB FS_SOURCES src/modules/filesystem/*.c src/modules/font.c)
-file(GLOB RENDERER_SOURCES src/modules/renderer/**.c src/modules/renderer/drivers/*.c src/modules/renderer/drivers/*.cpp)
-file(GLOB WINDOW_SOURCES src/modules/window/*.c src/modules/window/backends/*.c)
-
-file(GLOB SELENE_SOURCES src/*.c src/modules/ljson.c src/core/*.c third/glad/src/glad.c)
-
-# file(GLOB SELENE_SOURCES
-#     src/core/*.c src/core/renderer/*.c src/core/renderer/backends/*.c src/core/renderer/backends/*.cpp
-#     src/core/renderer/types/*.c src/core/audio/*.c src/extended_libs.c third/glad/src/glad.c
-# )
-if (EMSCRIPTEN)
-    list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/main.c)
-    list(POP_BACK SELENE_SOURCES)
-endif()
-# main.c is the runtime front-end, it belongs to the executable only
-list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/main.c)
-# list(REMOVE_ITEM SELENE_SOURCES ${CMAKE_SOURCE_DIR}/src/modules/sdl2.c)
-
-include_directories(include/ third/ third/glad/include)
-message("CMakeLibraryPath: ${CMAKE_LIBRARY_PATH}")
-link_directories("${CMAKE_LIBRARY_PATH}")
-
-if (NOT ANDROID AND NOT EMSCRIPTEN)
-    find_package(OpenGL REQUIRED)
-elseif (ANDROID)
-    set (OPENGL_LIBRARIES GLESv1_CM GLESv2)
-    # Feature probes (see the pitfall notes): clang only WARNS on implicit
-    # function declarations in C99, so every probe runs with
-    # -Werror=implicit-function-declaration. Header-declaration probes are
-    # compile-only (STATIC_LIBRARY); extension entry points also get a LINK
-    # probe (executable against GLESv2) because a declaration alone does not
-    # mean the symbol is exported by the Android lib.
-    cmake_push_check_state()
-    set(CMAKE_REQUIRED_FLAGS "-Werror=implicit-function-declaration")
-    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-    check_c_source_compiles("
-#include <GLES2/gl2.h>
-int main(void) {
-    GLuint vao = 0;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    glDeleteVertexArrays(1, &vao);
-    return 0;
-}" SELENE_PROBE_GLES_VAO_CORE)
-    if (NOT SELENE_PROBE_GLES_VAO_CORE)
-        check_c_source_compiles("
-#define GL_GLEXT_PROTOTYPES 1
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#ifndef GL_OES_vertex_array_object
-#error GL_OES_vertex_array_object is not defined in gl2ext.h
-#endif
-int main(void) {
-    GLuint vao = 0;
-    glGenVertexArraysOES(1, &vao);
-    glBindVertexArrayOES(vao);
-    glDeleteVertexArraysOES(1, &vao);
-    return 0;
-}" SELENE_PROBE_GLES_VAO_OES_DECL)
-    endif ()
-    check_c_source_compiles("
-#include <GLES2/gl2.h>
-int main(void) {
-    glDrawArraysInstanced(GL_TRIANGLES, 0, 3, 2);
-    glDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0, 2);
-    return 0;
-}" SELENE_PROBE_GLES_INSTANCING_CORE)
-    if (NOT SELENE_PROBE_GLES_INSTANCING_CORE)
-        check_c_source_compiles("
-#define GL_GLEXT_PROTOTYPES 1
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-int main(void) {
-    glDrawArraysInstancedANGLE(GL_TRIANGLES, 0, 3, 2);
-    glDrawElementsInstancedANGLE(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0, 2);
-    return 0;
-}" SELENE_PROBE_GLES_INSTANCING_ANGLE)
-    endif ()
-    check_c_source_compiles("
-#include <GLES2/gl2.h>
-int main(void) {
-    glClearDepth(1.0);
-    return 0;
-}" SELENE_PROBE_GLES_CLEARDEPTH)
-    check_c_source_compiles("
-#include <GLES2/gl2.h>
-int main(void) {
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
-    glUniformBlockBinding(0, 0, 0);
-    (void)glGetUniformBlockIndex(0, \"x\");
-    return 0;
-}" SELENE_PROBE_GLES_UBO)
-    # Link probes: is the extension entry point actually exported by libGLESv2?
-    set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
-    set(CMAKE_REQUIRED_LIBRARIES GLESv2)
-    if (SELENE_PROBE_GLES_VAO_OES_DECL)
-        check_c_source_compiles("
-#define GL_GLEXT_PROTOTYPES 1
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-int main(void) {
-    GLuint vao = 0;
-    glGenVertexArraysOES(1, &vao);
-    glBindVertexArrayOES(vao);
-    glDeleteVertexArraysOES(1, &vao);
-    return 0;
-}" SELENE_PROBE_GLES_VAO_OES_LINK)
-    endif ()
-    if (SELENE_PROBE_GLES_INSTANCING_ANGLE)
-        check_c_source_compiles("
-#define GL_GLEXT_PROTOTYPES 1
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-int main(void) {
-    glDrawArraysInstancedANGLE(GL_TRIANGLES, 0, 3, 2);
-    glDrawElementsInstancedANGLE(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0, 2);
-    return 0;
-}" SELENE_PROBE_GLES_INSTANCING_LINK)
-    endif ()
-    cmake_pop_check_state()
-    if (SELENE_PROBE_GLES_VAO_CORE)
-        message("Android GLES: VAO entry points declared in GLES2 headers")
-    elseif (SELENE_PROBE_GLES_VAO_OES_LINK)
-        message("Android GLES: VAO available via GL_OES_vertex_array_object — defining SELENE_GLES_VAO_OES")
-        add_definitions(-DSELENE_GLES_VAO_OES)
-    else ()
-        message("Android GLES: no VAO declarations found — defining SELENE_NO_VAO")
-        add_definitions(-DSELENE_NO_VAO)
-    endif ()
-    if (SELENE_PROBE_GLES_INSTANCING_CORE)
-        message("Android GLES: instancing entry points declared in GLES2 headers")
-    elseif (SELENE_PROBE_GLES_INSTANCING_LINK)
-        message("Android GLES: instancing available via GL_ANGLE_instanced_arrays — defining SELENE_GLES_INSTANCING_OES")
-        add_definitions(-DSELENE_GLES_INSTANCING_OES)
-    else ()
-        message("Android GLES: no instancing declarations found — defining SELENE_NO_INSTANCING")
-        add_definitions(-DSELENE_NO_INSTANCING)
-    endif ()
-    if (NOT SELENE_PROBE_GLES_CLEARDEPTH)
-        message("Android GLES: glClearDepth not declared — aliasing to glClearDepthf")
-        add_definitions(-DSELENE_GLES_GLCLEARDEPTH_F)
-    endif ()
-    if (NOT SELENE_PROBE_GLES_UBO)
-        message("Android GLES: uniform buffer objects not declared — defining SELENE_NO_UBO")
-        add_definitions(-DSELENE_NO_UBO)
-    endif ()
-endif ()
-if (DEFINED EMSCRIPTEN)
-    # Emscripten uses GLES3 headers, which declare VAO/instancing/UBO but
-    # only glClearDepthf (glClearDepth is desktop GL only).
-    cmake_push_check_state()
-    set(CMAKE_REQUIRED_FLAGS "-Werror=implicit-function-declaration")
-    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-    check_c_source_compiles("
-#include <GLES3/gl3.h>
-int main(void) {
-    glClearDepth(1.0);
-    return 0;
-}" SELENE_PROBE_GLES_CLEARDEPTH)
-    cmake_pop_check_state()
-    if (NOT SELENE_PROBE_GLES_CLEARDEPTH)
-        message("Emscripten GLES3: glClearDepth not declared — aliasing to glClearDepthf")
-        add_definitions(-DSELENE_GLES_GLCLEARDEPTH_F)
-    endif ()
-endif ()
-if (NOT DEFINED EMSCRIPTEN)
-    if (${SELENE_USE_SDL3})
-        # include("cmake/CheckSDL3.cmake")
-        find_package(CustomSDL3 REQUIRED)
-    else ()
-        find_package(CustomSDL2 REQUIRED)
-    endif ()
-else()
-    set(SELENE_USE_SDL3 OFF)
-    #find_package(SDL2 REQUIRED)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -sUSE_SDL=2")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
-endif ()
-include(CheckLua)
-
-if (${SELENE_USE_SDL3})
-    add_definitions(-DSELENE_USE_SDL3)
-endif ()
-
-# add_subdirectory(third/cglm)
-
-file(GLOB CGLM_FILES third/cglm/src/*.c)
-add_library(cglm STATIC ${CGLM_FILES})
-target_compile_definitions(cglm PRIVATE -DCGLM_STATIC)
-include_directories(third/cglm/include)
-
-file(GLOB MINIZ_FILES third/miniz/miniz.c)
-add_library(miniz STATIC ${MINIZ_FILES})
-set_target_properties(miniz PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-set(LIBRARIES ${LUA_LIB} ${OPENGL_LIBRARIES} cglm miniz)
-
-if (NOT SELENE_NO_VULKAN)
-    if (WIN32)
-        find_library(VULKAN_LIBRARY
-            NAMES vulkan vulkan-1
-            PATHS
-            "$ENV{VULKAN_SDK}/Lib"   # Windows Vulkan SDK default location
-        )
-        find_path(VULKAN_INCLUDE_DIR
-            NAMES vulkan/vulkan.h
-            PATHS
-            "$ENV{VULKAN_SDK}/Include"  # Windows Vulkan SDK
-        )
-    else()
-        find_library(VULKAN_LIBRARY NAMES vulkan vulkan-1
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib
-            /lib/x86_64-linux-gnu
-            /lib
-            NO_DEFAULT_PATH
-        )
-        find_path(VULKAN_INCLUDE_DIR NAMES vulkan/vulkan.h
-            PATHS
-            /usr/include
-            NO_DEFAULT_PATH
-        )
-    endif()
-
-    #message("Vulkan paths: ${VULKAN_LIBRARY} ${VULKAN_INCLUDE_DIR}")
-    if (VULKAN_LIBRARY AND VULKAN_INCLUDE_DIR)
-        message("Using Vulkan: ${VULKAN_LIBRARY} ${VULKAN_INCLUDE_DIR}")
-        set(LIBRARIES ${LIBRARIES} ${VULKAN_LIBRARY})
-        include_directories(${VULKAN_INCLUDE_DIR})
-    else ()
-        message("Failed to find Vulkan library")
-        add_definitions(-DSELENE_NO_VULKAN=1)
-    endif ()
-else ()
-    message("Disabling support for Vulkan")
-    add_definitions(-DSELENE_NO_VULKAN=1)
-endif()
-
-if (${SELENE_USE_SDL3})
-    include_directories(${SDL3_INCLUDE_DIRS})
-    set (LIBRARIES ${LIBRARIES} ${SDL3_LIBRARIES})
-else ()
-    include_directories(${SDL2_INCLUDE_DIRS})
-    set (LIBRARIES ${LIBRARIES} ${SDL2_LIBRARIES})
-endif ()
-
-if (NOT MSVC)
-    ## Static Library
-    add_library(${PROJECT_NAME}Static STATIC ${SELENE_SOURCES} ${AUDIO_SOURCES} ${FS_SOURCES} ${RENDERER_SOURCES} ${WINDOW_SOURCES})
-    set_target_properties(${PROJECT_NAME}Static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-    if (NOT DEFINED MSVC)
-        target_link_libraries(${PROJECT_NAME}Static m)
-    endif ()
-    if (NOT DEFINED WIN32)
-        target_link_libraries(${PROJECT_NAME}Static dl)
-    endif ()
-endif ()
-
-
-## Shared Library
-if (NOT DEFINED EMSCRIPTEN)
-    add_library(${PROJECT_NAME}Shared SHARED ${SELENE_SOURCES} ${AUDIO_SOURCES} ${FS_SOURCES} ${RENDERER_SOURCES} ${WINDOW_SOURCES})
-    # target_link_directories(${PROJECT_NAME}Shared PRIVATE "${CMAKE_LIBRARY_PATH}")
-    target_link_libraries(${PROJECT_NAME}Shared ${LIBRARIES})
-    if (MSVC)
-        target_compile_definitions(${PROJECT_NAME}Shared PRIVATE -DSELENE_EXPORT_DLL)
-        target_link_libraries(${PROJECT_NAME}Shared d3d11 d3dcompiler dxgi)
-    endif()
-    if (${HAS_LUA51})
-        target_link_libraries(${PROJECT_NAME}Shared lua51)
-    endif ()
-    if (DEFINED MINGW)
-        target_link_libraries(${PROJECT_NAME}Shared mingw32 opengl32 glu32 -mwindows)
-    elseif (ANDROID)
-        target_link_libraries(${PROJECT_NAME}Shared android log)
-    endif ()
-    set_target_properties(${PROJECT_NAME}Shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-    if (MSVC)
-        source_group("Source Files\\audio" FILES ${AUDIO_SOURCES})
-        source_group("Source Files\\filesystem" FILES ${FS_SOURCES})
-        source_group("Source Files\\renderer" FILES ${RENDERER_SOURCES})
-        source_group("Source Files\\window" FILES ${WINDOW_SOURCES})
-    endif ()
-endif ()
-
-if (TARGET ${PROJECT_NAME}Shared)
-    add_library(${PROJECT_NAME}Lib ALIAS ${PROJECT_NAME}Shared)
-else ()
-    add_library(${PROJECT_NAME}Lib ALIAS ${PROJECT_NAME}Static)
-endif ()
-
-
-
-## Executable
-if (NOT DEFINED ANDROID)
-    add_executable(${PROJECT_NAME}Bin src/main.c)
-    # target_link_directories(${PROJECT_NAME}Shared PRIVATE "${CMAKE_LIBRARY_PATH}")
-    target_link_libraries(${PROJECT_NAME}Bin "${PROJECT_NAME}Lib" ${LIBRARIES})
-    if (MSVC)
-        target_compile_definitions(${PROJECT_NAME}Bin PRIVATE -DSELENE_IMPORT_DLL)
-    endif ()
-    if (${HAS_LUA51})
-        target_link_libraries(${PROJECT_NAME}Bin lua51)
-    endif ()
-    if (WIN32)
-        target_sources(${PROJECT_NAME}Bin PRIVATE "${CMAKE_SOURCE_DIR}/misc/cross/windres/ICON.rc")
-    endif ()
-    set_target_properties(${PROJECT_NAME}Bin PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-    if (DEFINED EMSCRIPTEN)
-        message("Emscripten options")
-        set_target_properties(${PROJECT_NAME}Bin PROPERTIES SUFFIX .html)
-        target_link_options(${PROJECT_NAME}Bin PRIVATE -sUSE_SDL=2 -sMAIN_MODULE -sALLOW_MEMORY_GROWTH -sFORCE_FILESYSTEM -sMAX_WEBGL_VERSION=2 --shell-file ${CMAKE_SOURCE_DIR}/misc/cross/emscripten/index.html)
-    endif ()
-    if (DEFINED MINGW)
-        target_link_libraries(${PROJECT_NAME}Bin mingw32 opengl32 glu32 -mwindows)
-    elseif (DEFINED MSVC)
-        # target_link_libraries(${PROJECT_NAME}Bin opengl32 glu32)
-    endif ()
-else ()
-    add_library(${PROJECT_NAME}Bin SHARED src/main.c)
-    set_target_properties(${PROJECT_NAME}Bin PROPERTIES OUTPUT_NAME main)
-    target_link_libraries(${PROJECT_NAME}Bin "${PROJECT_NAME}Lib" ${LIBRARIES})
-    target_link_libraries(${PROJECT_NAME}Bin android log)
-endif ()
-
-## Editor (desktop only): run / pack / edit front-end over the runtime
-if (SELENE_BUILD_EDITOR AND NOT DEFINED ANDROID AND NOT DEFINED EMSCRIPTEN)
-    file(GLOB EDITOR_SOURCES src/editor/*.cpp src/editor/*.c)
-    add_executable(${PROJECT_NAME}Editor ${EDITOR_SOURCES})
-    target_link_libraries(${PROJECT_NAME}Editor "${PROJECT_NAME}Lib" ${LIBRARIES})
-    target_compile_features(${PROJECT_NAME}Editor PRIVATE cxx_std_17)
-    set_target_properties(${PROJECT_NAME}Editor PROPERTIES OUTPUT_NAME ${PROJECT_NAME}-editor)
-    if (MSVC)
-        target_compile_definitions(${PROJECT_NAME}Editor PRIVATE -DSELENE_IMPORT_DLL)
-    endif ()
-    if (${HAS_LUA51})
-        target_link_libraries(${PROJECT_NAME}Editor lua51)
-    endif ()
-    if (WIN32)
-        target_sources(${PROJECT_NAME}Editor PRIVATE "${CMAKE_SOURCE_DIR}/misc/cross/windres/ICON.rc")
-    endif ()
-    if (DEFINED MINGW)
-        target_link_libraries(${PROJECT_NAME}Editor mingw32 opengl32 glu32)
-    endif ()
-endif ()
-
+# --- Packaging / tests -----------------------------------------------------
 include(Install)
 
 enable_testing()
-add_test(NAME ${PROJECT_NAME}Test COMMAND $<TARGET_FILE:${PROJECT_NAME}Bin> -d ${CMAKE_SOURCE_DIR}/examples/test)
+add_test(NAME ${PROJECT_NAME}Test
+         COMMAND $<TARGET_FILE:${PROJECT_NAME}Bin> -d ${CMAKE_SOURCE_DIR}/examples/test)
